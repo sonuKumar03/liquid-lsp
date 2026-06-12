@@ -59,6 +59,8 @@ function parse (input, file, options) {
     var match = value.match(lexical.tagLine)
     if (!match) {
       var errToken = new Token('tag', raw, value, lineNumber.get(pos), pos, pos + raw.length);
+      errToken.input = input;
+      errToken.file = file;
       throw new TokenizationError(`illegal tag syntax`, errToken)
     }
     var name = match[1];
@@ -99,7 +101,7 @@ function parse (input, file, options) {
     var htmlFragment = input.slice(begin, end)
     currIndent = _.last((htmlFragment).split('\n')).length
 
-    return new Token(
+    var token = new Token(
       'html',
       htmlFragment,
       htmlFragment,
@@ -107,19 +109,16 @@ function parse (input, file, options) {
       begin,
       end
     );
+    token.input = input;
+    token.file = file;
+    return token;
   }
 }
 
 function LineNumber (html) {
-  var parsedLinesCount = 0
-  var lastMatchBegin = -1
-
   return {
     get: function (pos) {
-      var lines = html.slice(lastMatchBegin + 1, pos).split('\n')
-      parsedLinesCount += lines.length - 1
-      lastMatchBegin = pos
-      return parsedLinesCount + 1
+      return html.slice(0, pos).split('\n').length
     }
   }
 }

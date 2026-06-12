@@ -26,6 +26,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "liquidjs": "^10.27.0"
+    "liquidjs": "^10.27.0",
+    "vscode-languageserver": "^10.0.0",
+    "vscode-languageserver-textdocument": "^1.0.12"
   }
 }

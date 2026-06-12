@@ -18,7 +18,9 @@
   "engines": {
     "vscode": "^1.80.0"
   },
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:liquid"
+  ],
   "contributes": {
     "languages": [
       {

@@ -7,60 +7,106 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Compact helper to send a JSON-RPC message over standard input
-function send(child: any, msg: object) {
-  const content = JSON.stringify(msg);
-  child.stdin.write(`Content-Length: ${Buffer.byteLength(content, 'utf8')}\r\n\r\n${content}`);
+// Helper to format a JSON object into a standard LSP/JSON-RPC message
+function formatLSPMessage(jsonPayload: object): string {
+  const content = JSON.stringify(jsonPayload);
+  return `Content-Length: ${Buffer.byteLength(content, 'utf8')}\r\n\r\n${content}`;
+}
+
+// Robust message reader to parse incoming JSON-RPC chunks from stdout.
+// This handles case-by-case fragmentation, concatenating stdout buffers,
+// reading headers, and parsing multiple messages correctly.
+class LSPMessageReader {
+  private buffer = '';
+
+  constructor(
+    private stdout: NodeJS.ReadableStream,
+    private onMessage: (msg: any) => void
+  ) {
+    this.stdout.on('data', (data) => {
+      this.buffer += data.toString();
+      this.processBuffer();
+    });
+  }
+
+  private processBuffer() {
+    while (true) {
+      const delimiterIndex = this.buffer.indexOf('\r\n\r\n');
+      if (delimiterIndex === -1) break;
+
+      const headerPart = this.buffer.slice(0, delimiterIndex);
+      const contentLengthMatch = headerPart.match(/Content-Length:\s*(\d+)/i);
+
+      if (!contentLengthMatch || !contentLengthMatch[1]) {
+        this.buffer = this.buffer.slice(delimiterIndex + 4);
+        continue;
+      }
+
+      const contentLength = parseInt(contentLengthMatch[1], 10);
+      const bodyStart = delimiterIndex + 4;
+
+      if (Buffer.byteLength(this.buffer.slice(bodyStart), 'utf8') < contentLength) {
+        break;
+      }
+
+      const bodyPart = this.buffer.slice(bodyStart, bodyStart + contentLength);
+      this.buffer = this.buffer.slice(bodyStart + contentLength);
+
+      try {
+        const json = JSON.parse(bodyPart);
+        this.onMessage(json);
+      } catch (e) {
+        console.error('Failed to parse message:', bodyPart, e);
+      }
+    }
+  }
 }
 
 test('Liquid syntax diagnostics lifecycle', (t, done) => {
-  const child = fork(path.resolve(__dirname, '../dist/main.js'), ['--stdio'], { stdio: ['pipe', 'pipe', 'inherit', 'ipc'] });
-  let buffer = '';
+  const serverPath = path.resolve(__dirname, '../dist/main.js');
+  const child = fork(serverPath, ['--stdio'], { stdio: ['pipe', 'pipe', 'inherit', 'ipc'] });
 
-  child.stdout!.on('data', (chunk) => {
-    buffer += chunk.toString();
-    const parts = buffer.split('\r\n\r\n');
-    if (parts.length < 2) return;
+  let step = 0;
 
-    const header = parts[0]!;
-    const body = parts[1]!;
-    const lengthMatch = header.match(/Content-Length:\s*(\d+)/i);
-    if (!lengthMatch) return;
+  new LSPMessageReader(child.stdout!, (res) => {
+    // If it's a logging notification, print it and don't advance our step logic
+    if (res.method === 'window/logMessage') {
+      console.log('    [Server Log]', res.params.message);
+      return;
+    }
 
-    const expectedLength = parseInt(lengthMatch[1]!, 10);
-    if (Buffer.byteLength(body, 'utf8') < expectedLength) return;
-
-    const res = JSON.parse(body.slice(0, expectedLength));
-    buffer = body.slice(expectedLength); // Reset buffer with leftover data
-
-    if (res.id === 1) {
-      // 1. Check handshake response and open a document with invalid syntax
+    if (step === 0 && res.id === 1) {
+      // 1. Handshake response received. Verify capabilities.
       assert.ok(res.result.capabilities.hoverProvider);
-      send(child, { jsonrpc: '2.0', method: 'initialized', params: {} });
-      send(child, {
+      
+      // Complete handshake and open invalid document
+      child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', method: 'initialized', params: {} }));
+      child.stdin?.write(formatLSPMessage({
         jsonrpc: '2.0',
         method: 'textDocument/didOpen',
         params: { textDocument: { uri: 'file:///t.liquid', languageId: 'liquid', version: 1, text: '{% if x }' } }
-      });
-    } else if (res.method === 'textDocument/publishDiagnostics') {
-      if (res.params.diagnostics.length > 0) {
-        // 2. Verify invalid syntax triggers diagnostic, then correct it
-        assert.ok(res.params.diagnostics[0].message);
-        assert.strictEqual(res.params.diagnostics[0].range.start.character, 0); // Highlights the unclosed tag starting at character 0
-        send(child, {
-          jsonrpc: '2.0',
-          method: 'textDocument/didChange',
-          params: { textDocument: { uri: 'file:///t.liquid', version: 2 }, contentChanges: [{ text: '{% if x %}{% endif %}' }] }
-        });
-      } else {
-        // 3. Verify diagnostics are cleared after syntax is corrected
-        assert.strictEqual(res.params.diagnostics.length, 0);
-        child.kill('SIGINT');
-        done();
-      }
+      }));
+      step = 1;
+    } else if (step === 1 && res.method === 'textDocument/publishDiagnostics') {
+      // 2. Syntax validation warning received. Verify details and correct it.
+      assert.ok(res.params.diagnostics.length > 0);
+      assert.ok(res.params.diagnostics[0].message);
+      assert.strictEqual(res.params.diagnostics[0].range.start.character, 0); // Fails at tag start
+
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        method: 'textDocument/didChange',
+        params: { textDocument: { uri: 'file:///t.liquid', version: 2 }, contentChanges: [{ text: '{% if x %}{% endif %}' }] }
+      }));
+      step = 2;
+    } else if (step === 2 && res.method === 'textDocument/publishDiagnostics') {
+      // 3. Diagnostics cleared notification received.
+      assert.strictEqual(res.params.diagnostics.length, 0);
+      child.kill('SIGINT');
+      done();
     }
   });
 
   // Start initialization handshake
-  send(child, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { capabilities: {} } });
+  child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { capabilities: {} } }));
 });

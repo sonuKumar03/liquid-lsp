@@ -48,6 +48,7 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
  * - The Server responds with server capabilities (e.g., "I support auto-completion and hover").
  */
 connection.onInitialize((params: InitializeParams): InitializeResult => {
+  connection.console.log('LSP server: onInitialize handshake started.');
   return {
     capabilities: {
       // Synchronize text documents. Incremental sync only sends changes/deltas,
@@ -92,6 +93,7 @@ documents.onDidChangeContent(change => {
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
+  connection.console.log('LSP server: validating document: ' + textDocument.uri);
   const text = textDocument.getText();
   const diagnostics: Diagnostic[] = [];
 
@@ -187,6 +189,10 @@ connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
     };
   }
   return item;
+});
+
+connection.onInitialized(() => {
+  connection.console.log('LSP server: client connection initialized successfully.');
 });
 
 // Bind the document manager's lifecycle events to the connection

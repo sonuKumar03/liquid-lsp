@@ -7,6 +7,8 @@ import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
+  console.log('Liquid LSP extension activating...');
+
   // Path to the compiled server file
   const serverModule = context.asAbsolutePath(path.join('dist', 'main.js'));
 
@@ -24,9 +26,13 @@ export function activate(context: ExtensionContext) {
     }
   };
 
+  console.log('Spawning LSP server process: node ' + serverModule + ' --stdio');
+
   // Instantiate and launch the client
   client = new LanguageClient('liquidLsp', 'Liquid Language Server', serverOptions, clientOptions);
   client.start();
+
+  console.log('Liquid LSP extension activated successfully.');
 }
 
 export function deactivate(): Thenable<void> | undefined {

@@ -2,7 +2,7 @@ import { CompletionItemKind } from 'vscode-languageserver/node';
 import type { CompletionItem, CompletionParams } from 'vscode-languageserver/node';
 import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { LIQUID_TAGS, LIQUID_FILTERS, getTagDocumentation, getFilterDocumentation } from './constants.js';
+import { LIQUID_TAGS, LIQUID_FILTERS, getTagDocumentation, getFilterDocumentation } from '../shared/constants.js';
 
 export function extractDeclaredVariables(text: string): CompletionItem[] {
   const variables = new Set<string>();

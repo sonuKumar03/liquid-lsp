@@ -1,8 +1,8 @@
 import type { Hover, TextDocumentPositionParams } from 'vscode-languageserver/node';
 import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { LIQUID_TAGS, LIQUID_FILTERS, getTagDocumentation, getFilterDocumentation } from './constants.js';
-import { getWordAtPosition } from './utils.js';
+import { LIQUID_TAGS, LIQUID_FILTERS, getTagDocumentation, getFilterDocumentation } from '../shared/constants.js';
+import { getWordAtPosition } from '../shared/utils.js';
 
 export function handleHover(
   documents: TextDocuments<TextDocument>,

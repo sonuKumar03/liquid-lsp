@@ -6,14 +6,14 @@ import {
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Liquid } from 'liquidjs';
-import { validateTextDocument } from './diagnostics.js';
-import { handleHover } from './hovers.js';
-import { handleCompletion, handleCompletionResolve } from './completions.js';
-import { handleOnTypeFormatting, handleDocumentFormatting } from './formatting.js';
-import { handleDefinition } from './definitions.js';
-import { handleCodeAction } from './codeactions.js';
-import { handleDocumentSymbol } from './symbols.js';
-import { handleSignatureHelp } from './signatures.js';
+import { validateTextDocument } from './linters/diagnostics.js';
+import { handleHover } from './hovers/hovers.js';
+import { handleCompletion, handleCompletionResolve } from './completions/completions.js';
+import { handleOnTypeFormatting, handleDocumentFormatting } from './formatters/formatting.js';
+import { handleDefinition } from './definitions/definitions.js';
+import { handleCodeAction } from './codeactions/codeactions.js';
+import { handleDocumentSymbol } from './symbols/symbols.js';
+import { handleSignatureHelp } from './signatures/signatures.js';
 
 // Initialize LSP connection
 const connection = createConnection(ProposedFeatures.all);

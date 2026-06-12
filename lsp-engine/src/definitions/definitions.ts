@@ -2,7 +2,7 @@ import { Location, Range } from 'vscode-languageserver/node';
 import type { DefinitionParams } from 'vscode-languageserver/node';
 import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getWordAtPosition } from './utils.js';
+import { getWordAtPosition } from '../shared/utils.js';
 
 interface VarDeclaration {
   name: string;

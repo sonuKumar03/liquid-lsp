@@ -2,7 +2,7 @@ import { CodeAction, CodeActionKind, Command } from 'vscode-languageserver/node'
 import type { CodeActionParams } from 'vscode-languageserver/node';
 import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { convertToLiquidMath } from './utils.js';
+import { convertToLiquidMath } from '../shared/utils.js';
 
 export function handleCodeAction(
   documents: TextDocuments<TextDocument>,

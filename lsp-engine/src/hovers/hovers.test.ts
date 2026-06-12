@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { startLspServer, LSPMessageReader, formatLSPMessage } from './test-utils.js';
+import { startLspServer, LSPMessageReader, formatLSPMessage } from '../shared/test-utils.js';
 
 test('Liquid hover documentation', () => new Promise<void>((resolve) => {
   const child = startLspServer();

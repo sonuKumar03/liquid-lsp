@@ -2,9 +2,9 @@ import { DiagnosticSeverity, Range } from 'vscode-languageserver/node';
 import type { Diagnostic, Connection } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Liquid, Tokenizer, TagToken, TokenKind, Token } from 'liquidjs';
-import { getEnhancedErrorMessage, cleanErrorMessage, getClosestFilter } from './utils.js';
-import { LIQUID_FILTERS } from './constants.js';
-import { findVariableDeclarations } from './definitions.js';
+import { getEnhancedErrorMessage, cleanErrorMessage, getClosestFilter } from '../shared/utils.js';
+import { LIQUID_FILTERS } from '../shared/constants.js';
+import { findVariableDeclarations } from '../definitions/definitions.js';
 
 export async function validateTextDocument(
   connection: Connection,

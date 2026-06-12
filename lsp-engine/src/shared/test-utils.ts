@@ -58,6 +58,6 @@ export class LSPMessageReader {
 }
 
 export function startLspServer(): ChildProcess {
-  const serverPath = path.resolve(__dirname, '../dist/main.js');
+  const serverPath = path.resolve(__dirname, '../main.js');
   return fork(serverPath, ['--stdio'], { stdio: ['pipe', 'pipe', 'inherit', 'ipc'] });
 }

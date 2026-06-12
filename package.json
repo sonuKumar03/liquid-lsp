@@ -4,7 +4,8 @@
   "type": "module",
   "workspaces": [
     "lsp-engine",
-    "vscode-extension"
+    "vscode-extension",
+    "express-server"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

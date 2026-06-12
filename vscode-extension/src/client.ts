@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as net from 'net';
 import type { ExtensionContext } from 'vscode';
 import { workspace } from 'vscode';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
@@ -9,18 +10,36 @@ let client: LanguageClient;
 export function activate(context: ExtensionContext) {
   console.log('Liquid LSP extension activating...');
 
+  const config = workspace.getConfiguration('liquid');
+  const mode = config.get<'local' | 'remote'>('server.mode') || 'local';
+  const host = config.get<string>('server.host') || 'localhost';
+  const port = config.get<number>('server.port') || 6009;
+
   // Path to the compiled server file
   const serverModule = context.asAbsolutePath(path.join('dist', 'server', 'main.js'));
 
-  // Configure how the client starts the server (node dist/main.js --stdio)
-  const serverOptions: ServerOptions = {
-    run: { module: serverModule, transport: TransportKind.stdio },
-    debug: {
-      module: serverModule,
-      transport: TransportKind.stdio,
-      options: { execArgv: ['--nolazy', '--inspect=6009'] }
-    }
-  };
+  let serverOptions: ServerOptions;
+
+  if (mode === 'remote') {
+    console.log(`Connecting to remote LSP server at ${host}:${port}`);
+    serverOptions = () => {
+      const socket = net.connect({ host, port });
+      return Promise.resolve({
+        writer: socket,
+        reader: socket
+      });
+    };
+  } else {
+    console.log('Spawning LSP server process: node ' + serverModule + ' --stdio');
+    serverOptions = {
+      run: { module: serverModule, transport: TransportKind.stdio },
+      debug: {
+        module: serverModule,
+        transport: TransportKind.stdio,
+        options: { execArgv: ['--nolazy', '--inspect=6009'] }
+      }
+    };
+  }
 
   // Set selectors and watchers
   const clientOptions: LanguageClientOptions = {
@@ -29,11 +48,9 @@ export function activate(context: ExtensionContext) {
       fileEvents: workspace.createFileSystemWatcher('**/*.liquid')
     },
     initializationOptions: {
-      schema: workspace.getConfiguration('liquid').get('schema') || {}
+      schema: config.get('schema') || {}
     }
   };
-
-  console.log('Spawning LSP server process: node ' + serverModule + ' --stdio');
 
   // Instantiate and launch the client
   client = new LanguageClient('liquidLsp', 'Liquid Language Server', serverOptions, clientOptions);

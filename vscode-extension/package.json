@@ -1,5 +1,5 @@
 {
-  "name": "liquid-vscode-extension",
+  "name": "liquid-lsp-vscode-extension",
   "version": "1.0.0",
   "publisher": "liquid",
   "main": "dist/client.js",
@@ -67,6 +67,25 @@
             }
           },
           "description": "Predefined variable schemas and types. Supported types: 'string', 'number', 'boolean', 'date', 'currency', dropdown object type, and composite nested object types."
+        },
+        "liquid.server.mode": {
+          "type": "string",
+          "enum": [
+            "local",
+            "remote"
+          ],
+          "default": "local",
+          "description": "Select whether to run the server locally ('local') or connect to a remote deployed server ('remote')."
+        },
+        "liquid.server.host": {
+          "type": "string",
+          "default": "localhost",
+          "description": "The host address of the remote deployed LSP server (only applicable if mode is 'remote')."
+        },
+        "liquid.server.port": {
+          "type": "integer",
+          "default": 6009,
+          "description": "The port number of the remote deployed LSP server (only applicable if mode is 'remote')."
         }
       }
     }

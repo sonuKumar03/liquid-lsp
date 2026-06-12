@@ -67,6 +67,49 @@ Instead of failing on the first error, the LSP runs a token-by-token parser that
 ### 8. Document Outline & Symbols
 Translates control flows (`if`, `unless`, `for`, `case`, `capture`) and variable assignments (`assign`) into a nested visual Outline inside the editor's outline sidebar.
 
+### 9. Predefined Variable Schemas
+Statically load global variables and their types during server initialization or from a workspace `.liquid-schema.json` configuration file. Supported types include:
+* **Primitive Types**: `'string'`, `'number'`, `'boolean'`, `'date'`, `'currency'`
+* **Dropdown List Options**: `{ type: 'dropdown', options: string[] }` (automatically warns on string assignment mismatches)
+* **Composite Object Structure**: `{ type: 'composite', fields: { ... } }`
+
+### 10. parseAssign Tag & Type Coercion
+Statically resolves nested dot-notation properties on composite objects (e.g. `user.address.zipcode`) and supports type coercion for custom objects:
+* **Composite -> String**: Coerces composite objects to `string` (equivalent to `.toString()`).
+* **Currency -> Number**: Coerces `currency` variables to `number` (equivalent to `.toValueOf()`).
+* Includes full support for bracket access/list index lookups (e.g. `user.items[0].title`) and filters on assignments.
+
+---
+
+## Client Connection & Deployment Modes
+
+The Liquid LSP supports three different configuration modes depending on your client workspace:
+
+### 1. Local Stdio Mode (Default)
+By default, the VS Code extension runs locally. It automatically compiles and spawns the local LSP server process in the background and communicates over `stdio`. No setup is required.
+
+### 2. Remote TCP Socket Mode
+If you host the LSP server on a remote server/VM, you can configure the VS Code client to connect directly over a TCP socket:
+1. Start the LSP server in Socket mode on the remote VM:
+   ```bash
+   node lsp-engine/dist/main.js --socket=6009
+   ```
+2. Configure your VS Code settings:
+   ```json
+   "liquid.server.mode": "remote",
+   "liquid.server.host": "your-remote-server-ip",
+   "liquid.server.port": 6009
+   ```
+
+### 3. Express WebSocket Gateway (Monaco Editor / Browsers)
+For browser-based editors (like Monaco Editor) that cannot launch local child processes or use raw TCP sockets, run the included `express-server` WebSocket gateway:
+1. Start the gateway server:
+   ```bash
+   npm start --workspace=express-server
+   ```
+   This exposes a WebSocket LSP gateway endpoint at `ws://localhost:3000/lsp`.
+2. Connect your Monaco Editor (or web client) to the WebSocket endpoint to receive real-time lints, diagnostics, completions, and hover documentation.
+
 ---
 
 ## Debugging Extension and LSP Server

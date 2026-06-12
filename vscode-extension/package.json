@@ -1,0 +1,45 @@
+{
+  "name": "liquid-vscode-extension",
+  "version": "1.0.0",
+  "publisher": "liquid",
+  "main": "dist/client.js",
+  "type": "module",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "activationEvents": [
+    "onLanguage:liquid"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "liquid",
+        "aliases": [
+          "Liquid"
+        ],
+        "extensions": [
+          ".liquid"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "liquid",
+        "scopeName": "text.html.liquid",
+        "path": "./syntaxes/liquid.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc && node build.js"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/vscode": "^1.120.0",
+    "typescript": "^6.0.3"
+  }
+}

@@ -10,7 +10,7 @@ export function activate(context: ExtensionContext) {
   console.log('Liquid LSP extension activating...');
 
   // Path to the compiled server file
-  const serverModule = context.asAbsolutePath(path.join('dist', 'main.js'));
+  const serverModule = context.asAbsolutePath(path.join('dist', 'server', 'main.js'));
 
   // Configure how the client starts the server (node dist/main.js --stdio)
   const serverOptions: ServerOptions = {

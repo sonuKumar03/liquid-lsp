@@ -48,8 +48,8 @@
     "tsx": "tsx",
     "build": "tsc",
     "start": "node dist/main.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run src/**/*.test.ts",
+    "test:watch": "vitest src/**/*.test.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

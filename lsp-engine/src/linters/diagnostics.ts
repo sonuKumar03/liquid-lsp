@@ -1,7 +1,9 @@
 import { DiagnosticSeverity, Range } from 'vscode-languageserver/node';
 import type { Diagnostic, Connection } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { Liquid, Tokenizer, TagToken, TokenKind, Token } from 'liquidjs';
+import type { Liquid, Token, TagToken } from 'liquidjs';
+import liquidjs from 'liquidjs';
+const { Tokenizer, TokenKind, TagToken: TagTokenClass } = liquidjs;
 import { getEnhancedErrorMessage, cleanErrorMessage, getClosestFilter } from '../shared/utils.js';
 import { LIQUID_FILTERS } from '../shared/constants.js';
 import { findVariableDeclarations } from '../definitions/definitions.js';
@@ -16,6 +18,8 @@ export async function validateTextDocument(
   connection.console.log('LSP server: validating document: ' + textDocument.uri);
   const text = textDocument.getText();
   const diagnostics: Diagnostic[] = [];
+
+  checkUnclosedDelimiters(text, diagnostics, textDocument);
 
   // 1. Check for Syntax Errors (Option A: Multiple Syntax Errors via Token-by-Token Parsing)
   try {
@@ -34,13 +38,55 @@ export async function validateTextDocument(
           const remainTokensCopy = [...remainTokens];
 
           const blockTags = ['if', 'for', 'unless', 'capture', 'tablerow', 'case', 'comment'];
-          if (token instanceof TagToken) {
+          if (token instanceof TagTokenClass) {
             const tagName = token.name;
             if (blockTags.includes(tagName)) {
               const dummyTokenizer = new Tokenizer(`{% end${tagName} %}`, liquidEngine.options as any);
               const dummyEndToken = dummyTokenizer.readTopLevelTokens()[0];
               remainTokensCopy.push(dummyEndToken!);
             }
+          }
+
+          // Run manual syntax checks in token-by-token parse
+          const tokenText = token.getText();
+          const textWithoutQuotes = tokenText.replace(/'[^']*'|"[^"]*"/g, '');
+          let isManualError = false;
+
+          if (token instanceof TagTokenClass) {
+            if (['if', 'unless', 'elsif', 'when'].includes(token.name)) {
+              if (/(?<![=!<>])=(?![=<>])/.test(textWithoutQuotes)) {
+                isManualError = true;
+              }
+            }
+            if (/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//.test(textWithoutQuotes)) {
+              isManualError = true;
+            }
+          } else if (token.kind === TokenKind.Output) {
+            if (/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//.test(textWithoutQuotes)) {
+              isManualError = true;
+            }
+          }
+
+          if (isManualError) {
+            hasTokenErrors = true;
+            const start = textDocument.positionAt(token.begin);
+            const end = textDocument.positionAt(token.end);
+
+            const lineNum = start.line;
+            const lineText = textDocument.getText({
+              start: { line: lineNum, character: 0 },
+              end: { line: lineNum + 1, character: 0 }
+            });
+
+            const message = getEnhancedErrorMessage('expected "|" before filter', lineText);
+
+            pushUniqueDiagnostic(diagnostics, {
+              severity: DiagnosticSeverity.Error,
+              range: { start, end },
+              message,
+              source: 'liquid-lsp'
+            });
+            continue;
           }
 
           try {
@@ -68,7 +114,7 @@ export async function validateTextDocument(
 
       // If token-by-token parsing didn't find specific inline errors, or if there is a block structure error
       // (like unclosed tags which require full stream parsing), push the main compiler error.
-      if (!hasTokenErrors || mainErr.message.includes('not closed')) {
+      if (!hasTokenErrors) {
         let start = { line: 0, character: 0 };
         let end = { line: 0, character: 0 };
         if (mainErr.token && typeof mainErr.token.begin === 'number' && typeof mainErr.token.end === 'number') {
@@ -453,9 +499,57 @@ function checkVariableLifecycles(
   for (const token of tokens) {
     const line = doc.positionAt(token.begin).line;
 
-    if (token instanceof TagToken) {
+    // --- MANUAL SYNTAX CHECKS ---
+    const tokenText = token.getText();
+    const textWithoutQuotes = tokenText.replace(/'[^']*'|"[^"]*"/g, '');
+
+    if (token instanceof TagTokenClass) {
       const name = token.name;
-      const tokenText = token.getText();
+
+      // 1. Check single equals assignment inside conditionals (if, unless, elsif, when)
+      if (['if', 'unless', 'elsif', 'when'].includes(name)) {
+        const singleEqualRegex = /(?<![=!<>])=(?![=<>])/;
+        if (singleEqualRegex.test(textWithoutQuotes)) {
+          const start = doc.positionAt(token.begin);
+          const end = doc.positionAt(token.end);
+          pushUniqueDiagnostic(diagnostics, {
+            severity: DiagnosticSeverity.Error,
+            range: { start, end },
+            message: 'Assignments are not allowed inside conditional statements. Did you mean "=="?',
+            source: 'liquid-lsp'
+          });
+        }
+      }
+
+      // 2. Check inline mathematical operators in tag args
+      const mathOperatorRegex = /\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//;
+      if (mathOperatorRegex.test(textWithoutQuotes)) {
+        const start = doc.positionAt(token.begin);
+        const end = doc.positionAt(token.end);
+        pushUniqueDiagnostic(diagnostics, {
+          severity: DiagnosticSeverity.Error,
+          range: { start, end },
+          message: 'Liquid does not support inline mathematical operators. Use filters instead, e.g. "| plus: 2".',
+          source: 'liquid-lsp'
+        });
+      }
+    } else if (token.kind === TokenKind.Output) {
+      // 3. Check inline mathematical operators in output values
+      const mathOperatorRegex = /\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//;
+      if (mathOperatorRegex.test(textWithoutQuotes)) {
+        const start = doc.positionAt(token.begin);
+        const end = doc.positionAt(token.end);
+        pushUniqueDiagnostic(diagnostics, {
+          severity: DiagnosticSeverity.Error,
+          range: { start, end },
+          message: 'Liquid does not support inline mathematical operators. Use filters instead, e.g. "| plus: 2".',
+          source: 'liquid-lsp'
+        });
+      }
+    }
+
+    if (token instanceof TagTokenClass) {
+      const name = token.name;
 
       if (name === 'assign') {
         const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)\s*=\s*(.+)/);
@@ -645,5 +739,46 @@ function checkUnusedVariables(textDocument: TextDocument, diagnostics: Diagnosti
         source: 'liquid-lsp-linter'
       });
     }
+  }
+}
+
+function checkUnclosedDelimiters(text: string, diagnostics: Diagnostic[], doc: TextDocument): void {
+  const openPattern = /\{[%{]/g;
+  let match;
+  while ((match = openPattern.exec(text)) !== null) {
+    const startIdx = match.index;
+    const isTag = text[startIdx + 1] === '%';
+    const closeStr = isTag ? '%}' : '}}';
+
+    const nextClose = text.indexOf(closeStr, startIdx + 2);
+    const nextOpen = text.slice(startIdx + 2).search(/\{[%{]/);
+    const nextOpenIdx = nextOpen !== -1 ? startIdx + 2 + nextOpen : -1;
+
+    if (nextClose === -1 || (nextOpenIdx !== -1 && nextOpenIdx < nextClose)) {
+      const start = doc.positionAt(startIdx);
+      const lineEnd = text.indexOf('\n', startIdx);
+      const endIdx = lineEnd !== -1 ? lineEnd : text.length;
+      const end = doc.positionAt(endIdx);
+
+      const rawTag = text.slice(startIdx, endIdx).trim();
+
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range: { start, end },
+        message: `tag ${rawTag} not closed`,
+        source: 'liquid-lsp'
+      });
+    }
+  }
+}
+
+function pushUniqueDiagnostic(diagnostics: Diagnostic[], diag: Diagnostic): void {
+  const isDuplicate = diagnostics.some(d => 
+    d.range.start.line === diag.range.start.line && 
+    d.range.start.character === diag.range.start.character &&
+    d.message === diag.message
+  );
+  if (!isDuplicate) {
+    diagnostics.push(diag);
   }
 }

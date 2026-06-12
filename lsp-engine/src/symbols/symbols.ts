@@ -1,7 +1,9 @@
 import { SymbolKind, DocumentSymbol, Range } from 'vscode-languageserver/node';
 import type { DocumentSymbolParams, TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { Tokenizer, TagToken, Token } from 'liquidjs';
+import type { Token } from 'liquidjs';
+import liquidjs from 'liquidjs';
+const { Tokenizer, TagToken: TagTokenClass } = liquidjs;
 
 export function handleDocumentSymbol(
   documents: TextDocuments<TextDocument>,
@@ -29,7 +31,7 @@ export function handleDocumentSymbol(
     const endPos = doc.positionAt(token.end);
     const range = Range.create(startPos, endPos);
 
-    if (token instanceof TagToken) {
+    if (token instanceof TagTokenClass) {
       const name = token.name;
 
       if (blockStartTags.includes(name)) {

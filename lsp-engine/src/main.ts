@@ -5,7 +5,8 @@ import {
   TextDocumentSyncKind
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { Liquid } from 'liquidjs';
+import liquidjs from 'liquidjs';
+const { Liquid } = liquidjs;
 import { validateTextDocument } from './linters/diagnostics.js';
 import { handleHover } from './hovers/hovers.js';
 import { handleCompletion, handleCompletionResolve } from './completions/completions.js';

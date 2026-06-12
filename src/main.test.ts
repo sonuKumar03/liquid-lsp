@@ -1015,3 +1015,75 @@ test('Liquid document formatting', (t, done) => {
   child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }));
 });
 
+test('Liquid computational edge cases (outputs mismatch, formatter string preservation, null signature help)', (t, done) => {
+  const serverPath = path.resolve(__dirname, '../dist/main.js');
+  const child = fork(serverPath, ['--stdio'], { stdio: ['pipe', 'pipe', 'inherit', 'ipc'] });
+
+  let step = 0;
+
+  new LSPMessageReader(child.stdout!, (res) => {
+    if (res.method === 'window/logMessage') {
+      console.log('    [Server Log]', res.params.message);
+      return;
+    }
+
+    if (step === 0 && res.id === 1) {
+      child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', method: 'initialized', params: {} }));
+      
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        method: 'textDocument/didOpen',
+        params: {
+          textDocument: {
+            uri: 'file:///t.liquid',
+            languageId: 'liquid',
+            version: 1,
+            text: '{% assign name = "sonu" %}\n{{ name | plus: 10 }}\n{%assign  name  =  "a = b | c" %}\n{{ name | upcase: }}'
+          }
+        }
+      }));
+      step = 1;
+    } else if (step === 1 && res.method === 'textDocument/publishDiagnostics') {
+      const diagnostics = res.params.diagnostics;
+      const typeMismatchWarning = diagnostics.find((d: any) => d.message.includes('Type mismatch'));
+      assert.ok(typeMismatchWarning, 'Expected type mismatch warning in output token');
+      assert.strictEqual(typeMismatchWarning.range.start.line, 1);
+
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'textDocument/formatting',
+        params: {
+          textDocument: { uri: 'file:///t.liquid' },
+          options: { tabSize: 2, insertSpaces: true }
+        }
+      }));
+      step = 2;
+    } else if (step === 2 && res.id === 2) {
+      const edits = res.result;
+      assert.ok(edits && edits.length === 1);
+      const expectedText = '{% assign name = "sonu" %}\n{{ name | plus: 10 }}\n{% assign name = "a = b | c" %}\n{{ name | upcase: }}';
+      assert.strictEqual(edits[0].newText, expectedText);
+
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'textDocument/signatureHelp',
+        params: {
+          textDocument: { uri: 'file:///t.liquid' },
+          position: { line: 3, character: 18 }
+        }
+      }));
+      step = 3;
+    } else if (step === 3 && res.id === 3) {
+      assert.ok(res.result === null || !res.result.signatures || res.result.signatures.length === 0);
+
+      child.kill('SIGINT');
+      done();
+    }
+  });
+
+  child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }));
+});
+
+

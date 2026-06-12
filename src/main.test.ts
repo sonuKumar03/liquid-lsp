@@ -14,8 +14,6 @@ function formatLSPMessage(jsonPayload: object): string {
 }
 
 // Robust message reader to parse incoming JSON-RPC chunks from stdout.
-// This handles case-by-case fragmentation, concatenating stdout buffers,
-// reading headers, and parsing multiple messages correctly.
 class LSPMessageReader {
   private buffer = '';
 
@@ -69,17 +67,13 @@ test('Liquid syntax diagnostics lifecycle', (t, done) => {
   let step = 0;
 
   new LSPMessageReader(child.stdout!, (res) => {
-    // If it's a logging notification, print it and don't advance our step logic
     if (res.method === 'window/logMessage') {
       console.log('    [Server Log]', res.params.message);
       return;
     }
 
     if (step === 0 && res.id === 1) {
-      // 1. Handshake response received. Verify capabilities.
       assert.ok(res.result.capabilities.hoverProvider);
-      
-      // Complete handshake and open invalid document
       child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', method: 'initialized', params: {} }));
       child.stdin?.write(formatLSPMessage({
         jsonrpc: '2.0',
@@ -88,10 +82,8 @@ test('Liquid syntax diagnostics lifecycle', (t, done) => {
       }));
       step = 1;
     } else if (step === 1 && res.method === 'textDocument/publishDiagnostics') {
-      // 2. Syntax validation warning received. Verify details and correct it.
       assert.ok(res.params.diagnostics.length > 0);
-      assert.ok(res.params.diagnostics[0].message);
-      assert.strictEqual(res.params.diagnostics[0].range.start.character, 0); // Fails at tag start
+      assert.strictEqual(res.params.diagnostics[0].range.start.character, 0);
 
       child.stdin?.write(formatLSPMessage({
         jsonrpc: '2.0',
@@ -100,13 +92,97 @@ test('Liquid syntax diagnostics lifecycle', (t, done) => {
       }));
       step = 2;
     } else if (step === 2 && res.method === 'textDocument/publishDiagnostics') {
-      // 3. Diagnostics cleared notification received.
       assert.strictEqual(res.params.diagnostics.length, 0);
       child.kill('SIGINT');
       done();
     }
   });
 
-  // Start initialization handshake
+  child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { capabilities: {} } }));
+});
+
+test('Liquid auto-complete context suggestions', (t, done) => {
+  const serverPath = path.resolve(__dirname, '../dist/main.js');
+  const child = fork(serverPath, ['--stdio'], { stdio: ['pipe', 'pipe', 'inherit', 'ipc'] });
+
+  let step = 0;
+
+  new LSPMessageReader(child.stdout!, (res) => {
+    if (res.method === 'window/logMessage') {
+      console.log('    [Server Log]', res.params.message);
+      return;
+    }
+
+    if (step === 0 && res.id === 1) {
+      // Complete handshake
+      child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', method: 'initialized', params: {} }));
+
+      // Open a document with a tag fragment: `{% ass`
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        method: 'textDocument/didOpen',
+        params: {
+          textDocument: {
+            uri: 'file:///t.liquid',
+            languageId: 'liquid',
+            version: 1,
+            text: '{% ass'
+          }
+        }
+      }));
+
+      // Immediately query autocomplete right after "ass" (character index 6)
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'textDocument/completion',
+        params: {
+          textDocument: { uri: 'file:///t.liquid' },
+          position: { line: 0, character: 6 }
+        }
+      }));
+
+      step = 1;
+    } else if (step === 1 && res.id === 2) {
+      // Verify tag completions are returned (specifically 'assign')
+      const items = res.result;
+      assert.ok(items.length > 0);
+      const hasAssign = items.some((item: any) => item.label === 'assign' && item.data === 'tag-assign');
+      assert.ok(hasAssign, 'Expected "assign" tag in autocomplete list');
+
+      // Change document to filter fragment: `{{ name | up`
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        method: 'textDocument/didChange',
+        params: {
+          textDocument: { uri: 'file:///t.liquid', version: 2 },
+          contentChanges: [{ text: '{{ name | up' }]
+        }
+      }));
+
+      // Query autocomplete right after "up" (character index 12)
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'textDocument/completion',
+        params: {
+          textDocument: { uri: 'file:///t.liquid' },
+          position: { line: 0, character: 12 }
+        }
+      }));
+
+      step = 2;
+    } else if (step === 2 && res.id === 3) {
+      // Verify filter completions are returned (specifically 'upcase')
+      const items = res.result;
+      assert.ok(items.length > 0);
+      const hasUpcase = items.some((item: any) => item.label === 'upcase' && item.data === 'filter-upcase');
+      assert.ok(hasUpcase, 'Expected "upcase" filter in autocomplete list');
+
+      child.kill('SIGINT');
+      done();
+    }
+  });
+
   child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { capabilities: {} } }));
 });

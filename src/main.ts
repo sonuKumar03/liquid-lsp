@@ -11,6 +11,7 @@ import type {
   InitializeParams,
   InitializeResult,
   CompletionItem,
+  CompletionParams,
   Hover,
   TextDocumentPositionParams
 } from 'vscode-languageserver/node';
@@ -57,7 +58,8 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       
       // Let the editor know we support completions (auto-complete suggestions).
       completionProvider: {
-        resolveProvider: true // Indicates we can supply additional information for completion items
+        resolveProvider: true,
+        triggerCharacters: [' ', '|']
       },
       
       // Let the editor know we support hover tooltips.
@@ -92,6 +94,27 @@ documents.onDidChangeContent(change => {
   pendingValidationTimers.set(uri, newTimer);
 });
 
+function cleanErrorMessage(msg: string): string {
+  if (!msg) return 'Liquid syntax error';
+
+  // Match the 'unexpected "..."' pattern and clean it up
+  const match = msg.match(/unexpected "([\s\S]+?)"/);
+  if (match && match[1]) {
+    let rawContent = match[1];
+    // Replace newlines and excessive whitespace with a single space
+    rawContent = rawContent.replace(/\s+/g, ' ').trim();
+    // Truncate if it's too long
+    if (rawContent.length > 30) {
+      rawContent = rawContent.slice(0, 30) + '...';
+    }
+    // Re-insert it
+    msg = msg.replace(/unexpected "[\s\S]+?"/, `unexpected "${rawContent}"`);
+  }
+
+  // Replace any remaining newlines with spaces in the whole message
+  return msg.replace(/\r?\n/g, ' ');
+}
+
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   connection.console.log('LSP server: validating document: ' + textDocument.uri);
   const text = textDocument.getText();
@@ -111,7 +134,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     const diagnostic: Diagnostic = {
       severity: DiagnosticSeverity.Error,
       range: { start, end },
-      message: err.message || 'Liquid syntax error',
+      message: cleanErrorMessage(err.message),
       source: 'liquid-lsp'
     };
     diagnostics.push(diagnostic);
@@ -142,54 +165,157 @@ connection.onHover((params: TextDocumentPositionParams): Hover | null => {
   };
 });
 
+// Static lists of Liquid Core Tags and Filters
+const LIQUID_TAGS: CompletionItem[] = [
+  { label: 'assign', kind: CompletionItemKind.Keyword, data: 'tag-assign' },
+  { label: 'increment', kind: CompletionItemKind.Keyword, data: 'tag-increment' },
+  { label: 'decrement', kind: CompletionItemKind.Keyword, data: 'tag-decrement' },
+  { label: 'capture', kind: CompletionItemKind.Keyword, data: 'tag-capture' },
+  { label: 'case', kind: CompletionItemKind.Keyword, data: 'tag-case' },
+  { label: 'comment', kind: CompletionItemKind.Keyword, data: 'tag-comment' },
+  { label: 'cycle', kind: CompletionItemKind.Keyword, data: 'tag-cycle' },
+  { label: 'echo', kind: CompletionItemKind.Keyword, data: 'tag-echo' },
+  { label: 'for', kind: CompletionItemKind.Keyword, data: 'tag-for' },
+  { label: 'if', kind: CompletionItemKind.Keyword, data: 'tag-if' },
+  { label: 'unless', kind: CompletionItemKind.Keyword, data: 'tag-unless' },
+  { label: 'include', kind: CompletionItemKind.Keyword, data: 'tag-include' },
+  { label: 'layout', kind: CompletionItemKind.Keyword, data: 'tag-layout' },
+  { label: 'render', kind: CompletionItemKind.Keyword, data: 'tag-render' },
+  { label: 'raw', kind: CompletionItemKind.Keyword, data: 'tag-raw' },
+  { label: 'tablerow', kind: CompletionItemKind.Keyword, data: 'tag-tablerow' }
+];
+
+const LIQUID_FILTERS: CompletionItem[] = [
+  { label: 'abs', kind: CompletionItemKind.Function, data: 'filter-abs' },
+  { label: 'append', kind: CompletionItemKind.Function, data: 'filter-append' },
+  { label: 'capitalize', kind: CompletionItemKind.Function, data: 'filter-capitalize' },
+  { label: 'ceil', kind: CompletionItemKind.Function, data: 'filter-ceil' },
+  { label: 'concat', kind: CompletionItemKind.Function, data: 'filter-concat' },
+  { label: 'date', kind: CompletionItemKind.Function, data: 'filter-date' },
+  { label: 'default', kind: CompletionItemKind.Function, data: 'filter-default' },
+  { label: 'divided_by', kind: CompletionItemKind.Function, data: 'filter-divided_by' },
+  { label: 'downcase', kind: CompletionItemKind.Function, data: 'filter-downcase' },
+  { label: 'escape', kind: CompletionItemKind.Function, data: 'filter-escape' },
+  { label: 'first', kind: CompletionItemKind.Function, data: 'filter-first' },
+  { label: 'floor', kind: CompletionItemKind.Function, data: 'filter-floor' },
+  { label: 'join', kind: CompletionItemKind.Function, data: 'filter-join' },
+  { label: 'last', kind: CompletionItemKind.Function, data: 'filter-last' },
+  { label: 'minus', kind: CompletionItemKind.Function, data: 'filter-minus' },
+  { label: 'modulo', kind: CompletionItemKind.Function, data: 'filter-modulo' },
+  { label: 'plus', kind: CompletionItemKind.Function, data: 'filter-plus' },
+  { label: 'prepend', kind: CompletionItemKind.Function, data: 'filter-prepend' },
+  { label: 'replace', kind: CompletionItemKind.Function, data: 'filter-replace' },
+  { label: 'reverse', kind: CompletionItemKind.Function, data: 'filter-reverse' },
+  { label: 'round', kind: CompletionItemKind.Function, data: 'filter-round' },
+  { label: 'size', kind: CompletionItemKind.Function, data: 'filter-size' },
+  { label: 'slice', kind: CompletionItemKind.Function, data: 'filter-slice' },
+  { label: 'sort', kind: CompletionItemKind.Function, data: 'filter-sort' },
+  { label: 'split', kind: CompletionItemKind.Function, data: 'filter-split' },
+  { label: 'strip', kind: CompletionItemKind.Function, data: 'filter-strip' },
+  { label: 'times', kind: CompletionItemKind.Function, data: 'filter-times' },
+  { label: 'truncate', kind: CompletionItemKind.Function, data: 'filter-truncate' },
+  { label: 'uniq', kind: CompletionItemKind.Function, data: 'filter-uniq' },
+  { label: 'upcase', kind: CompletionItemKind.Function, data: 'filter-upcase' }
+];
+
 /**
  * 6. COMPLETION PROVIDER
  *
- * Triggered when a user requests auto-completion (e.g. via Ctrl+Space or while typing).
- * We return a list of suggestions.
+ * Triggered when autocomplete is requested.
+ * We inspect the current line up to the cursor position to determine the context:
+ * - If after a pipe '|', return filters.
+ * - If inside tag delimiters '{%', return tags.
  */
-connection.onCompletion((): CompletionItem[] => {
-  return [
-    {
-      label: 'TypeScript',
-      kind: CompletionItemKind.Text,
-      data: 1, // Custom identifier for resolving extra details later
-      detail: 'TypeScript Language',
-      documentation: 'A typed superset of JavaScript.'
-    },
-    {
-      label: 'JavaScript',
-      kind: CompletionItemKind.Text,
-      data: 2,
-      detail: 'JavaScript Language',
-      documentation: 'High-level, often just-in-time compiled language.'
-    }
-  ];
+connection.onCompletion((params: CompletionParams): CompletionItem[] => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return [];
+
+  const position = params.position;
+  const lineText = doc.getText({
+    start: { line: position.line, character: 0 },
+    end: position
+  });
+
+  // Check if cursor is after a filter pipe '|' on the current line
+  const lastPipe = lineText.lastIndexOf('|');
+  const lastTagOpen = lineText.lastIndexOf('{%');
+  const lastOutputOpen = lineText.lastIndexOf('{{');
+
+  if (lastPipe !== -1 && (lastPipe > lastTagOpen || lastPipe > lastOutputOpen)) {
+    return LIQUID_FILTERS;
+  }
+
+  // Check if cursor is inside a tag block '{%' (without being closed)
+  const lastTagClose = lineText.lastIndexOf('%}');
+  if (lastTagOpen !== -1 && lastTagOpen > lastTagClose) {
+    return LIQUID_TAGS;
+  }
+
+  return [];
 });
 
 /**
  * 7. RESOLVING EXTRA COMPLETION INFO
  *
- * To optimize performance, we initially send a lightweight list of completion items.
- * When the user selects a suggestion in the UI, the editor sends a "completionResolve"
- * request to fetch the heavier documentation or details for *only* that selected item.
+ * Fetches documentation only when a specific autocomplete suggestion is highlighted.
  */
 connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
-  if (item.data === 1) {
-    item.detail = 'TypeScript Language (Resolved)';
+  const data = item.data as string;
+
+  if (data.startsWith('tag-')) {
+    const tagName = data.replace('tag-', '');
+    item.detail = `Liquid Tag: {% ${tagName} %}`;
     item.documentation = {
       kind: 'markdown',
-      value: 'TypeScript adds static type definitions to help catch bugs early.'
+      value: getTagDocumentation(tagName)
     };
-  } else if (item.data === 2) {
-    item.detail = 'JavaScript Language (Resolved)';
+  } else if (data.startsWith('filter-')) {
+    const filterName = data.replace('filter-', '');
+    item.detail = `Liquid Filter: | ${filterName}`;
     item.documentation = {
       kind: 'markdown',
-      value: 'JavaScript is the main scripting language of the web.'
+      value: getFilterDocumentation(filterName)
     };
   }
+
   return item;
 });
+
+function getTagDocumentation(tag: string): string {
+  switch (tag) {
+    case 'assign':
+      return 'Creates a new variable.\n\n```liquid\n{% assign my_var = false %}\n```';
+    case 'if':
+      return 'Conditional execution of code.\n\n```liquid\n{% if condition %}\n  ...\n{% endif %}\n```';
+    case 'for':
+      return 'Loops through a collection.\n\n```liquid\n{% for item in collection %}\n  {{ item }}\n{% endfor %}\n```';
+    case 'capture':
+      return 'Captures the string output inside the block into a variable.\n\n```liquid\n{% capture my_variable %}\n  Hello {{ name }}\n{% endcapture %}\n```';
+    case 'comment':
+      return 'Allows you to leave un-rendered comments in your template.\n\n```liquid\n{% comment %}\n  This won\'t be rendered.\n{% endcomment %}\n```';
+    case 'render':
+      return 'Renders a partial template file.\n\n```liquid\n{% render "snippet-name" %}\n```';
+    default:
+      return `Liquid core tag: \`{% ${tag} %}\`.`;
+  }
+}
+
+function getFilterDocumentation(filter: string): string {
+  switch (filter) {
+    case 'upcase':
+      return 'Converts a string to uppercase.\n\n```liquid\n{{ "hello" | upcase }} => "HELLO"\n```';
+    case 'downcase':
+      return 'Converts a string to lowercase.\n\n```liquid\n{{ "HELLO" | downcase }} => "hello"\n```';
+    case 'default':
+      return 'Returns a fallback value if the input is nil, false, or empty.\n\n```liquid\n{{ undefined_variable | default: "fallback" }} => "fallback"\n```';
+    case 'split':
+      return 'Splits a string on a delimiter into an array.\n\n```liquid\n{{ "a,b,c" | split: "," }} => ["a", "b", "c"]\n```';
+    case 'join':
+      return 'Joins an array of strings using a connector.\n\n```liquid\n{{ my_array | join: ", " }}\n```';
+    default:
+      return `Liquid core filter: \`| ${filter}\`.`;
+  }
+}
 
 connection.onInitialized(() => {
   connection.console.log('LSP server: client connection initialized successfully.');

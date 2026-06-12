@@ -182,3 +182,65 @@ test('Liquid inline math conversion code action', () => new Promise<void>((resol
 
   child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { capabilities: {} } }));
 }));
+
+test('Liquid single-equals conversion to double-equals code action', () => new Promise<void>((resolve) => {
+  const child = startLspServer();
+  let step = 0;
+  let diagnostic: any = null;
+
+  new LSPMessageReader(child.stdout!, (res) => {
+    if (res.method === 'window/logMessage') return;
+
+    if (step === 0 && res.id === 1) {
+      child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', method: 'initialized', params: {} }));
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        method: 'textDocument/didOpen',
+        params: {
+          textDocument: {
+            uri: 'file:///t.liquid',
+            languageId: 'liquid',
+            version: 1,
+            text: '{% if status = "Active" %}\n{% endif %}'
+          }
+        }
+      }));
+      step = 1;
+    } else if (step === 1 && res.method === 'textDocument/publishDiagnostics') {
+      const diagnostics = res.params.diagnostics;
+      expect(diagnostics.length).toBeGreaterThan(0);
+
+      diagnostic = diagnostics.find((d: any) => d.message.includes('Assignments are not allowed'));
+      expect(diagnostic).toBeDefined();
+
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'textDocument/codeAction',
+        params: {
+          textDocument: { uri: 'file:///t.liquid' },
+          range: diagnostic.range,
+          context: { diagnostics: [diagnostic] }
+        }
+      }));
+      step = 2;
+    } else if (step === 2 && res.id === 2) {
+      const actions = res.result;
+      expect(actions.length).toBeGreaterThan(0);
+
+      const eqAction = actions.find((a: any) => a.title.includes("Change '=' to '=='"));
+      expect(eqAction).toBeDefined();
+      expect(eqAction.kind).toBe('quickfix');
+
+      const editChange = eqAction.edit.changes['file:///t.liquid'][0];
+      expect(editChange.newText).toBe('==');
+      expect(editChange.range.start.character).toBe(13); // index of '=' in '{% if status = "Active" %}'
+      expect(editChange.range.end.character).toBe(14);
+
+      child.kill('SIGINT');
+      resolve();
+    }
+  });
+
+  child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { capabilities: {} } }));
+}));

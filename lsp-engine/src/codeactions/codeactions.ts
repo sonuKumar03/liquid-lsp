@@ -120,6 +120,40 @@ export function handleCodeAction(
         codeActions.push(action);
       }
     }
+
+    // 4. Pattern to match: "Assignments are not allowed inside conditional statements"
+    if (message.includes('Assignments are not allowed inside conditional statements')) {
+      const startLine = diagnostic.range.start.line;
+      const lineText = doc.getText({
+        start: { line: startLine, character: 0 },
+        end: { line: startLine + 1, character: 0 }
+      });
+
+      const matchIndex = lineText.search(/(?<![=!<>])=(?![=<>])/);
+      if (matchIndex !== -1) {
+        const edit = {
+          changes: {
+            [params.textDocument.uri]: [
+              {
+                range: {
+                  start: { line: startLine, character: matchIndex },
+                  end: { line: startLine, character: matchIndex + 1 }
+                },
+                newText: '=='
+              }
+            ]
+          }
+        };
+
+        const action = CodeAction.create(
+          `Change '=' to '=='`,
+          edit,
+          CodeActionKind.QuickFix
+        );
+        action.diagnostics = [diagnostic];
+        codeActions.push(action);
+      }
+    }
   }
 
   return codeActions;

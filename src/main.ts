@@ -15,6 +15,7 @@ import type {
   TextDocumentPositionParams
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Liquid } from 'liquidjs';
 import path from 'path';
 
 /**
@@ -65,40 +66,51 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 });
 
 /**
- * 4. CODE VALIDATION (DIAGNOSTICS)
+ * 4. CODE VALIDATION (DIAGNOSTICS) WITH DEBOUNCING
  *
  * Diagnostics are the squiggly underlines representing errors, warnings, or hints in your code.
- * The server pushes these asynchronously using connection.sendDiagnostics.
+ * We parse the template using `liquidjs` and push syntax diagnostics asynchronously.
+ * We debounce this process by 150ms to keep typing responsive and save CPU.
  */
+const liquidEngine = new Liquid();
+const pendingValidationTimers = new Map<string, NodeJS.Timeout>();
+
 documents.onDidChangeContent(change => {
-  validateTextDocument(change.document);
+  const uri = change.document.uri;
+
+  const existingTimer = pendingValidationTimers.get(uri);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+
+  const newTimer = setTimeout(() => {
+    validateTextDocument(change.document);
+    pendingValidationTimers.delete(uri);
+  }, 150);
+
+  pendingValidationTimers.set(uri, newTimer);
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   const text = textDocument.getText();
-  
-  // We'll search for 'error', 'todo', or 'warning' case-insensitively.
-  const pattern = /\b(error|todo|warning)\b/gi;
-  let match: RegExpExecArray | null;
-
   const diagnostics: Diagnostic[] = [];
-  while ((match = pattern.exec(text))) {
-    const word = match[0].toLowerCase();
-    
-    // Choose severity based on the flagged keyword
-    const severity = word === 'error' 
-      ? DiagnosticSeverity.Error 
-      : DiagnosticSeverity.Warning;
+
+  try {
+    liquidEngine.parse(text);
+  } catch (err: any) {
+    let start = { line: 0, character: 0 };
+    let end = { line: 0, character: 0 };
+
+    if (err.token && typeof err.token.begin === 'number' && typeof err.token.end === 'number') {
+      start = textDocument.positionAt(err.token.begin);
+      end = textDocument.positionAt(err.token.end);
+    }
 
     const diagnostic: Diagnostic = {
-      severity,
-      // Define where in the file the issue is located (start and end offsets)
-      range: {
-        start: textDocument.positionAt(match.index),
-        end: textDocument.positionAt(match.index + match[0].length)
-      },
-      message: `Flagged keyword: "${match[0]}"`,
-      source: 'general-lsp'
+      severity: DiagnosticSeverity.Error,
+      range: { start, end },
+      message: err.message || 'Liquid syntax error',
+      source: 'liquid-lsp'
     };
     diagnostics.push(diagnostic);
   }

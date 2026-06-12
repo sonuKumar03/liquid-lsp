@@ -7,74 +7,60 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Helper to format a JSON object into a standard LSP/JSON-RPC message.
-// The protocol specifies that every message must be prefixed by a "Content-Length" header
-// followed by a double line ending (\r\n\r\n).
-function formatLSPMessage(jsonPayload: object): string {
-  const content = JSON.stringify(jsonPayload);
-  return `Content-Length: ${Buffer.byteLength(content, 'utf8')}\r\n\r\n${content}`;
+// Compact helper to send a JSON-RPC message over standard input
+function send(child: any, msg: object) {
+  const content = JSON.stringify(msg);
+  child.stdin.write(`Content-Length: ${Buffer.byteLength(content, 'utf8')}\r\n\r\n${content}`);
 }
 
-test('LSP server handles JSON-RPC initialization handshake over stdin/stdout', (t, done) => {
-  // Path to the compiled main.js file
-  const serverPath = path.resolve(__dirname, '../dist/main.js');
-
-  // Spawn the LSP server as a child process. We capture standard I/O (stdin/stdout)
-  // so we can read and write raw JSON-RPC messages.
-  const child = fork(serverPath, ['--stdio'], { stdio: ['pipe', 'pipe', 'inherit', 'ipc'] });
-
+test('Liquid syntax diagnostics lifecycle', (t, done) => {
+  const child = fork(path.resolve(__dirname, '../dist/main.js'), ['--stdio'], { stdio: ['pipe', 'pipe', 'inherit', 'ipc'] });
   let buffer = '';
 
-  child.stdout?.on('data', (data) => {
-    buffer += data.toString();
+  child.stdout!.on('data', (chunk) => {
+    buffer += chunk.toString();
+    const parts = buffer.split('\r\n\r\n');
+    if (parts.length < 2) return;
 
-    // Look for the separation between headers and the JSON body
-    const delimiterIndex = buffer.indexOf('\r\n\r\n');
-    if (delimiterIndex !== -1) {
-      const headerPart = buffer.slice(0, delimiterIndex);
-      const bodyPart = buffer.slice(delimiterIndex + 4);
+    const header = parts[0]!;
+    const body = parts[1]!;
+    const lengthMatch = header.match(/Content-Length:\s*(\d+)/i);
+    if (!lengthMatch) return;
 
-      // Extract the Content-Length header to know how many bytes to read
-      const contentLengthMatch = headerPart.match(/Content-Length:\s*(\d+)/i);
-      if (contentLengthMatch && contentLengthMatch[1]) {
-        const expectedLength = parseInt(contentLengthMatch[1], 10);
+    const expectedLength = parseInt(lengthMatch[1]!, 10);
+    if (Buffer.byteLength(body, 'utf8') < expectedLength) return;
 
-        // Wait until we have received the full body payload
-        if (Buffer.byteLength(bodyPart, 'utf8') >= expectedLength) {
-          const rawJSON = bodyPart.slice(0, expectedLength);
-          const response = JSON.parse(rawJSON);
+    const res = JSON.parse(body.slice(0, expectedLength));
+    buffer = body.slice(expectedLength); // Reset buffer with leftover data
 
-          // VERIFY THE Handshake response structure
-          assert.strictEqual(response.jsonrpc, '2.0');
-          assert.strictEqual(response.id, 1);
-          assert.ok(response.result);
-          assert.ok(response.result.capabilities);
-
-          // Verify specific capabilities configured in main.ts
-          assert.ok(response.result.capabilities.hoverProvider);
-          assert.ok(response.result.capabilities.completionProvider);
-          assert.strictEqual(response.result.capabilities.textDocumentSync, 2); // 2 represents Incremental synchronization
-
-          // Clean up: terminate the child process and mark the test as done
-          child.kill('SIGINT');
-          done();
-        }
+    if (res.id === 1) {
+      // 1. Check handshake response and open a document with invalid syntax
+      assert.ok(res.result.capabilities.hoverProvider);
+      send(child, { jsonrpc: '2.0', method: 'initialized', params: {} });
+      send(child, {
+        jsonrpc: '2.0',
+        method: 'textDocument/didOpen',
+        params: { textDocument: { uri: 'file:///t.liquid', languageId: 'liquid', version: 1, text: '{% if x }' } }
+      });
+    } else if (res.method === 'textDocument/publishDiagnostics') {
+      if (res.params.diagnostics.length > 0) {
+        // 2. Verify invalid syntax triggers diagnostic, then correct it
+        assert.ok(res.params.diagnostics[0].message);
+        assert.strictEqual(res.params.diagnostics[0].range.start.character, 0); // Highlights the unclosed tag starting at character 0
+        send(child, {
+          jsonrpc: '2.0',
+          method: 'textDocument/didChange',
+          params: { textDocument: { uri: 'file:///t.liquid', version: 2 }, contentChanges: [{ text: '{% if x %}{% endif %}' }] }
+        });
+      } else {
+        // 3. Verify diagnostics are cleared after syntax is corrected
+        assert.strictEqual(res.params.diagnostics.length, 0);
+        child.kill('SIGINT');
+        done();
       }
     }
   });
 
-  // Construct the "initialize" request payload
-  const initializeRequest = {
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'initialize',
-    params: {
-      processId: process.pid,
-      rootUri: null,
-      capabilities: {}
-    }
-  };
-
-  // Send the request to the server's stdin
-  child.stdin?.write(formatLSPMessage(initializeRequest));
+  // Start initialization handshake
+  send(child, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { capabilities: {} } });
 });

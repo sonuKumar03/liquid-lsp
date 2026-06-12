@@ -8,12 +8,13 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0"
   },
-  "name": "liquidjs",
+  "name": "liquidLsp",
   "version": "1.0.0",
   "description": "",
   "main": "dist/main.js",
   "type": "module",
   "scripts": {
+    "dev": "tsx watch src/main.ts",
     "tsx": "tsx",
     "build": "tsc",
     "start": "node dist/main.js",
@@ -23,5 +24,8 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "liquidjs": "^10.27.0"
+  }
 }

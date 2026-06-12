@@ -131,16 +131,24 @@ function mockUTC () {
   p._getHours = p.getHours
   p.getHours = p.getUTCHours
 
-  p._getDays = p.getDays
-  p.getDays = p.getUTCDays
+  p._getMinutes = p.getMinutes
+  p.getMinutes = p.getUTCMinutes
 
-  p._getTimezoneOffset = p._getTimezoneOffset
+  p._getSeconds = p.getSeconds
+  p.getSeconds = p.getUTCSeconds
+
+  p._getDay = p.getDay
+  p.getDay = p.getUTCDay
+
+  p._getTimezoneOffset = p.getTimezoneOffset
   p.getTimezoneOffset = () => -480
 }
 
 function restoreUTC () {
   var p = Date.prototype
   p.getHours = p._getHours
-  p.getDays = p._getDays
+  p.getMinutes = p._getMinutes
+  p.getSeconds = p._getSeconds
+  p.getDay = p._getDay
   p.getTimezoneOffset = p._getTimezoneOffset
 }

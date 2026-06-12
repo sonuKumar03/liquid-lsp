@@ -89,7 +89,7 @@ export async function validateTextDocument(
           });
         }
       }
-    } catch (e) {
+    } catch {
       // Fallback if tokenization fails
       let start = { line: 0, character: 0 };
       let end = { line: 0, character: 0 };
@@ -153,7 +153,7 @@ function processExpression(
   diagnostics: Diagnostic[],
   activeVars: Map<string, { declRange: Range; line: number; hasBeenRead: boolean; type: LiquidType }>
 ): LiquidType {
-  let cleanExpr = expr.replace(/"[^"]*"/g, '""').replace(/'[^']*'/g, "''");
+  const cleanExpr = expr.replace(/"[^"]*"/g, '""').replace(/'[^']*'/g, "''");
 
   const parts = cleanExpr.split('|');
   const basePart = (parts[0] ?? '').trim();
@@ -238,10 +238,10 @@ function processExpression(
 function checkVariableLifecycles(doc: TextDocument, diagnostics: Diagnostic[]): void {
   const text = doc.getText();
   const tokenizer = new Tokenizer(text);
-  let tokens: Token[] = [];
+  let tokens: Token[];
   try {
     tokens = tokenizer.readTopLevelTokens();
-  } catch (e) {
+  } catch {
     return;
   }
 

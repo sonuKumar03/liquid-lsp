@@ -12,10 +12,10 @@ export function handleDocumentSymbol(
 
   const text = doc.getText();
   const tokenizer = new Tokenizer(text);
-  let tokens: Token[] = [];
+  let tokens: Token[];
   try {
     tokens = tokenizer.readTopLevelTokens();
-  } catch (e) {
+  } catch {
     return [];
   }
 

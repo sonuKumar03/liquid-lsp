@@ -73,4 +73,4 @@ Translates control flows (`if`, `unless`, `for`, `case`, `capture`) and variable
 
 * **Language**: TypeScript (ESModules, strictly typed)
 * **Underlying Engines**: `liquidjs`, `vscode-languageserver`, `fastest-levenshtein`
-* **Test Suite**: Fully verified integration test coverage running LSP JSON-RPC clients in child processes via Node's native test runner.
+* **Test Suite**: Fully verified integration test coverage running LSP JSON-RPC clients in child processes via Vitest.

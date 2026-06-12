@@ -17,5 +17,6 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true
-  }
+  },
+  "exclude": ["dist", "node_modules", "src/**/*.test.ts", "src/test-utils.ts"]
 }

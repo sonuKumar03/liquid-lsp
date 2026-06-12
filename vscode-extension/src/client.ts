@@ -15,7 +15,11 @@ export function activate(context: ExtensionContext) {
   // Configure how the client starts the server (node dist/main.js --stdio)
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.stdio },
-    debug: { module: serverModule, transport: TransportKind.stdio }
+    debug: {
+      module: serverModule,
+      transport: TransportKind.stdio,
+      options: { execArgv: ['--nolazy', '--inspect=6009'] }
+    }
   };
 
   // Set selectors and watchers
@@ -23,6 +27,9 @@ export function activate(context: ExtensionContext) {
     documentSelector: [{ scheme: 'file', language: 'liquid' }],
     synchronize: {
       fileEvents: workspace.createFileSystemWatcher('**/*.liquid')
+    },
+    initializationOptions: {
+      schema: workspace.getConfiguration('liquid').get('schema') || {}
     }
   };
 

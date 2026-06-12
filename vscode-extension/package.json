@@ -29,7 +29,47 @@
         "scopeName": "text.html.liquid",
         "path": "./syntaxes/liquid.tmLanguage.json"
       }
-    ]
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Liquid Language Server",
+      "properties": {
+        "liquid.schema": {
+          "type": "object",
+          "default": {
+            "my_string_var": "string",
+            "my_number_var": "number",
+            "my_boolean_var": "boolean",
+            "my_date_var": "date",
+            "my_currency_var": "currency",
+            "my_dropdown_var": {
+              "type": "dropdown",
+              "options": [
+                "Draft",
+                "Active",
+                "Inactive"
+              ]
+            },
+            "my_composite_var": {
+              "type": "composite",
+              "fields": {
+                "id": "number",
+                "name": "string",
+                "price": "currency",
+                "status": {
+                  "type": "dropdown",
+                  "options": [
+                    "A",
+                    "B"
+                  ]
+                }
+              }
+            }
+          },
+          "description": "Predefined variable schemas and types. Supported types: 'string', 'number', 'boolean', 'date', 'currency', dropdown object type, and composite nested object types."
+        }
+      }
+    }
   },
   "scripts": {
     "build": "tsc && node build.js"

@@ -6,7 +6,10 @@ test('Liquid syntax diagnostics lifecycle', () => new Promise<void>((resolve) =>
   let step = 0;
 
   new LSPMessageReader(child.stdout!, (res) => {
-    if (res.method === 'window/logMessage') return;
+    if (res.method === 'window/logMessage') {
+      console.error('SERVER LOG:', res.params.message);
+      return;
+    }
 
     if (step === 0 && res.id === 1) {
       expect(res.result.capabilities.hoverProvider).toBeTruthy();
@@ -209,4 +212,59 @@ test('Liquid enhanced diagnostics (type mismatch & redefinition)', () => new Pro
   });
 
   child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }));
+}));
+
+test('Liquid schema and dropdown options validation', () => new Promise<void>((resolve) => {
+  const child = startLspServer();
+  let step = 0;
+
+  new LSPMessageReader(child.stdout!, (res) => {
+    if (res.method === 'window/logMessage') {
+      console.error('SERVER LOG:', res.params.message);
+      return;
+    }
+
+    if (step === 0 && res.id === 1) {
+      child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', method: 'initialized', params: {} }));
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        method: 'textDocument/didOpen',
+        params: {
+          textDocument: {
+            uri: 'file:///t.liquid',
+            languageId: 'liquid',
+            version: 1,
+            text: '{% assign status = "Draft" %}'
+          }
+        }
+      }));
+      step = 1;
+    } else if (step === 1 && res.method === 'textDocument/publishDiagnostics') {
+      const diagnostics = res.params.diagnostics;
+      const dropdownWarning = diagnostics.find((d: any) => d.message.includes('not a valid option for dropdown'));
+      expect(dropdownWarning).toBeDefined();
+      expect(dropdownWarning.message).toContain('valid option');
+      expect(dropdownWarning.message).toContain('Active');
+
+      child.kill('SIGINT');
+      resolve();
+    }
+  });
+
+  child.stdin?.write(formatLSPMessage({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: {
+      capabilities: {},
+      initializationOptions: {
+        schema: {
+          status: {
+            type: 'dropdown',
+            options: ['Active', 'Inactive']
+          }
+        }
+      }
+    }
+  }));
 }));

@@ -5,11 +5,13 @@ import { Liquid, Tokenizer, TagToken, TokenKind, Token } from 'liquidjs';
 import { getEnhancedErrorMessage, cleanErrorMessage, getClosestFilter } from '../shared/utils.js';
 import { LIQUID_FILTERS } from '../shared/constants.js';
 import { findVariableDeclarations } from '../definitions/definitions.js';
+import type { LiquidType } from '../shared/schema.js';
 
 export async function validateTextDocument(
   connection: Connection,
   textDocument: TextDocument,
-  liquidEngine: Liquid
+  liquidEngine: Liquid,
+  globalSchema?: Map<string, LiquidType>
 ): Promise<void> {
   connection.console.log('LSP server: validating document: ' + textDocument.uri);
   const text = textDocument.getText();
@@ -135,7 +137,7 @@ export async function validateTextDocument(
   }
 
   // 3. Check for lifecycles, redundant redefinitions, and type mismatches
-  checkVariableLifecycles(textDocument, diagnostics);
+  checkVariableLifecycles(textDocument, diagnostics, globalSchema);
 
   // 4. Check for Unused Variables
   checkUnusedVariables(textDocument, diagnostics);
@@ -144,8 +146,187 @@ export async function validateTextDocument(
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
-type LiquidType = 'string' | 'number' | 'boolean' | 'unknown';
+function processParseAssignExpression(
+  expr: string,
+  token: Token,
+  doc: TextDocument,
+  diagnostics: Diagnostic[],
+  activeVars: Map<string, { declRange: Range; line: number; hasBeenRead: boolean; type: LiquidType }>
+): LiquidType {
+  // Bug A: Split expression by '|' to separate filter chains from property path
+  const filterParts = expr.split('|');
+  const pathPart = (filterParts[0] ?? '').trim();
 
+  const parts = pathPart.split('.');
+  
+  // Edge Case E: Strip array bracket index from baseVar, e.g. baseVar[0] -> baseVar
+  const baseVarRaw = (parts[0] ?? '').trim();
+  const baseVar = baseVarRaw.replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
+  
+  if (!baseVar) return 'unknown';
+
+  let currentType: LiquidType = 'unknown';
+  if (activeVars.has(baseVar)) {
+    const v = activeVars.get(baseVar)!;
+    v.hasBeenRead = true;
+    currentType = v.type;
+  } else {
+    // If baseVar is a literal string/number/boolean, treat it as primitive
+    if (/^""|''$/.test(baseVar) || /^"[^"]*"|'[^']*'$/.test(baseVar)) {
+      currentType = 'string';
+    } else if (/^(true|false)$/.test(baseVar)) {
+      currentType = 'boolean';
+    } else if (/^\d+(\.\d+)?$/.test(baseVar)) {
+      currentType = 'number';
+    }
+  }
+
+  // Bug B: Keep track of sequential search index to avoid collision with varName at start of tag
+  const equalIndex = token.getText().indexOf('=');
+  let searchIndex = token.begin + (equalIndex !== -1 ? equalIndex + 1 : 0);
+
+  // Resolve dot-notation path recursively
+  for (let i = 1; i < parts.length; i++) {
+    const fieldNameRaw = (parts[i] ?? '').trim();
+    if (!fieldNameRaw) continue;
+
+    // Edge Case E: Strip array bracket index, e.g. items[0] -> items
+    const fieldName = fieldNameRaw.replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
+
+    // Get the character offset of the fieldName in tokenText sequentially
+    const offsetInToken = token.getText().indexOf(fieldNameRaw, searchIndex - token.begin);
+    const offset = offsetInToken !== -1 ? offsetInToken : token.getText().indexOf(fieldNameRaw);
+    if (offsetInToken !== -1) {
+      searchIndex = token.begin + offsetInToken + fieldNameRaw.length;
+    }
+
+    const start = doc.positionAt(token.begin + (offset !== -1 ? offset : 0));
+    const end = doc.positionAt(token.begin + (offset !== -1 ? offset + fieldNameRaw.length : token.getText().length));
+
+    if (typeof currentType === 'object') {
+      if (currentType.kind === 'composite') {
+        const nextType = currentType.fields.get(fieldName);
+        if (nextType) {
+          currentType = nextType;
+        } else {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: { start, end },
+            message: `Property "${fieldName}" does not exist on composite type.`,
+            source: 'liquid-lsp-linter'
+          });
+          currentType = 'unknown';
+          break;
+        }
+      } else {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: { start, end },
+          message: `Cannot access property "${fieldName}" on non-composite type.`,
+          source: 'liquid-lsp-linter'
+        });
+        currentType = 'unknown';
+        break;
+      }
+    } else {
+      if (currentType === 'currency') {
+        if (fieldName === 'amount') {
+          currentType = 'number';
+        } else if (fieldName === 'symbol') {
+          currentType = 'string';
+        } else {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: { start, end },
+            message: `Property "${fieldName}" does not exist on currency. Available fields are "amount" and "symbol".`,
+            source: 'liquid-lsp-linter'
+          });
+          currentType = 'unknown';
+          break;
+        }
+      } else {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: { start, end },
+          message: `Cannot access property "${fieldName}" on primitive type "${currentType}".`,
+          source: 'liquid-lsp-linter'
+        });
+        currentType = 'unknown';
+        break;
+      }
+    }
+  }
+
+  // Coercion rules: if assigning the whole object/currency directly via parseAssign:
+  if (parts.length === 1 && !baseVarRaw.includes('[')) {
+    if (typeof currentType === 'object') {
+      if (currentType.kind === 'composite') {
+        currentType = 'string'; // object.toString()
+      }
+    } else if (currentType === 'currency') {
+      currentType = 'number'; // currency.toValueOf()
+    }
+  }
+
+  // Bug A: Process filter chain if present
+  if (filterParts.length > 1) {
+    const MATH_FILTERS = new Set(['plus', 'minus', 'times', 'divided_by', 'modulo', 'round', 'ceil', 'floor', 'abs', 'size']);
+    const STRING_FILTERS = new Set(['upcase', 'downcase', 'capitalize', 'escape', 'replace', 'prepend', 'append', 'join', 'slice', 'truncate', 'split', 'strip']);
+
+    for (let i = 1; i < filterParts.length; i++) {
+      const filterPart = (filterParts[i] ?? '').trim();
+      if (!filterPart) continue;
+
+      const filterMatch = filterPart.match(/^([a-zA-Z0-9_-]+)/);
+      if (!filterMatch) continue;
+
+      const filterName = filterMatch[1];
+      if (!filterName) continue;
+      
+      const argsText = filterPart.slice(filterName.length).trim();
+      if (argsText) {
+        const words = argsText.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
+        const keywords = new Set(['true', 'false', 'nil', 'null', 'and', 'or', 'contains', 'in']);
+        for (const word of words) {
+          if (!keywords.has(word) && activeVars.has(word)) {
+            const v = activeVars.get(word)!;
+            v.hasBeenRead = true;
+          }
+        }
+      }
+
+      if (MATH_FILTERS.has(filterName)) {
+        if (currentType === 'string') {
+          const tokenText = token.getText();
+          const filterOffsetInToken = tokenText.indexOf(filterName);
+          const start = doc.positionAt(token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken : 0));
+          const end = doc.positionAt(token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken + filterName.length : tokenText.length));
+
+          diagnostics.push({
+            severity: DiagnosticSeverity.Warning,
+            range: { start, end },
+            message: `Type mismatch: Math filter "${filterName}" is applied to a string value.`,
+            source: 'liquid-lsp-linter'
+          });
+        }
+        currentType = 'number';
+      } else if (STRING_FILTERS.has(filterName)) {
+        currentType = 'string';
+      }
+    }
+  }
+
+  return currentType;
+}
+
+
+/**
+ * Process a Liquid expression to infer its type and validate filter usage.
+ * 
+ * TO ADD A NEW FILTER TYPE-CHECK OR VALUE RULES:
+ * 1. Identify where filters are evaluated (lines below containing `LIQUID_FILTERS.has(...)` or custom checks).
+ * 2. Add validation checks to push diagnostics for invalid filter usage.
+ */
 function processExpression(
   expr: string,
   token: Token,
@@ -187,7 +368,13 @@ function processExpression(
     }
   }
 
+  // Math-related filters (expect numeric inputs, output numbers)
   const MATH_FILTERS = new Set(['plus', 'minus', 'times', 'divided_by', 'modulo', 'round', 'ceil', 'floor', 'abs', 'size']);
+  
+  // String-related filters (expect string inputs, output strings)
+  // TO ADD A NEW FILTER TYPE RULE:
+  // 1. Add it to either MATH_FILTERS or STRING_FILTERS here.
+  // 2. The type checker below will automatically enforce it.
   const STRING_FILTERS = new Set(['upcase', 'downcase', 'capitalize', 'escape', 'replace', 'prepend', 'append', 'join', 'slice', 'truncate', 'split', 'strip']);
 
   for (let i = 1; i < parts.length; i++) {
@@ -235,7 +422,11 @@ function processExpression(
   return currentType;
 }
 
-function checkVariableLifecycles(doc: TextDocument, diagnostics: Diagnostic[]): void {
+function checkVariableLifecycles(
+  doc: TextDocument,
+  diagnostics: Diagnostic[],
+  globalSchema?: Map<string, LiquidType>
+): void {
   const text = doc.getText();
   const tokenizer = new Tokenizer(text);
   let tokens: Token[];
@@ -247,6 +438,18 @@ function checkVariableLifecycles(doc: TextDocument, diagnostics: Diagnostic[]): 
 
   const activeVars = new Map<string, { declRange: Range; line: number; hasBeenRead: boolean; type: LiquidType }>();
 
+  // Populate activeVars with pre-defined global schema types
+  if (globalSchema) {
+    for (const [k, v] of globalSchema.entries()) {
+      activeVars.set(k, {
+        declRange: Range.create(0, 0, 0, 0),
+        line: -1,
+        hasBeenRead: true, // global variables don't need unused warning
+        type: v
+      });
+    }
+  }
+
   for (const token of tokens) {
     const line = doc.positionAt(token.begin).line;
 
@@ -255,7 +458,7 @@ function checkVariableLifecycles(doc: TextDocument, diagnostics: Diagnostic[]): 
       const tokenText = token.getText();
 
       if (name === 'assign') {
-        const match = tokenText.match(/assign\s+([a-zA-Z0-9_-]+)\s*=\s*(.+)/);
+        const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)\s*=\s*(.+)/);
         if (match) {
           const varName = match[1] ?? '';
           const expr = match[2] ?? '';
@@ -265,7 +468,7 @@ function checkVariableLifecycles(doc: TextDocument, diagnostics: Diagnostic[]): 
 
           // 2. Check redundant redefinition
           const prev = activeVars.get(varName);
-          if (prev && !prev.hasBeenRead) {
+          if (prev && !prev.hasBeenRead && prev.line !== -1) {
             diagnostics.push({
               severity: DiagnosticSeverity.Warning,
               range: prev.declRange,
@@ -286,14 +489,79 @@ function checkVariableLifecycles(doc: TextDocument, diagnostics: Diagnostic[]): 
             hasBeenRead: false,
             type: inferredType
           });
+
+          // Dropdown options validation
+          if (prev && typeof prev.type === 'object' && prev.type.kind === 'dropdown') {
+            const cleanExpr = expr.trim();
+            if (/^"[^"]*"|'[^']*'$/.test(cleanExpr)) {
+              const strVal = cleanExpr.slice(1, -1);
+              if (!prev.type.options.includes(strVal)) {
+                diagnostics.push({
+                  severity: DiagnosticSeverity.Warning,
+                  range: Range.create(doc.positionAt(token.begin), doc.positionAt(token.end)),
+                  message: `Value "${strVal}" is not a valid option for dropdown variable "${varName}". Valid options are: ${prev.type.options.map(o => `"${o}"`).join(', ')}.`,
+                  source: 'liquid-lsp-linter'
+                });
+              }
+            }
+          }
+        }
+      } else if (name === 'parseAssign') {
+        const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)\s*=\s*(.+)/);
+        if (match) {
+          const varName = match[1] ?? '';
+          const expr = (match[2] ?? '').trim();
+
+          // 1. Process reads first
+          const inferredType = processParseAssignExpression(expr, token, doc, diagnostics, activeVars);
+
+          // 2. Check redundant redefinition
+          const prev = activeVars.get(varName);
+          if (prev && !prev.hasBeenRead && prev.line !== -1) {
+            diagnostics.push({
+              severity: DiagnosticSeverity.Warning,
+              range: prev.declRange,
+              message: `Variable "${varName}" is overwritten here but its value was never read.`,
+              source: 'liquid-lsp-linter'
+            });
+          }
+
+          // 3. Define the variable
+          const offset = tokenText.indexOf(varName);
+          const start = doc.positionAt(token.begin + offset);
+          const end = doc.positionAt(token.begin + offset + varName.length);
+          const declRange = Range.create(start, end);
+
+          activeVars.set(varName, {
+            declRange,
+            line,
+            hasBeenRead: false,
+            type: inferredType
+          });
+
+          // Dropdown options validation
+          if (prev && typeof prev.type === 'object' && prev.type.kind === 'dropdown') {
+            const cleanExpr = expr.trim();
+            if (/^"[^"]*"|'[^']*'$/.test(cleanExpr)) {
+              const strVal = cleanExpr.slice(1, -1);
+              if (!prev.type.options.includes(strVal)) {
+                diagnostics.push({
+                  severity: DiagnosticSeverity.Warning,
+                  range: Range.create(doc.positionAt(token.begin), doc.positionAt(token.end)),
+                  message: `Value "${strVal}" is not a valid option for dropdown variable "${varName}". Valid options are: ${prev.type.options.map(o => `"${o}"`).join(', ')}.`,
+                  source: 'liquid-lsp-linter'
+                });
+              }
+            }
+          }
         }
       } else if (name === 'capture') {
-        const match = tokenText.match(/capture\s+([a-zA-Z0-9_-]+)/);
+        const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)/);
         if (match) {
           const varName = match[1] ?? '';
 
           const prev = activeVars.get(varName);
-          if (prev && !prev.hasBeenRead) {
+          if (prev && !prev.hasBeenRead && prev.line !== -1) {
             diagnostics.push({
               severity: DiagnosticSeverity.Warning,
               range: prev.declRange,
@@ -315,7 +583,7 @@ function checkVariableLifecycles(doc: TextDocument, diagnostics: Diagnostic[]): 
           });
         }
       } else if (name === 'for') {
-        const match = tokenText.match(/for\s+([a-zA-Z0-9_-]+)\s+in\s+(.+)/);
+        const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)\s+in\s+(.+)/);
         if (match) {
           const varName = match[1] ?? '';
           const expr = match[2] ?? '';

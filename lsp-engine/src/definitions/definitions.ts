@@ -56,6 +56,20 @@ export function findVariableDeclarations(doc: TextDocument): VarDeclaration[] {
     }
   }
 
+  // 4. {% parseAssign var = ... %}
+  const parseAssignPattern = /\{%\s*parseAssign\s+([a-zA-Z0-9_-]+)\s*=/g;
+  while ((match = parseAssignPattern.exec(text))) {
+    if (match[1]) {
+      const name = match[1];
+      const nameStart = match.index + match[0].indexOf(name);
+      const nameEnd = nameStart + name.length;
+      declarations.push({
+        name,
+        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd))
+      });
+    }
+  }
+
   return declarations;
 }
 

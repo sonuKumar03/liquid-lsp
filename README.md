@@ -69,6 +69,24 @@ Translates control flows (`if`, `unless`, `for`, `case`, `capture`) and variable
 
 ---
 
+## Debugging Extension and LSP Server
+
+You can debug the VS Code client extension and the LSP server concurrently inside VS Code:
+
+1. Open this repository root folder in VS Code.
+2. Go to the **Run and Debug** view in the sidebar (`Ctrl+Shift+D` or `Cmd+Shift+D`).
+3. Select **`Debug Client & Server`** from the dropdown menu and press `F5`.
+4. This will:
+   * Run the root build command to compile all files.
+   * Open a new **[Extension Development Host]** window with the extension activated.
+   * Spawn the LSP server in debug mode listening on inspect port `6009`.
+   * Automatically attach VS Code's debugger to the LSP server process.
+5. You can now set breakpoints in:
+   * `vscode-extension/src/client.ts` (client extension code)
+   * `lsp-engine/src/**/*.ts` (LSP server logic)
+
+---
+
 ## Technical Details
 
 * **Language**: TypeScript (ESModules, strictly typed)

@@ -41,6 +41,14 @@ export function extractDeclaredVariables(text: string): CompletionItem[] {
   }));
 }
 
+/**
+ * Handles completion requests (textDocument/completion) from the editor client.
+ * 
+ * TO ADD A NEW AUTOCOMPLETE TRIGGER OR CONTEXT:
+ * 1. Inspect the cursor position and preceding line text (e.g. `lineText`).
+ * 2. Define a trigger character (like '.' or '@') in main.ts connection initialize block.
+ * 3. Add a check condition below to return your list of completion items.
+ */
 export function handleCompletion(
   documents: TextDocuments<TextDocument>,
   params: CompletionParams

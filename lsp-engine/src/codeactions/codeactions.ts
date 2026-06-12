@@ -13,6 +13,15 @@ export function handleCodeAction(
 
   const codeActions: CodeAction[] = [];
 
+  /**
+   * Iterate over the diagnostics reported at the current cursor position.
+   * 
+   * TO ADD A NEW QUICK-FIX:
+   * 1. Inspect the diagnostic message/severity or check its unique code.
+   * 2. Construct a CodeAction object with `kind: CodeActionKind.QuickFix`.
+   * 3. Provide `edit.changes` defining the workspace edit (the text replacement/insert).
+   * 4. Push it to `codeActions`.
+   */
   for (const diagnostic of params.context.diagnostics) {
     const message = diagnostic.message;
     if (typeof message !== 'string') {

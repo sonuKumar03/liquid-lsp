@@ -3,6 +3,9 @@ import type { CompletionItem } from 'vscode-languageserver/node';
 
 export const LIQUID_TAGS: CompletionItem[] = [
   { label: 'assign', kind: CompletionItemKind.Keyword, data: 'tag-assign' },
+  { label: 'assignVar', kind: CompletionItemKind.Keyword, data: 'tag-assignVar' },
+  { label: 'computeColumn', kind: CompletionItemKind.Keyword, data: 'tag-computeColumn' },
+  { label: 'parseAssign', kind: CompletionItemKind.Keyword, data: 'tag-parseAssign' },
   { label: 'increment', kind: CompletionItemKind.Keyword, data: 'tag-increment' },
   { label: 'decrement', kind: CompletionItemKind.Keyword, data: 'tag-decrement' },
   { label: 'capture', kind: CompletionItemKind.Keyword, data: 'tag-capture' },
@@ -50,7 +53,12 @@ export const LIQUID_FILTERS: CompletionItem[] = [
   { label: 'times', kind: CompletionItemKind.Function, data: 'filter-times', insertText: 'times: ${1:factor}', insertTextFormat: 2 },
   { label: 'truncate', kind: CompletionItemKind.Function, data: 'filter-truncate', insertText: 'truncate: ${1:100}', insertTextFormat: 2 },
   { label: 'uniq', kind: CompletionItemKind.Function, data: 'filter-uniq' },
-  { label: 'upcase', kind: CompletionItemKind.Function, data: 'filter-upcase' }
+  { label: 'upcase', kind: CompletionItemKind.Function, data: 'filter-upcase' },
+  { label: 'sumArray', kind: CompletionItemKind.Function, data: 'filter-sumArray', insertText: 'sumArray: "${1:key}"', insertTextFormat: 2 },
+  { label: 'toCurrency', kind: CompletionItemKind.Function, data: 'filter-toCurrency', insertText: 'toCurrency: "${1:USD}"', insertTextFormat: 2 },
+  { label: 'toDuration', kind: CompletionItemKind.Function, data: 'filter-toDuration', insertText: 'toDuration: "${1:DAYS}"', insertTextFormat: 2 },
+  { label: 'updateAttribute', kind: CompletionItemKind.Function, data: 'filter-updateAttribute', insertText: 'updateAttribute: "${1:attr}", ${2:val}', insertTextFormat: 2 },
+  { label: 'updateTypeAttribute', kind: CompletionItemKind.Function, data: 'filter-updateTypeAttribute' }
 ];
 
 export function getTagDocumentation(tag: string): string {

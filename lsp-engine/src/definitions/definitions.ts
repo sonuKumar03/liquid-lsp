@@ -13,12 +13,12 @@ export function findVariableDeclarations(doc: TextDocument): VarDeclaration[] {
   const text = doc.getText();
   const declarations: VarDeclaration[] = [];
 
-  // 1. {% assign var = ... %}
-  const assignPattern = /\{%\s*assign\s+([a-zA-Z0-9_-]+)\s*=/g;
+  // 1. {% assign var = ... %} or {% assignVar var = ... %}
+  const assignPattern = /\{%\s*(assign|assignVar)\s+([a-zA-Z0-9_-]+)\s*=/g;
   let match: RegExpExecArray | null;
   while ((match = assignPattern.exec(text))) {
-    if (match[1]) {
-      const name = match[1];
+    if (match[2]) {
+      const name = match[2];
       const nameStart = match.index + match[0].indexOf(name);
       const nameEnd = nameStart + name.length;
       declarations.push({

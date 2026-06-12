@@ -551,7 +551,7 @@ function checkVariableLifecycles(
     if (token instanceof TagTokenClass) {
       const name = token.name;
 
-      if (name === 'assign') {
+      if (name === 'assign' || name === 'assignVar') {
         const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)\s*=\s*(.+)/);
         if (match) {
           const varName = match[1] ?? '';
@@ -726,7 +726,7 @@ function checkUnusedVariables(textDocument: TextDocument, diagnostics: Diagnosti
     const totalCount = occurrences.length;
 
     // Count declaration contexts of name
-    const assignMatches = cleanText.match(new RegExp(`\\{%\\s*assign\\s+${name}\\s*=`, 'g')) || [];
+    const assignMatches = cleanText.match(new RegExp(`\\{%\\s*(assign|assignVar|parseAssign)\\s+${name}\\s*=`, 'g')) || [];
     const captureMatches = cleanText.match(new RegExp(`\\{%\\s*capture\\s+${name}\\s*%\\}`, 'g')) || [];
     const forMatches = cleanText.match(new RegExp(`\\{%\\s*for\\s+${name}\\s+in\\b`, 'g')) || [];
     const declCount = assignMatches.length + captureMatches.length + forMatches.length;

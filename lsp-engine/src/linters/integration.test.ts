@@ -167,3 +167,81 @@ test('Liquid custom parseAssign tag validation and coercion', () => new Promise<
     }
   }));
 }));
+
+test('Liquid SpotDraft-specific custom filters and assignVar linter validation', () => new Promise<void>((resolve) => {
+  const child = startLspServer();
+  let step = 0;
+
+  new LSPMessageReader(child.stdout!, (res) => {
+    if (res.method === 'window/logMessage') return;
+
+    if (step === 0 && res.id === 1) {
+      child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', method: 'initialized', params: {} }));
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        method: 'textDocument/didOpen',
+        params: {
+          textDocument: {
+            uri: 'file:///t.liquid',
+            languageId: 'liquid',
+            version: 1,
+            text: [
+              '{% assignVar val_unused = user.first_name %}',
+              '{% assignVar val_used = user.first_name %}',
+              '{{ val_used | toCurrency: "USD" }}',
+              '{{ user.items | sumArray: "title" }}',
+              '{{ 10 | toDuration: "DAYS" }}'
+            ].join('\n')
+          }
+        }
+      }));
+      step = 1;
+    } else if (step === 1 && res.method === 'textDocument/publishDiagnostics') {
+      const diagnostics = res.params.diagnostics;
+
+      // 1. Verify val_unused triggers unused warning
+      const unusedWarning = diagnostics.find((d: any) => d.message.includes('declared but its value is never read') && d.message.includes('val_unused'));
+      expect(unusedWarning).toBeDefined();
+
+      // 2. Verify val_used does not trigger unused warning
+      const usedWarning = diagnostics.find((d: any) => d.message.includes('declared but its value is never read') && d.message.includes('val_used'));
+      expect(usedWarning).toBeUndefined();
+
+      // 3. Verify no "Unknown filter" diagnostics are emitted for SpotDraft custom filters
+      const unknownFilterWarnings = diagnostics.filter((d: any) => d.message.includes('Unknown filter'));
+      expect(unknownFilterWarnings.length).toBe(0);
+
+      // 4. Verify no syntax errors are present
+      const errors = diagnostics.filter((d: any) => d.severity === 1);
+      expect(errors.length).toBe(0);
+
+      child.kill('SIGINT');
+      resolve();
+    }
+  });
+
+  child.stdin?.write(formatLSPMessage({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: {
+      capabilities: {},
+      initializationOptions: {
+        schema: {
+          user: {
+            type: 'composite',
+            fields: {
+              first_name: 'string',
+              items: {
+                type: 'composite',
+                fields: {
+                  title: 'string'
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }));
+}));

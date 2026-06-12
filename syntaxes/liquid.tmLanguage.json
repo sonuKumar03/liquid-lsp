@@ -1,0 +1,145 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Liquid",
+  "scopeName": "text.html.liquid",
+  "fileTypes": ["liquid"],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#liquid-output-blocks"
+    },
+    {
+      "include": "#liquid-tag-blocks"
+    },
+    {
+      "include": "text.html.basic"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.liquid",
+          "begin": "\\{%\\s*comment\\s*%\\}",
+          "end": "\\{%\\s*endcomment\\s*%\\}"
+        }
+      ]
+    },
+    "liquid-output-blocks": {
+      "begin": "\\{\\{",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.tag.liquid" }
+      },
+      "end": "\\}\\}",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.tag.liquid" }
+      },
+      "patterns": [
+        {
+          "include": "#expressions"
+        }
+      ]
+    },
+    "liquid-tag-blocks": {
+      "begin": "\\{%",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.tag.liquid" }
+      },
+      "end": "%\\}",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.tag.liquid" }
+      },
+      "patterns": [
+        {
+          "include": "#keywords"
+        },
+        {
+          "include": "#expressions"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.liquid",
+          "match": "\\b(if|else|elsif|endif|for|endfor|in|unless|endunless|assign|capture|endcapture|case|endcase|when|tablerow|endtablerow|render|include|layout|increment|decrement|echo|raw|endraw|cycle|style|endstyle)\\b"
+        }
+      ]
+    },
+    "expressions": {
+      "patterns": [
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#constants"
+        },
+        {
+          "include": "#filters"
+        },
+        {
+          "name": "variable.other.liquid",
+          "match": "\\b[a-zA-Z0-9_-]+\\b"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.liquid",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.liquid",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.liquid",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.liquid",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.liquid",
+          "match": "\\b\\d+(\\.\\d+)?\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.liquid",
+          "match": "\\b(true|false|nil|null|empty|blank)\\b"
+        }
+      ]
+    },
+    "filters": {
+      "patterns": [
+        {
+          "match": "(\\|)\\s*([a-zA-Z0-9_-]+)",
+          "captures": {
+            "1": { "name": "keyword.operator.filter.liquid" },
+            "2": { "name": "support.function.liquid" }
+          }
+        }
+      ]
+    }
+  }
+}

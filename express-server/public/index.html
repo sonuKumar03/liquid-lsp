@@ -544,7 +544,8 @@
 
   <!-- Client-side WebSocket & LSP Controller -->
   <script>
-    // 1. Predefined variables schema
+    require(['vs/editor/editor.main'], function() {
+      // 1. Predefined variables schema
     const schema = {
       status: {
         type: 'dropdown',
@@ -1125,6 +1126,7 @@
 
     // Run preview once on initial load
     setTimeout(updatePreview, 300);
+    });
   </script>
 </body>
 </html>

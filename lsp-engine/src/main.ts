@@ -165,6 +165,17 @@ connection.onDocumentSymbol(params => {
   return handleDocumentSymbol(documents, params);
 });
 
+connection.onNotification('workspace/updateSchema', (params: { schema: any }) => {
+  if (params && params.schema) {
+    globalSchema = parseSchema(params.schema);
+    connection.console.log('LSP server: updated variable schema dynamically.');
+    // Trigger validation for all open documents to apply the new schema immediately
+    documents.all().forEach(doc => {
+      validateTextDocument(connection, doc, liquidEngine, globalSchema);
+    });
+  }
+});
+
 connection.onInitialized(() => {
   connection.console.log('LSP server: client connection initialized successfully.');
 });

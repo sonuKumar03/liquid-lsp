@@ -1082,6 +1082,36 @@
     const contextInput = document.getElementById('preview-context-input');
     contextInput.value = JSON.stringify(defaultContext, null, 2);
 
+    // Helper to extract LSP schema format from JSON context dynamically
+    function jsonToSchema(val) {
+      if (val === null || val === undefined) return 'string';
+      if (typeof val === 'string') return 'string';
+      if (typeof val === 'number') return 'number';
+      if (typeof val === 'boolean') return 'boolean';
+      if (Array.isArray(val)) {
+        if (val.length > 0 && typeof val[0] === 'object' && val[0] !== null) {
+          const mergedFields = {};
+          val.forEach(item => {
+            if (item && typeof item === 'object') {
+              Object.keys(item).forEach(k => {
+                mergedFields[k] = jsonToSchema(item[k]);
+              });
+            }
+          });
+          return { type: 'composite', fields: mergedFields };
+        }
+        return 'string';
+      }
+      if (typeof val === 'object') {
+        const fields = {};
+        Object.keys(val).forEach(k => {
+          fields[k] = jsonToSchema(val[k]);
+        });
+        return { type: 'composite', fields };
+      }
+      return 'string';
+    }
+
     // Debounced Live Preview Update Loop
     let previewDebounceTimer = null;
     function updatePreview() {
@@ -1096,6 +1126,13 @@
         try {
           contextData = JSON.parse(contextInput.value);
           contextInput.style.boxShadow = ''; // Reset border outline
+
+          // Infer schema from contextData and notify LSP server
+          const newSchema = {};
+          Object.keys(contextData).forEach(key => {
+            newSchema[key] = jsonToSchema(contextData[key]);
+          });
+          sendNotification('workspace/updateSchema', { schema: newSchema });
         } catch (err) {
           contextInput.style.boxShadow = 'inset 0 0 0 1px #ef4444';
           renderedPane.innerHTML = `<div class="preview-error">Invalid Mock Context JSON:\n${err.message}</div>`;

@@ -7,6 +7,8 @@ const { Tokenizer, TokenKind, TagToken: TagTokenClass } = liquidjs;
 import { cleanErrorMessage, getEnhancedErrorMessage } from '../shared/utils.js';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 import type { LiquidType } from '../shared/schema.js';
+import type { SchemaLoadError } from '../shared/key-pointer-schema.types.js';
+import { schemaLoadErrorsToDiagnostics } from '../shared/schema-load-errors.js';
 import { collectLifecycleDiagnostics } from './lifecycle.js';
 
 export async function validateTextDocument(
@@ -14,6 +16,7 @@ export async function validateTextDocument(
   textDocument: TextDocument,
   liquidEngine: Liquid,
   globalSchema?: Map<string, LiquidType>,
+  schemaLoadErrors?: SchemaLoadError[],
 ): Promise<void> {
   connection.console.log(
     'LSP server: validating document: ' + textDocument.uri,
@@ -29,6 +32,10 @@ export async function validateTextDocument(
     liquidEngine,
     globalSchema,
   );
+
+  if (schemaLoadErrors && schemaLoadErrors.length > 0) {
+    diagnostics.push(...schemaLoadErrorsToDiagnostics(schemaLoadErrors));
+  }
 
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }

@@ -5,6 +5,7 @@ import {
   formatLSPMessage,
 } from '../shared/test-utils.js';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 test('Liquid Go to Definition', () =>
@@ -80,7 +81,9 @@ test('Liquid Go to Definition', () =>
 
 test('Liquid Go to Definition for schema variables', () =>
   new Promise<void>((resolve) => {
-    const rootPath = '/Users/sonukumar/project/liquidJs';
+    const rootPath = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'liquid-lsp-definitions-test-'),
+    );
     const schemaPath = path.join(rootPath, '.liquid-schema.json');
     const schemaContent = JSON.stringify(
       {
@@ -152,8 +155,10 @@ test('Liquid Go to Definition for schema variables', () =>
         child.kill('SIGINT');
 
         try {
-          fs.unlinkSync(schemaPath);
-        } catch (e) {}
+          fs.rmSync(rootPath, { recursive: true, force: true });
+        } catch {
+          // ignore cleanup errors
+        }
 
         resolve();
       }

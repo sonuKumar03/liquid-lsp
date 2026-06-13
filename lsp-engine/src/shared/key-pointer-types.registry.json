@@ -1,0 +1,583 @@
+{
+  "description": "Key pointer data type capabilities derived from angular-frontend sibling project.",
+  "sources": {
+    "key_pointer_value_type": "angular-frontend/libs/key-pointers/core/src/lib/models/key-pointers-core.ts — KeyPointerValueType",
+    "extraction": "angular-frontend/libs/key-pointers/ui/src/lib/supported-key-pointer-types.service.ts — getSupportedKPTypesForSDC()",
+    "computation": "angular-frontend/libs/computation-library/core/src/types/computation-domain.ts — COMPUTATION_LIBRARY_SUPPORTED_CF_TYPES"
+  },
+  "notes": [
+    "key_pointer_value_type_supported: assignable to KeyPointerValueType (excludes multi-file and repeating).",
+    "supports_extraction: Smart Data Capture (SDC) — RichText excluded; text-box requires PARAGRAPH_KEY_POINTER feature flag.",
+    "supports_computation: Liquid computation library metadata types."
+  ],
+  "types": [
+    {
+      "data_type": "check-box",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": true,
+      "supports_computation": true,
+      "examples": [
+        {
+          "field_name": "subscriber_main_address",
+          "options": []
+        },
+        {
+          "field_name": "pilot",
+          "options": []
+        },
+        {
+          "field_name": "implementation",
+          "options": []
+        },
+        {
+          "field_name": "sd_equity",
+          "options": []
+        },
+        {
+          "field_name": "sd_joining_bonus",
+          "options": []
+        },
+        {
+          "field_name": "sd_performance_bonus_fixed",
+          "options": []
+        },
+        {
+          "field_name": "sd_performance_bonus",
+          "options": []
+        },
+        {
+          "field_name": "sd_retention_bonus",
+          "options": []
+        },
+        {
+          "field_name": "effective_execution_same",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "string",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": true,
+      "supports_computation": true,
+      "examples": [
+        {
+          "field_name": "sd_company_name",
+          "options": []
+        },
+        {
+          "field_name": "sd_bank_code",
+          "options": []
+        },
+        {
+          "field_name": "sd_bank_name",
+          "options": []
+        },
+        {
+          "field_name": "sd_bank_account_number",
+          "options": []
+        },
+        {
+          "field_name": "sd_territories",
+          "options": []
+        },
+        {
+          "field_name": "sd_licensor_email",
+          "options": []
+        },
+        {
+          "field_name": "sd_licensor_contact_number",
+          "options": []
+        },
+        {
+          "field_name": "sd_licensor_contact_person",
+          "options": []
+        },
+        {
+          "field_name": "sd_sd_alias",
+          "options": []
+        },
+        {
+          "field_name": "sd_partner_name_2",
+          "options": []
+        },
+        {
+          "field_name": "sd_partner_name",
+          "options": []
+        },
+        {
+          "field_name": "sd_proprietor_name",
+          "options": []
+        },
+        {
+          "field_name": "sd_licensed_languages",
+          "options": []
+        },
+        {
+          "field_name": "sd_pan_card_no_of_the_licensor",
+          "options": []
+        },
+        {
+          "field_name": "sd_gst_no_of_the_licensor",
+          "options": []
+        },
+        {
+          "field_name": "sd_email_of_the_licensor",
+          "options": []
+        },
+        {
+          "field_name": "sd_contact_person_name_of_the_licensor",
+          "options": []
+        },
+        {
+          "field_name": "sd_india_mumbai_jurisdiction",
+          "options": []
+        },
+        {
+          "field_name": "sd_agreement_title",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "date",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": true,
+      "supports_computation": true,
+      "examples": [
+        {
+          "field_name": "sd_execution_date",
+          "options": []
+        },
+        {
+          "field_name": "sd_expiration_date",
+          "options": []
+        },
+        {
+          "field_name": "sd_effective_date",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "number",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": true,
+      "supports_computation": true,
+      "examples": [
+        {
+          "field_name": "sd_net_revenue_share",
+          "options": []
+        },
+        {
+          "field_name": "sd_contact_number_of_the_licensor",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "text-box",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": true,
+      "supports_computation": false,
+      "examples": [
+        {
+          "field_name": "description_services",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "currency",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": true,
+      "supports_computation": true,
+      "examples": [
+        {
+          "field_name": "sd_payment",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "phone-number",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": true,
+      "supports_computation": false,
+      "examples": [
+        {
+          "field_name": "sd_contact_number",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "address",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": false,
+      "supports_computation": false,
+      "examples": [
+        {
+          "field_name": "sd_bank_address",
+          "options": []
+        },
+        {
+          "field_name": "sd_registered_address_of_the_licensor",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "duration",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": true,
+      "supports_computation": true,
+      "examples": [
+        {
+          "field_name": "sd_term_length",
+          "options": []
+        },
+        {
+          "field_name": "sd_cure_period",
+          "options": []
+        },
+        {
+          "field_name": "sd_renewal_notice",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "multi-dropdown",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": true,
+      "supports_computation": true,
+      "examples": [
+        {
+          "field_name": "sd_indemnities",
+          "options": [
+            {
+              "label": "Breach of confidentiality/data breach",
+              "value": "Breach of confidentiality/data breach"
+            },
+            {
+              "label": "Breach of IPR",
+              "value": "Breach of IPR"
+            },
+            {
+              "label": "Breach of reps & warranties or any terms of the agreement",
+              "value": "Breach of reps & warranties or any terms of the agreement"
+            },
+            {
+              "label": "Tort (death, personal injury, damage to personal property, gross negligence, wilful misconduct, fraud)",
+              "value": "Tort (death, personal injury, damage to personal property, gross negligence, wilful misconduct, fraud)"
+            },
+            {
+              "label": "Breach of applicable laws",
+              "value": "Breach of applicable laws"
+            },
+            {
+              "label": "any other indemnities obligations",
+              "value": "any other indemnities obligations"
+            },
+            {
+              "label": "NA",
+              "value": "NA"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_audit_rights",
+          "options": [
+            {
+              "label": "You",
+              "value": "You"
+            },
+            {
+              "label": "Counterparty",
+              "value": "Counterparty"
+            },
+            {
+              "label": "NA",
+              "value": "NA"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_assignment_right",
+          "options": [
+            {
+              "label": "You - with consent",
+              "value": "You - with consent"
+            },
+            {
+              "label": "You - without consent",
+              "value": "You - without consent"
+            },
+            {
+              "label": "You - No Assignment Rights",
+              "value": "You - No Assignment Rights"
+            },
+            {
+              "label": "Counterparty - with consent",
+              "value": "Counterparty - with consent"
+            },
+            {
+              "label": "Counterparty - without consent",
+              "value": "Counterparty - without consent"
+            },
+            {
+              "label": "Counterparty - No Assignment Rights",
+              "value": "Counterparty - No Assignment Rights"
+            },
+            {
+              "label": "NA",
+              "value": "NA"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "data_type": "dropdown",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": true,
+      "supports_computation": true,
+      "examples": [
+        {
+          "field_name": "sd_type_of_entity_1",
+          "options": [
+            {
+              "label": "Company",
+              "value": "Company"
+            },
+            {
+              "label": "Partnership",
+              "value": "Partnership"
+            },
+            {
+              "label": "Limited Liability Partnership",
+              "value": "Limited Liability Partnership"
+            },
+            {
+              "label": "Proprietorship",
+              "value": "Proprietorship"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_companies_act",
+          "options": [
+            {
+              "label": "2013",
+              "value": "2013"
+            },
+            {
+              "label": "1956",
+              "value": "1956"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_rights",
+          "options": [
+            {
+              "label": "Non-Exclusive",
+              "value": "Non-Exclusive"
+            },
+            {
+              "label": "Exclusive",
+              "value": "Exclusive"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_incorporation_law",
+          "options": [
+            {
+              "label": "Partnership Act, 1932",
+              "value": "Partnership Act, 1932"
+            },
+            {
+              "label": "Companies Act, 1956",
+              "value": "Companies Act, 1956"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_type_of_entity",
+          "options": [
+            {
+              "label": "Proprietor/Single Firm",
+              "value": "Proprietor/Single Firm"
+            },
+            {
+              "label": "Private Limited",
+              "value": "Private Limited"
+            },
+            {
+              "label": "Public Limited",
+              "value": "Public Limited"
+            },
+            {
+              "label": "LLP/Partnership Firm",
+              "value": "LLP/Partnership Firm"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_type_of_licensed_content",
+          "options": [
+            {
+              "label": "Exclusive",
+              "value": "Exclusive"
+            },
+            {
+              "label": "Non-Exclusive",
+              "value": "Non-Exclusive"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_whether_a_company_partnership_sole_proprietory",
+          "options": [
+            {
+              "label": "Company",
+              "value": "Company"
+            },
+            {
+              "label": "Partnership",
+              "value": "Partnership"
+            },
+            {
+              "label": "Sole Proprietorship",
+              "value": "Sole Proprietorship"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_post_execution_status",
+          "options": [
+            {
+              "label": "Active",
+              "value": "Active"
+            },
+            {
+              "label": "Expired",
+              "value": "Expired"
+            },
+            {
+              "label": "Terminated",
+              "value": "Terminated"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_renewal_type",
+          "options": [
+            {
+              "label": "Automatic",
+              "value": "Automatic"
+            },
+            {
+              "label": "Manual",
+              "value": "Manual"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_term_type",
+          "options": [
+            {
+              "label": "Perpetual",
+              "value": "Perpetual"
+            },
+            {
+              "label": "Fixed",
+              "value": "Fixed"
+            }
+          ]
+        },
+        {
+          "field_name": "sd_territory",
+          "options": [
+            {
+              "label": "EMEA",
+              "value": "EMEA"
+            },
+            {
+              "label": "APAC",
+              "value": "APAC"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "data_type": "date-range",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": false,
+      "supports_computation": false,
+      "examples": []
+    },
+    {
+      "data_type": "table",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": false,
+      "supports_computation": false,
+      "examples": []
+    },
+    {
+      "data_type": "multi-text-input",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": false,
+      "supports_computation": false,
+      "examples": []
+    },
+    {
+      "data_type": "rich-text",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": false,
+      "supports_computation": false,
+      "examples": [
+        {
+          "field_name": "sd_licensed_content_details",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "repeating",
+      "key_pointer_value_type_supported": false,
+      "supports_extraction": false,
+      "supports_computation": true,
+      "examples": [
+        {
+          "field_name": "sd_applicant_limited_gross_salary",
+          "options": []
+        }
+      ]
+    },
+    {
+      "data_type": "multi-file",
+      "key_pointer_value_type_supported": false,
+      "supports_extraction": false,
+      "supports_computation": false,
+      "examples": []
+    },
+    {
+      "data_type": "image",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": false,
+      "supports_computation": false,
+      "examples": []
+    },
+    {
+      "data_type": "related-contract",
+      "key_pointer_value_type_supported": true,
+      "supports_extraction": false,
+      "supports_computation": false,
+      "examples": []
+    }
+  ]
+}

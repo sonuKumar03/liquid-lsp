@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp src/shared/key-pointer-types.registry.json dist/shared/",
     "test": "vitest run src",
     "test:watch": "vitest src"
   },

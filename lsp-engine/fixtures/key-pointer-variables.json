@@ -1,0 +1,24 @@
+{
+  "variables": [
+    {
+      "field_name": "sd_payment",
+      "data_type": "currency"
+    },
+    {
+      "field_name": "sd_term_type",
+      "data_type": "dropdown",
+      "options": [
+        { "label": "Perpetual", "value": "Perpetual" },
+        { "label": "Fixed", "value": "Fixed" }
+      ]
+    },
+    {
+      "field_name": "sd_term_length",
+      "data_type": "duration"
+    },
+    {
+      "field_name": "effective_execution_same",
+      "data_type": "check-box"
+    }
+  ]
+}

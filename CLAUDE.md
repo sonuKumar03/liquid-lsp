@@ -60,6 +60,5 @@ All workspace commands should be run from the repository root:
    * ESLint ignores compiled `dist/` directories.
    * `@typescript-eslint/no-explicit-any` is disabled to allow easy assertion of dynamic JSON-RPC payloads in test files.
 4. **Agent Constraints**:
-   * **Do NOT run build, lint, or test commands on your own** unless explicitly directed by the user.
    * **Do NOT commit changes to git** without explicitly prompting the user first.
    * Use **`rtk`** (Rust Token Killer) commands directly (e.g., `rtk git status`, `rtk git add .`) to reduce token overhead.

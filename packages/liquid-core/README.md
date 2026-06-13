@@ -1,6 +1,6 @@
 # liquid-core
 
-Runtime helpers for the LiquidJS v3 computation fork: engine creation, tokenization, tag/filter metadata, syntax rules, and error normalization.
+Runtime helpers for LiquidJS: engine creation, tokenization, tag/filter metadata, syntax rules, and error normalization.
 
 ## When to use
 
@@ -22,7 +22,7 @@ Runtime helpers for the LiquidJS v3 computation fork: engine creation, tokenizat
 
 ## Dependencies
 
-- **Depends on:** `liquidjs` (computation fork), `fastest-levenshtein`
+- **Depends on:** `liquidjs`, `fastest-levenshtein`
 - **Used by:** `lsp-common`
 
 ## Build & test

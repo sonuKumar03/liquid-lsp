@@ -2,9 +2,9 @@
 
 ## Decision
 
-This branch targets the current LiquidJS v3 core workspace in `liquidjs/`.
+This repository targets the `liquidjs` package declared in workspace dependencies.
 
-The LSP already depends on the current parser layout, custom tags, custom filters, custom operators, and validation behavior exposed by that workspace. Shared LSP code should preserve those semantics by default.
+The LSP depends on the parser layout, custom tags, custom filters, custom operators, and validation behavior exposed by that runtime. Shared LSP code should preserve those semantics by default.
 
 ## Design boundary
 
@@ -16,7 +16,7 @@ Keep these areas runtime-aware:
 - token or AST normalization
 - syntax-error normalization
 - runtime metadata for completions, hover, and signatures
-- validation behavior tied to the current LiquidJS v3 core line
+- validation behavior tied to liquidjs
 
 Keep these areas shared when possible:
 
@@ -31,8 +31,8 @@ Keep these areas shared when possible:
 
 When adding parser-facing logic, ask:
 
-1. Is this required for the current LiquidJS v3 core behavior?
+1. Is this required for current liquidjs behavior?
 2. Is this generic LSP behavior?
 3. Is this a future compatibility seam?
 
-If it is a future compatibility seam, isolate it without changing current v3 behavior.
+If it is a future compatibility seam, isolate it without changing current behavior.

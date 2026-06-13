@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Context & Developer Guide
 
-Repository skill for code changes: [repo-skills/liquidjs-v3-core-lsp/SKILL.md](/Users/sonukumar/project/liquidJs/repo-skills/liquidjs-v3-core-lsp/SKILL.md)
+Repository skill for code changes: [repo-skills/liquidjs-v3-core-lsp/SKILL.md](repo-skills/liquidjs-v3-core-lsp/SKILL.md)
 
 ## Project Overview
 
@@ -64,5 +64,5 @@ All workspace commands should be run from the repository root:
    - `@typescript-eslint/no-explicit-any` is disabled to allow easy assertion of dynamic JSON-RPC payloads in test files.
 4. **Agent Constraints**:
    - **Do NOT commit changes to git** without explicitly prompting the user first.
-   - Before changing code in this repository, read and follow [repo-skills/liquidjs-v3-core-lsp/SKILL.md](/Users/sonukumar/project/liquidJs/repo-skills/liquidjs-v3-core-lsp/SKILL.md).
+   - Before changing code in this repository, read and follow [repo-skills/liquidjs-v3-core-lsp/SKILL.md](repo-skills/liquidjs-v3-core-lsp/SKILL.md).
    - Use **`rtk`** (Rust Token Killer) commands directly (e.g., `rtk git status`, `rtk git add .`) to reduce token overhead.

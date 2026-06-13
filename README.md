@@ -40,17 +40,26 @@ When typing arguments for Liquid filters, a signature tooltip displays the list 
   ```
   *Documentation:* `Truncates a string down to the number of characters passed as the first parameter. An optional second parameter can be passed to append to the truncated string.`
 
-### 5. Document Spacing Formatter
-Provides standard code formatting (`textDocument/formatting`) that cleans up double spaces and structures operators, pipes, and delimiters for optimal readability.
+### 5. Strict Document Formatter
+Provides standard strict code formatting (`textDocument/formatting`) that automatically enforces:
+* **Block Indentation**: Indents nested tags using two spaces per level depth, including aligning branching/middle elements (`else`, `elsif`, `when`) with their parent tag.
+* **Quote Normalization**: Scans string literals inside tags/outputs and converts single quotes (`'`) to double quotes (`"`), keeping literals containing nested double quotes unmodified.
+* **Border Spacing**: Standardizes border padding space inside tag and output delimiters.
 * **Before:**
   ```liquid
-  {%assign  x=10%}
+  {% if status == 'Active' %}
   {{name|upcase}}
+  {% else %}
+  {{price}}
+  {% endif %}
   ```
 * **After Formatting:**
   ```liquid
-  {% assign x = 10 %}
-  {{ name | upcase }}
+  {% if status == "Active" %}
+    {{ name | upcase }}
+  {% else %}
+    {{ price }}
+  {% endif %}
   ```
 
 ### 6. Spelling Auto-Correction (Quick-Fix)
@@ -77,7 +86,25 @@ Statically load global variables and their types during server initialization or
 Statically resolves nested dot-notation properties on composite objects (e.g. `user.address.zipcode`) and supports type coercion for custom objects:
 * **Composite -> String**: Coerces composite objects to `string` (equivalent to `.toString()`).
 * **Currency -> Number**: Coerces `currency` variables to `number` (equivalent to `.toValueOf()`).
-* Includes full support for bracket access/list index lookups (e.g. `user.items[0].title`) and filters on assignments.
+* Includes full support for filters on assignments.
+
+### 11. Single-Equals Comparison Warning & Quick-Fix
+Flags conditional statements (`if`, `unless`, `elsif`, `when`) that incorrectly use single equals assignment operators (`=`) instead of comparison operators (`==`), providing an automatic interactive Quick-Fix option to correct them.
+* **Example:**
+  ```liquid
+  {% if status = "Active" %}
+  ```
+  *LSP Warning:* `Assignments are not allowed inside conditional statements.`
+  *LSP Quick-Fix:* Converts the line to `{% if status == "Active" %}`.
+
+### 12. Visual Hover Previews for Schema Variables
+Provides rich markdown tooltips (`textDocument/hover`) when hovering over variables defined in the predefined schema. Hover cards detail:
+* Type hierarchy of nested fields on composite objects.
+* Primitive base typings.
+* List of valid options for dropdown variables to guide non-technical template editors.
+
+### 13. Dot-Notation Bracket Access & Array Indexing
+Resolves property paths and bracket indices dynamically on composite array variables (e.g. `user.items[0].title` or `users[i].name`) without triggering false-positive unrecognized key diagnostics.
 
 ---
 

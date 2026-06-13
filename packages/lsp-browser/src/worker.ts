@@ -2,6 +2,7 @@
  * Bundled worker entry (dist/worker.js). Host uses `connectBrowserLspWorker` and
  * transfers a MessagePort for framed JSON-RPC.
  */
+import './register-browser-engine-validations.js';
 import { startWorkerServer } from './index.js';
 import {
   WORKER_INIT_MESSAGE_TYPE,

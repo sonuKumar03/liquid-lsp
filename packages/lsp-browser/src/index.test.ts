@@ -20,6 +20,8 @@ describe('lsp-browser build output', () => {
     expect(content).toContain(WORKER_INIT_MESSAGE_TYPE);
     expect(content).toContain(WORKER_READY_SIGNAL);
     expect(content).not.toContain('node:module');
+    expect(content).toContain('invalid_dynamic_table_computation');
+    expect(content).toContain('checkAtleastOneDynamicTableAssignPresent');
   });
 
   it('produces a browser client bundle for MessagePort transport', () => {

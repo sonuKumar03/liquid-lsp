@@ -4,3 +4,7 @@ export { DocumentManager } from './server/document-manager.js';
 export { DiagnosticsScheduler } from './server/diagnostics-scheduler.js';
 export { SERVER_CAPABILITIES } from './server/capabilities.js';
 export { collectVariableNamesFromTokens } from './shared/token-variables.js';
+export {
+  setEngineValidationFns,
+  type EngineValidationFns,
+} from './shared/engine-validations.js';

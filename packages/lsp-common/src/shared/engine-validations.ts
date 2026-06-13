@@ -10,38 +10,62 @@ import {
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from './diagnostic-codes.js';
 
-type ValidationFns = {
+export type EngineValidationFns = {
   checkValidJSON: (
     engine: Liquid,
     expression: string,
   ) => Array<{ expression: string; errorMessage: string }>;
+  checkAtleastOneDynamicTableAssignPresent: (
+    engine: Liquid,
+    expression: string,
+  ) => Array<{
+    message: string;
+    metadata?: { tableName?: string; columnName?: string };
+  }>;
   parseAssign: (
     assignTemplate: TagTemplate,
     engine: Liquid,
   ) => { defined: string; dependsOn: string[] };
 };
 
-let validationFns: ValidationFns | null | undefined;
+let injectedValidationFns: EngineValidationFns | null = null;
+let resolvedValidationFns: EngineValidationFns | null | undefined;
 
-function getValidationFns(): ValidationFns | null {
-  if (validationFns !== undefined) {
-    return validationFns;
+/** Browser worker registers bundled liquidjs validators before starting the LSP. */
+export function setEngineValidationFns(fns: EngineValidationFns): void {
+  injectedValidationFns = fns;
+  resolvedValidationFns = fns;
+}
+
+function getValidationFns(): EngineValidationFns | null {
+  if (injectedValidationFns) {
+    return injectedValidationFns;
+  }
+
+  if (resolvedValidationFns !== undefined) {
+    return resolvedValidationFns;
   }
 
   try {
     const require = createRequire(import.meta.url);
-    const { checkValidJSON } = require('liquidjs/validations.js') as {
-      checkValidJSON: ValidationFns['checkValidJSON'];
+    const validations = require('liquidjs/validations.js') as {
+      checkValidJSON: EngineValidationFns['checkValidJSON'];
+      checkAtleastOneDynamicTableAssignPresent: EngineValidationFns['checkAtleastOneDynamicTableAssignPresent'];
     };
     const { parseAssign } = require('liquidjs/dependency-graph.js') as {
-      parseAssign: ValidationFns['parseAssign'];
+      parseAssign: EngineValidationFns['parseAssign'];
     };
-    validationFns = { checkValidJSON, parseAssign };
+    resolvedValidationFns = {
+      checkValidJSON: validations.checkValidJSON,
+      checkAtleastOneDynamicTableAssignPresent:
+        validations.checkAtleastOneDynamicTableAssignPresent,
+      parseAssign,
+    };
   } catch {
-    validationFns = null;
+    resolvedValidationFns = null;
   }
 
-  return validationFns;
+  return resolvedValidationFns;
 }
 
 const PARSE_ASSIGN_LINE_RE = /at line (\d+)/;
@@ -176,7 +200,7 @@ function handleAssignTemplate(
   assignedVars: Set<string>,
   diagnostics: Diagnostic[],
   tokens: Token[],
-  parseAssignFn: ValidationFns['parseAssign'],
+  parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   const dependency = parseAssignFn(template, engine);
   const curErrors: string[] = [];
@@ -200,7 +224,7 @@ function walkTagTemplate(
   assignedVars: Set<string>,
   diagnostics: Diagnostic[],
   tokens: Token[],
-  parseAssignFn: ValidationFns['parseAssign'],
+  parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   const currentSet = new Set(assignedVars);
 
@@ -276,7 +300,7 @@ function walkTemplates(
   assignedVars: Set<string>,
   diagnostics: Diagnostic[],
   tokens: Token[],
-  parseAssignFn: ValidationFns['parseAssign'],
+  parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   for (const template of templates) {
     if (template.type !== 'tag') {
@@ -294,13 +318,87 @@ function walkTemplates(
   }
 }
 
+function findComputeColumnOpenLine(
+  engine: Liquid,
+  text: string,
+  metadata: { tableName?: string; columnName?: string },
+): number | undefined {
+  try {
+    const templates = engine.parse(text) as TagTemplate[];
+    for (const template of templates) {
+      if (template.type !== 'tag' || template.name !== 'computeColumn') {
+        continue;
+      }
+      const impl = template.tagImpl as {
+        tableName?: string;
+        columnName?: string;
+      };
+      if (
+        impl.tableName === metadata.tableName &&
+        impl.columnName === metadata.columnName
+      ) {
+        const line = (template.token as { line?: number }).line;
+        if (typeof line === 'number') {
+          return line;
+        }
+      }
+    }
+  } catch {
+    // Parser errors are reported by syntax diagnostics.
+  }
+  return undefined;
+}
+
+function collectComputeColumnDiagnostics(
+  doc: TextDocument,
+  engine: Liquid,
+  diagnostics: Diagnostic[],
+  tokens: Token[],
+  checkDynamicTableFn: EngineValidationFns['checkAtleastOneDynamicTableAssignPresent'],
+): void {
+  const text = doc.getText();
+
+  try {
+    for (const tableError of checkDynamicTableFn(engine, text)) {
+      const line = findComputeColumnOpenLine(
+        engine,
+        text,
+        tableError.metadata ?? {},
+      );
+      const token =
+        line !== undefined
+          ? findTagTokenOnLine(tokens, line, new Set(['computeColumn']))
+          : undefined;
+      const range = token
+        ? rangeForTagToken(doc, token)
+        : { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
+
+      const tableName = tableError.metadata?.tableName;
+      const columnName = tableError.metadata?.columnName;
+      const locationHint =
+        tableName && columnName ? ` (${tableName}.${columnName})` : '';
+
+      pushUniqueDiagnostic(diagnostics, {
+        severity: DiagnosticSeverity.Warning,
+        range,
+        message: `${tableError.message}${locationHint}`,
+        code: DIAGNOSTIC_CODES.INVALID_DYNAMIC_TABLE_COMPUTATION,
+        data: tableError.metadata,
+        source: 'liquid-lsp-linter',
+      });
+    }
+  } catch {
+    // Invalid templates are reported by syntax diagnostics.
+  }
+}
+
 function collectAssignDependencyDiagnostics(
   doc: TextDocument,
   engine: Liquid,
   diagnostics: Diagnostic[],
   tokens: Token[],
   schemaVarNames: Set<string>,
-  parseAssignFn: ValidationFns['parseAssign'],
+  parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   const assignedVars = new Set<string>(schemaVarNames);
   const templates = engine.parse(doc.getText()) as TagTemplate[];
@@ -353,6 +451,18 @@ export function collectEngineValidationDiagnostics(
         source: 'liquid-lsp-linter',
       });
     }
+  } catch {
+    // Invalid templates are reported by syntax diagnostics.
+  }
+
+  try {
+    collectComputeColumnDiagnostics(
+      doc,
+      engine,
+      diagnostics,
+      tokens,
+      fns.checkAtleastOneDynamicTableAssignPresent,
+    );
   } catch {
     // Invalid templates are reported by syntax diagnostics.
   }

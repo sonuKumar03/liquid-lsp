@@ -9,6 +9,8 @@ export const DIAGNOSTIC_CODES = {
   UNKNOWN_TAG: 'liquid.tag.unknown',
   USE_BEFORE_ASSIGN: 'liquid.linter.use_before_assign',
   INVALID_PARSE_ASSIGN_JSON: 'liquid.linter.invalid_parse_assign_json',
+  INVALID_DYNAMIC_TABLE_COMPUTATION:
+    'liquid.linter.invalid_dynamic_table_computation',
   ...SCHEMA_ERROR_CODES,
 } as const;
 

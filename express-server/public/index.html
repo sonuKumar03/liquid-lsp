@@ -153,115 +153,6 @@
       overflow: hidden;
     }
 
-    /* Sidebar - Variable Catalog */
-    .sidebar {
-      width: 300px;
-      background-color: var(--bg-sidebar);
-      border-right: 1px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .sidebar-header {
-      padding: 20px;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .sidebar-title {
-      font-family: var(--font-outfit);
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text-main);
-      letter-spacing: 0.5px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .sidebar-desc {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    .schema-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .schema-item {
-      background: #1e293b;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 12px;
-      cursor: default;
-      transition: all 0.2s ease;
-    }
-
-    .schema-item:hover {
-      border-color: rgba(255, 255, 255, 0.15);
-      background: #243049;
-    }
-
-    .schema-item-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 4px;
-    }
-
-    .schema-name {
-      font-family: var(--font-outfit);
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--text-main);
-    }
-
-    .schema-type {
-      font-size: 0.7rem;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .type-string { background-color: rgba(0, 229, 255, 0.15); color: var(--accent-secondary); }
-    .type-number { background-color: rgba(245, 158, 11, 0.15); color: var(--accent-warning); }
-    .type-dropdown { background-color: rgba(168, 85, 247, 0.15); color: var(--accent-primary); }
-    .type-composite { background-color: rgba(16, 185, 129, 0.15); color: var(--accent-success); }
-    .type-currency { background-color: #3b82f633; color: #3b82f6; }
-
-    .schema-desc {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      line-height: 1.25;
-    }
-
-    .schema-subfields {
-      margin-top: 6px;
-      padding-top: 6px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .subfield {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      padding: 2px 4px;
-      border-radius: 4px;
-      background: rgba(0, 0, 0, 0.2);
-    }
 
     /* Editor Container */
     .editor-container {
@@ -376,7 +267,7 @@
   <header class="navbar">
     <div class="brand">
       <div class="brand-logo">L</div>
-      <span class="brand-title">SpotDraft Liquid Workspace</span>
+      <span class="brand-title">Liquid Workspace</span>
     </div>
     
     <div class="controls">
@@ -392,19 +283,6 @@
 
   <!-- Main Dashboard -->
   <main class="dashboard">
-    <!-- Variables Catalog Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-title">
-          <i class="fa-solid fa-database" style="color: var(--accent-secondary);"></i> Predefined Schema
-        </div>
-        <p class="sidebar-desc">View variables, types, and example usages below.</p>
-      </div>
-
-      <div class="schema-list" id="schema-list">
-        <!-- Injected dynamically -->
-      </div>
-    </aside>
 
     <!-- Editor and Panel Container -->
     <section class="editor-container">
@@ -456,78 +334,7 @@
       }
     };
 
-    // Render Schema Catalog Sidebar UI
-    const schemaList = document.getElementById('schema-list');
-    
-    function renderSchemaItems(parentKey, obj) {
-      for (const [key, value] of Object.entries(obj)) {
-        const fullKey = parentKey ? `${parentKey}.${key}` : key;
-        const item = document.createElement('div');
-        item.className = 'schema-item';
-        
-        let typeLabel = '';
-        let descText = '';
-        let subfieldsHtml = '';
-        let exampleCode = '';
 
-        if (typeof value === 'string') {
-          typeLabel = `<span class="schema-type type-${value}">${value}</span>`;
-          if (value === 'currency') {
-            descText = `Currency object containing amount and symbol.`;
-            exampleCode = `{{ ${fullKey}.amount }} (symbol: {{ ${fullKey}.symbol }})`;
-          } else {
-            descText = `Global contract variable referencing a primitive ${value}.`;
-            exampleCode = `{{ ${fullKey} }}`;
-          }
-        } else if (value.type === 'dropdown') {
-          typeLabel = `<span class="schema-type type-dropdown">dropdown</span>`;
-          descText = `Dropdown selection. Valid options: ${value.options.map(o => `"${o}"`).join(', ')}.`;
-          exampleCode = `{% if ${fullKey} == "${value.options[0] || 'Active'}" %}`;
-        } else if (value.type === 'composite') {
-          typeLabel = `<span class="schema-type type-composite">object</span>`;
-          descText = `Structured composite object containing child properties.`;
-          
-          let subfields = [];
-          for (const [subKey, subVal] of Object.entries(value.fields)) {
-            const subType = typeof subVal === 'string' ? subVal : subVal.type;
-            subfields.push(`
-              <div class="subfield">
-                <span>${subKey}</span>
-                <span style="opacity: 0.7; font-size: 0.65rem;">${subType}</span>
-              </div>
-            `);
-          }
-          subfieldsHtml = `<div class="schema-subfields">${subfields.join('')}</div>`;
-
-          const firstField = Object.keys(value.fields)[0];
-          if (firstField) {
-            if (firstField === 'items') {
-              exampleCode = `{{ ${fullKey}.items[0].title }}`;
-            } else {
-              exampleCode = `{{ ${fullKey}.${firstField} }}`;
-            }
-          } else {
-            exampleCode = `${fullKey}`;
-          }
-        }
-
-        item.innerHTML = `
-          <div class="schema-item-header">
-            <span class="schema-name">${fullKey}</span>
-            ${typeLabel}
-          </div>
-          <p class="schema-desc">${descText}</p>
-          ${subfieldsHtml}
-          <div style="margin-top: 8px; background: rgba(0,0,0,0.3); padding: 6px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
-            <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--accent-secondary); margin-bottom: 2px; font-weight: 600;">Example Usage</div>
-            <code style="font-family: var(--font-fira); font-size: 0.75rem; color: #e2e8f0; word-break: break-all;">${exampleCode}</code>
-          </div>
-        `;
-
-        schemaList.appendChild(item);
-      }
-    }
-    renderSchemaItems('', schema);
 
     // 2. Pre-populated sample LiquidJS code in the editor
     const initialText = [

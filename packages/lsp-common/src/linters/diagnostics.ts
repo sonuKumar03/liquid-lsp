@@ -15,6 +15,7 @@ import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 import type { LiquidType } from '../shared/schema.js';
 import type { SchemaLoadError } from 'key-pointer-schema';
 import { schemaLoadErrorsToDiagnostics } from '../shared/schema-load-errors.js';
+import { collectEngineValidationDiagnostics } from '../shared/engine-validations.js';
 import { collectLifecycleDiagnostics } from './lifecycle.js';
 
 export async function validateTextDocument(
@@ -44,6 +45,27 @@ export async function validateTextDocument(
     liquidEngine,
     globalSchema,
     precomputedTokens,
+  );
+
+  const schemaVarNames = globalSchema
+    ? new Set(globalSchema.keys())
+    : new Set<string>();
+  let validationTokens: Token[] = [];
+  if (precomputedTokens !== undefined) {
+    validationTokens = precomputedTokens;
+  } else {
+    try {
+      validationTokens = tokenizeTopLevel(text, liquidEngine);
+    } catch {
+      validationTokens = [];
+    }
+  }
+  collectEngineValidationDiagnostics(
+    textDocument,
+    liquidEngine,
+    diagnostics,
+    validationTokens,
+    schemaVarNames,
   );
 
   if (schemaLoadErrors && schemaLoadErrors.length > 0) {

@@ -7,6 +7,8 @@ export const DIAGNOSTIC_CODES = {
   CONDITIONAL_ASSIGNMENT: 'liquid.syntax.conditional_assignment',
   INLINE_MATH: 'liquid.syntax.inline_math',
   UNKNOWN_TAG: 'liquid.tag.unknown',
+  USE_BEFORE_ASSIGN: 'liquid.linter.use_before_assign',
+  INVALID_PARSE_ASSIGN_JSON: 'liquid.linter.invalid_parse_assign_json',
   ...SCHEMA_ERROR_CODES,
 } as const;
 

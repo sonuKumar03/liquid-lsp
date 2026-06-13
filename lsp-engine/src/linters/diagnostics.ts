@@ -32,6 +32,13 @@ export async function validateTextDocument(
 
       for (const token of tokens) {
         if (token.kind === TokenKind.Tag || token.kind === TokenKind.Output) {
+          if (token instanceof TagToken) {
+            const tagName = token.name;
+            if (tagName.startsWith('end') || ['else', 'elsif', 'when'].includes(tagName)) {
+              continue;
+            }
+          }
+
           const tokenIndex = tokens.indexOf(token);
           const remainTokens = tokens.slice(tokenIndex + 1);
           const remainTokensCopy = [...remainTokens];

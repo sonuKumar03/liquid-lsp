@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SpotDraft Liquid Monaco Editor</title>
+  <title>Liquid Monaco Editor Playground</title>
   <!-- Typography & Icons -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -570,18 +570,45 @@
 
     // 2. Pre-populated sample LiquidJS code in the editor
     const initialText = [
-      '{% assignVar name = user.first_name %}',
-      '<h2>Welcome, {{ name }}!</h2>',
+      '{% comment %}',
+      '  Liquid Workspace Playground',
+      '  =====================================',
+      '  ',
+      '  Features to test in this editor:',
+      '  1. HOVERS: Hover over variables like "user", "status", or "price.amount" to see type info.',
+      '  2. AUTOCOMPLETE: Press Ctrl+Space or start typing nested properties like "user.first_name" or filters like "| toCurrency".',
+      '  3. QUICK-FIXES: Click/hover the warning squiggle on the "status = \'Active\'" line below and click the lightbulb to fix it to "=="!',
+      '  4. LIVE OUTPUT: Check the right pane to see live rendered HTML, raw text, and editable Mock JSON variables.',
+      '{% endcomment %}',
       '',
+      '{% assignVar name = user.first_name %}',
+      '<h2>Welcome back, {{ name }}!</h2>',
+      '',
+      '{% comment %} 1. Conditional comparison & Dropdown Option Check {% endcomment %}',
+      '{% comment %} TRY: Change "Active" to "Pending" to trigger a dropdown validation squiggle! {% endcomment %}',
       '{% if status = "Active" %}',
-      '  <p>Your subscription is active.</p>',
+      '  <p class="status-badge">Your account status is currently: <strong>{{ status }}</strong></p>',
       '{% else %}',
-      '  <p>Your subscription status: {{ status | default: "Pending" }}</p>',
+      '  <p class="status-badge">Your account status: {{ status | default: "Pending" }}</p>',
       '{% endif %}',
       '',
-      '{% parseAssign items = \'[{"title": "Item A", "amount": 100}, {"title": "Item B", "amount": 200}]\' %}',
+      '{% comment %} 2. Currency Schema fields & Math Filter validation {% endcomment %}',
+      '<p>',
+      '  Base Price: {{ price.amount | toCurrency: "USD" }} <br>',
+      '  Adjusted Price (with tax): {{ price.amount | plus: 25 | toCurrency: "USD" }}',
+      '</p>',
       '',
-      '<p>Total items cost: {{ items | sumArray: "amount" | toCurrency: "USD" }}</p>'
+      '{% comment %} 3. Custom tags (parseAssign) & filters (sumArray, toCurrency, toDuration) {% endcomment %}',
+      '{% parseAssign localItems = \'[{"title": "Premium Subscription", "cost": 450}, {"title": "Onboarding Pack", "cost": 50}]\' %}',
+      '',
+      '<ul>',
+      '  {% for item in localItems %}',
+      '    <li>{{ item.title }}: {{ item.cost | toCurrency: "USD" }}</li>',
+      '  {% endfor %}',
+      '</ul>',
+      '',
+      '<p>Total local items cost: {{ localItems | sumArray: "cost" | toCurrency: "USD" }}</p>',
+      '<p>Service duration: {{ 14 | toDuration: "DAYS" }}</p>'
     ].join('\n');
 
     // Initialize Monaco editor

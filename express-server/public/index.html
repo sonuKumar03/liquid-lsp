@@ -199,14 +199,13 @@
       border: 1px solid var(--border-color);
       border-radius: 8px;
       padding: 12px;
-      cursor: pointer;
+      cursor: default;
       transition: all 0.2s ease;
     }
 
     .schema-item:hover {
-      border-color: var(--accent-secondary);
-      background: #334155;
-      transform: translateY(-1px);
+      border-color: rgba(255, 255, 255, 0.15);
+      background: #243049;
     }
 
     .schema-item-header {
@@ -399,7 +398,7 @@
         <div class="sidebar-title">
           <i class="fa-solid fa-database" style="color: var(--accent-secondary);"></i> Predefined Schema
         </div>
-        <p class="sidebar-desc">Click variables to insert them into your template.</p>
+        <p class="sidebar-desc">View variables, types, and example usages below.</p>
       </div>
 
       <div class="schema-list" id="schema-list">
@@ -469,13 +468,21 @@
         let typeLabel = '';
         let descText = '';
         let subfieldsHtml = '';
+        let exampleCode = '';
 
         if (typeof value === 'string') {
           typeLabel = `<span class="schema-type type-${value}">${value}</span>`;
-          descText = `Global contract variable referencing a primitive ${value}.`;
+          if (value === 'currency') {
+            descText = `Currency object containing amount and symbol.`;
+            exampleCode = `{{ ${fullKey}.amount }} (symbol: {{ ${fullKey}.symbol }})`;
+          } else {
+            descText = `Global contract variable referencing a primitive ${value}.`;
+            exampleCode = `{{ ${fullKey} }}`;
+          }
         } else if (value.type === 'dropdown') {
           typeLabel = `<span class="schema-type type-dropdown">dropdown</span>`;
           descText = `Dropdown selection. Valid options: ${value.options.map(o => `"${o}"`).join(', ')}.`;
+          exampleCode = `{% if ${fullKey} == "${value.options[0] || 'Active'}" %}`;
         } else if (value.type === 'composite') {
           typeLabel = `<span class="schema-type type-composite">object</span>`;
           descText = `Structured composite object containing child properties.`;
@@ -491,6 +498,17 @@
             `);
           }
           subfieldsHtml = `<div class="schema-subfields">${subfields.join('')}</div>`;
+
+          const firstField = Object.keys(value.fields)[0];
+          if (firstField) {
+            if (firstField === 'items') {
+              exampleCode = `{{ ${fullKey}.items[0].title }}`;
+            } else {
+              exampleCode = `{{ ${fullKey}.${firstField} }}`;
+            }
+          } else {
+            exampleCode = `${fullKey}`;
+          }
         }
 
         item.innerHTML = `
@@ -500,20 +518,11 @@
           </div>
           <p class="schema-desc">${descText}</p>
           ${subfieldsHtml}
+          <div style="margin-top: 8px; background: rgba(0,0,0,0.3); padding: 6px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--accent-secondary); margin-bottom: 2px; font-weight: 600;">Example Usage</div>
+            <code style="font-family: var(--font-fira); font-size: 0.75rem; color: #e2e8f0; word-break: break-all;">${exampleCode}</code>
+          </div>
         `;
-
-        item.addEventListener('click', () => {
-          if (editor) {
-            const position = editor.getPosition();
-            const textToInsert = `{{ ${fullKey} }}`;
-            editor.executeEdits('schema-click', [{
-              range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
-              text: textToInsert,
-              forceMoveMarkers: true
-            }]);
-            editor.focus();
-          }
-        });
 
         schemaList.appendChild(item);
       }

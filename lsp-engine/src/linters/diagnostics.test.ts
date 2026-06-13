@@ -269,7 +269,7 @@ test('Liquid schema and dropdown options validation', () => new Promise<void>((r
   }));
 }));
 
-test('Liquid manual syntax diagnostics (math in outputs, unclosed curly delimiters)', () => new Promise<void>((resolve) => {
+test('Liquid manual syntax diagnostics (math in outputs)', () => new Promise<void>((resolve) => {
   const child = startLspServer();
   let step = 0;
 
@@ -287,9 +287,7 @@ test('Liquid manual syntax diagnostics (math in outputs, unclosed curly delimite
             languageId: 'liquid',
             version: 1,
             text: [
-              '{{ x + 5 }}',
-              '{{ name',
-              '{% assign y = 10'
+              '{{ x + 5 }}'
             ].join('\n')
           }
         }
@@ -302,12 +300,48 @@ test('Liquid manual syntax diagnostics (math in outputs, unclosed curly delimite
       const mathError = diagnostics.find((d: any) => d.range.start.line === 0 && d.message.includes('inline mathematical operators'));
       expect(mathError).toBeDefined();
 
+      child.kill('SIGINT');
+      resolve();
+    }
+  });
+
+  child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { capabilities: {} } }));
+}));
+
+test('Liquid manual syntax diagnostics (unclosed curly delimiters)', () => new Promise<void>((resolve) => {
+  const child = startLspServer();
+  let step = 0;
+
+  new LSPMessageReader(child.stdout!, (res) => {
+    if (res.method === 'window/logMessage') return;
+
+    if (step === 0 && res.id === 1) {
+      child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', method: 'initialized', params: {} }));
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        method: 'textDocument/didOpen',
+        params: {
+          textDocument: {
+            uri: 'file:///t.liquid',
+            languageId: 'liquid',
+            version: 1,
+            text: [
+              '{{ name',
+              '{% assign y = 10'
+            ].join('\n')
+          }
+        }
+      }));
+      step = 1;
+    } else if (step === 1 && res.method === 'textDocument/publishDiagnostics') {
+      const diagnostics = res.params.diagnostics;
+      
       // 2. Unclosed output delimiter
-      const unclosedOutput = diagnostics.find((d: any) => d.range.start.line === 1 && d.message.includes('not closed'));
+      const unclosedOutput = diagnostics.find((d: any) => d.range.start.line === 0 && d.message.includes('not closed'));
       expect(unclosedOutput).toBeDefined();
 
       // 3. Unclosed tag delimiter
-      const unclosedTag = diagnostics.find((d: any) => d.range.start.line === 2 && d.message.includes('not closed'));
+      const unclosedTag = diagnostics.find((d: any) => d.range.start.line === 1 && d.message.includes('not closed'));
       expect(unclosedTag).toBeDefined();
 
       child.kill('SIGINT');

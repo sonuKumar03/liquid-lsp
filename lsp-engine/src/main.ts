@@ -32,6 +32,10 @@ liquidEngine.registerTag('parseAssign', {
   parse() {},
   render() {}
 });
+liquidEngine.registerTag('assignVar', {
+  parse() {},
+  render() {}
+});
 
 // Debounce map for diagnostic pushes to prevent validation thrashing on rapid keystrokes
 const pendingValidationTimers = new Map<string, NodeJS.Timeout>();

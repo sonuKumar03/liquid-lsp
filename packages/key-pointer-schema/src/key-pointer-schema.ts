@@ -196,6 +196,13 @@ function parseKeyPointerFlatMap(
   return parseVariablesArray(variables);
 }
 
+/**
+ * Parses client variable schema payloads into LiquidType maps.
+ * Accepts three wire formats:
+ *   - { variables: [{ field_name, data_type, options? }] }
+ *   - flat map: { "sd_payment": "currency" }
+ *   - legacy liquid schema: { user: { type: "composite", fields: { ... } } }
+ */
 export function parseVariableSchema(raw: unknown): ParseVariableSchemaResult {
   if (!raw || typeof raw !== 'object') {
     return {

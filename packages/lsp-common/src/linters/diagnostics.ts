@@ -1,5 +1,5 @@
-import { DiagnosticSeverity } from 'vscode-languageserver/node';
-import type { Diagnostic, Connection } from 'vscode-languageserver/node';
+import { DiagnosticSeverity } from 'vscode-languageserver';
+import type { Diagnostic, Connection } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   type Liquid,
@@ -43,6 +43,7 @@ export async function validateTextDocument(
     diagnostics,
     liquidEngine,
     globalSchema,
+    precomputedTokens,
   );
 
   if (schemaLoadErrors && schemaLoadErrors.length > 0) {

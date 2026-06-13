@@ -1,8 +1,8 @@
-import { TextDocuments } from 'vscode-languageserver/node';
+import { TextDocuments } from 'vscode-languageserver';
 import type {
   SignatureHelp,
   SignatureHelpParams,
-} from 'vscode-languageserver/node';
+} from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 const FILTER_SIGNATURES: Record<

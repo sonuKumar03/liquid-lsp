@@ -1,5 +1,9 @@
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
+/**
+ * Debounces per-document validation to avoid thrashing on fast keystrokes.
+ * Default quiet period matches the prior main.ts behavior (150ms).
+ */
 export class DiagnosticsScheduler {
   private readonly pendingValidationTimers = new Map<string, NodeJS.Timeout>();
 

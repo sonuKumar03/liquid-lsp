@@ -2,9 +2,9 @@ import {
   CodeAction,
   CodeActionKind,
   Command,
-} from 'vscode-languageserver/node';
-import type { CodeActionParams } from 'vscode-languageserver/node';
-import { TextDocuments } from 'vscode-languageserver/node';
+} from 'vscode-languageserver';
+import type { CodeActionParams } from 'vscode-languageserver';
+import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   CONDITIONAL_ASSIGNMENT_MESSAGE,

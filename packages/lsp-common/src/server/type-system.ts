@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import {
   mergeVariableSchemas,
   parseVariableSchema,
@@ -12,18 +10,30 @@ export interface TypeSystemLogger {
   error(message: string): void;
 }
 
+export interface WorkspaceSchemaLoader {
+  load(rootPath: string): unknown | null;
+}
+
 const defaultLogger: TypeSystemLogger = {
   log: () => {},
   error: () => {},
 };
 
+/**
+ * Holds client-supplied variable schema state for the LSP session.
+ * Parses key-pointer payloads via key-pointer-schema and optionally merges
+ * workspace `.liquid-schema.json` through an injected loader (Node only).
+ */
 export class TypeSystem {
   private liquidSchema = new Map<string, LiquidType>();
   private schemaLoadErrors: SchemaLoadError[] = [];
   private contextData: Record<string, unknown> = {};
   private workspaceRoot: string | null = null;
 
-  constructor(private readonly logger: TypeSystemLogger = defaultLogger) {}
+  constructor(
+    private readonly logger: TypeSystemLogger = defaultLogger,
+    private readonly workspaceSchemaLoader?: WorkspaceSchemaLoader,
+  ) {}
 
   getLiquidSchema(): Map<string, LiquidType> {
     return this.liquidSchema;
@@ -69,15 +79,17 @@ export class TypeSystem {
   }
 
   loadWorkspaceSchemaFile(rootPath: string): void {
-    const configPath = path.join(rootPath, '.liquid-schema.json');
-    if (!fs.existsSync(configPath)) {
+    if (!this.workspaceSchemaLoader) {
       return;
     }
 
     try {
-      const rawData = fs.readFileSync(configPath, 'utf8');
-      const parsed = JSON.parse(rawData);
-      const fileResult = parseVariableSchema(parsed);
+      const raw = this.workspaceSchemaLoader.load(rootPath);
+      if (!raw) {
+        return;
+      }
+
+      const fileResult = parseVariableSchema(raw);
       const merged = mergeVariableSchemas(
         {
           variables: new Map(),
@@ -89,16 +101,20 @@ export class TypeSystem {
       );
       this.liquidSchema = merged.liquidSchema;
       this.schemaLoadErrors = [...this.schemaLoadErrors, ...merged.errors];
-      this.logger.log(`LSP server: Loaded local schema from ${configPath}`);
+      this.logger.log(
+        `LSP server: Loaded workspace schema for ${rootPath}`,
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.log(`LSP server: Error parsing ${configPath}: ${message}`);
+      this.logger.log(
+        `LSP server: Error loading workspace schema for ${rootPath}: ${message}`,
+      );
       this.schemaLoadErrors = [
         ...this.schemaLoadErrors,
         {
           severity: 'error',
           code: 'key_pointer.schema.load_error',
-          message: `Failed to parse ${configPath}: ${message}`,
+          message: `Failed to load workspace schema for ${rootPath}: ${message}`,
         },
       ];
     }

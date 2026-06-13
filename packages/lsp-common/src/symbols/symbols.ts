@@ -1,23 +1,21 @@
-import { SymbolKind, DocumentSymbol, Range } from 'vscode-languageserver/node';
-import type {
-  DocumentSymbolParams,
-  TextDocuments,
-} from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
-import {
-  TagTokenClass,
-  tokenizeTopLevelSafe,
-} from 'liquid-core';
+import { SymbolKind, DocumentSymbol, Range } from 'vscode-languageserver';
+import type { DocumentSymbolParams } from 'vscode-languageserver';
+import { TagTokenClass } from 'liquid-core';
+import type { Liquid } from 'liquid-core';
+import type { DocumentManager } from '../server/document-manager.js';
 
 export function handleDocumentSymbol(
-  documents: TextDocuments<TextDocument>,
+  documentManager: DocumentManager,
+  liquidEngine: Liquid,
   params: DocumentSymbolParams,
 ): DocumentSymbol[] {
-  const doc = documents.get(params.textDocument.uri);
+  const doc = documentManager.documents.get(params.textDocument.uri);
   if (!doc) return [];
 
-  const text = doc.getText();
-  const tokens = tokenizeTopLevelSafe(text);
+  const tokens = documentManager.getTokens(
+    params.textDocument.uri,
+    liquidEngine,
+  );
 
   const rootSymbols: DocumentSymbol[] = [];
   const stack: { symbol: DocumentSymbol; endTag: string }[] = [];
@@ -33,7 +31,6 @@ export function handleDocumentSymbol(
       const name = token.name;
 
       if (blockStartTags.includes(name)) {
-        // Start of a block tag
         const symbol = DocumentSymbol.create(
           `${name} ${token.args.trim()}`.trim(),
           undefined,
@@ -57,13 +54,11 @@ export function handleDocumentSymbol(
 
       const topItem = stack[stack.length - 1];
       if (name.startsWith('end') && topItem && topItem.endTag === name) {
-        // Close the current block tag
         const top = stack.pop()!;
-        top.symbol.range.end = endPos; // extend block range to the end tag
+        top.symbol.range.end = endPos;
         continue;
       }
 
-      // Check for variable declaration tag (assign)
       if (name === 'assign') {
         const match = token.getText().match(/assign\s+([a-zA-Z0-9_-]+)/);
         if (match && match[1]) {

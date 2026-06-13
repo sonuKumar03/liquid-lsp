@@ -1,10 +1,8 @@
-import { CompletionItemKind } from 'vscode-languageserver/node';
+import { CompletionItemKind } from 'vscode-languageserver';
 import type {
   CompletionItem,
   CompletionParams,
-} from 'vscode-languageserver/node';
-import { TextDocuments } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+} from 'vscode-languageserver';
 import {
   LIQUID_TAGS,
   LIQUID_FILTERS,
@@ -13,12 +11,22 @@ import {
 } from '../shared/constants.js';
 import { resolveTypeForPath } from '../hovers/hovers.js';
 import type { LiquidType } from '../shared/schema.js';
+import { collectVariableNamesFromTokens } from '../shared/token-variables.js';
+import type { DocumentManager } from '../server/document-manager.js';
+import type { Liquid, Token } from 'liquid-core';
 
 export function extractDeclaredVariables(
   text: string,
   globalSchema?: Map<string, LiquidType>,
+  tokens?: Token[],
 ): CompletionItem[] {
   const variables = new Set<string>();
+
+  if (tokens) {
+    for (const name of collectVariableNamesFromTokens(tokens)) {
+      variables.add(name);
+    }
+  }
 
   // 1. {% assign var = ... %}
   const assignPattern = /\{%\s*assign\s+([a-zA-Z0-9_-]+)\s*=/g;
@@ -88,12 +96,21 @@ export function extractDeclaredVariables(
 export function extractLocalVariableTypes(
   text: string,
   globalSchema?: Map<string, LiquidType>,
+  tokens?: Token[],
 ): Map<string, LiquidType> {
   const localTypes = new Map<string, LiquidType>();
 
   if (globalSchema) {
     for (const [k, v] of globalSchema.entries()) {
       localTypes.set(k, v);
+    }
+  }
+
+  if (tokens) {
+    for (const name of collectVariableNamesFromTokens(tokens)) {
+      if (!localTypes.has(name)) {
+        localTypes.set(name, 'unknown');
+      }
     }
   }
 
@@ -204,12 +221,18 @@ export function extractLocalVariableTypes(
  * Handles completion requests (textDocument/completion) from the editor client.
  */
 export function handleCompletion(
-  documents: TextDocuments<TextDocument>,
+  documentManager: DocumentManager,
+  liquidEngine: Liquid,
   params: CompletionParams,
   globalSchema?: Map<string, LiquidType>,
 ): CompletionItem[] {
-  const doc = documents.get(params.textDocument.uri);
+  const doc = documentManager.documents.get(params.textDocument.uri);
   if (!doc) return [];
+
+  const tokens = documentManager.getTokens(
+    params.textDocument.uri,
+    liquidEngine,
+  );
 
   const position = params.position;
   const lineText = doc.getText({
@@ -217,7 +240,11 @@ export function handleCompletion(
     end: position,
   });
 
-  const localSchema = extractLocalVariableTypes(doc.getText(), globalSchema);
+  const localSchema = extractLocalVariableTypes(
+    doc.getText(),
+    globalSchema,
+    tokens,
+  );
 
   // Check if cursor is after a dot for nested property completion (e.g., "user.")
   const lastDot = lineText.lastIndexOf('.');
@@ -389,7 +416,7 @@ export function handleCompletion(
 
     // If a tag name has been written followed by arguments/spaces, suggest variables
     if (parts.length > 1 && parts[0] !== '') {
-      return extractDeclaredVariables(doc.getText(), globalSchema);
+      return extractDeclaredVariables(doc.getText(), globalSchema, tokens);
     }
     return LIQUID_TAGS;
   }
@@ -397,7 +424,7 @@ export function handleCompletion(
   // Check if cursor is inside an output block '{{' (without being closed)
   const lastOutputClose = lineText.lastIndexOf('}}');
   if (lastOutputOpen !== -1 && lastOutputOpen > lastOutputClose) {
-    return extractDeclaredVariables(doc.getText(), globalSchema);
+    return extractDeclaredVariables(doc.getText(), globalSchema, tokens);
   }
 
   return [];

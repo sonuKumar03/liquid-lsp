@@ -1,5 +1,5 @@
-import { CompletionItemKind } from 'vscode-languageserver/node';
-import type { CompletionItem } from 'vscode-languageserver/node';
+import { CompletionItemKind } from 'vscode-languageserver';
+import type { CompletionItem } from 'vscode-languageserver';
 import {
   LIQUID_FILTER_METAS,
   LIQUID_TAG_NAMES,

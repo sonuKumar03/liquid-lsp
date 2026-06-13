@@ -1,6 +1,6 @@
-import { Location, Range } from 'vscode-languageserver/node';
-import type { DefinitionParams } from 'vscode-languageserver/node';
-import { TextDocuments } from 'vscode-languageserver/node';
+import { Location, Range } from 'vscode-languageserver';
+import type { DefinitionParams } from 'vscode-languageserver';
+import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getWordAtPosition } from 'liquid-core';
 import { getVariablePathAtPosition } from '../hovers/hovers.js';

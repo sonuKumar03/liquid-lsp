@@ -90,6 +90,14 @@ app.get('/liquid.js', (req, res) => {
   );
 });
 
+// Serve bundled browser LSP worker (Monaco Web Worker transport)
+app.get('/lsp-worker.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(
+    path.resolve(__dirname, '../../packages/lsp-browser/dist/worker.js'),
+  );
+});
+
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
   console.log('Client connected via WebSocket.');

@@ -2,8 +2,8 @@ import type {
   DocumentOnTypeFormattingParams,
   DocumentFormattingParams,
   TextEdit,
-} from 'vscode-languageserver/node';
-import { TextDocuments } from 'vscode-languageserver/node';
+} from 'vscode-languageserver';
+import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   AUTO_CLOSE_BLOCK_TAG_NAMES,

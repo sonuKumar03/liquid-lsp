@@ -66,6 +66,10 @@ if (fs.existsSync(srcDir)) {
     'lsp-node',
     path.resolve(__dirname, '../packages/lsp-node'),
   );
+  bundleWorkspacePackage(
+    'lsp-browser',
+    path.resolve(__dirname, '../packages/lsp-browser'),
+  );
 
   console.log('Server files copied successfully.');
 } else {

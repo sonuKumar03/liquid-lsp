@@ -7,6 +7,7 @@
     "packages/liquid-core",
     "packages/lsp-common",
     "packages/lsp-node",
+    "packages/lsp-browser",
     "lsp-engine",
     "vscode-extension",
     "express-server"

@@ -1,5 +1,5 @@
-import { DiagnosticSeverity, Range } from 'vscode-languageserver/node';
-import type { Diagnostic } from 'vscode-languageserver/node';
+import { DiagnosticSeverity, Range } from 'vscode-languageserver';
+import type { Diagnostic } from 'vscode-languageserver';
 import type { Liquid, Token, TagToken } from 'liquid-core';
 import {
   Tokenizer,
@@ -27,11 +27,13 @@ export function collectLifecycleDiagnostics(
   diagnostics: Diagnostic[],
   liquidEngine: Liquid,
   globalSchema?: Map<string, LiquidType>,
+  precomputedTokens?: Token[],
 ): void {
   const text = textDocument.getText();
 
   try {
-    const tokens = tokenizeTopLevel(text, liquidEngine);
+    const tokens =
+      precomputedTokens ?? tokenizeTopLevel(text, liquidEngine);
 
     const activeVars = new Map<string, ActiveVar>();
     populateSchemaVars(activeVars, globalSchema);

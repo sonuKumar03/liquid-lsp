@@ -1,5 +1,5 @@
-import { DiagnosticSeverity, Range } from 'vscode-languageserver/node';
-import type { Diagnostic } from 'vscode-languageserver/node';
+import { DiagnosticSeverity, Range } from 'vscode-languageserver';
+import type { Diagnostic } from 'vscode-languageserver';
 import type { SchemaLoadError } from 'key-pointer-schema';
 
 export function schemaLoadErrorsToDiagnostics(

@@ -18,13 +18,31 @@ import { handleDocumentSymbol } from '../symbols/symbols.js';
 import { SERVER_CAPABILITIES } from './capabilities.js';
 import { DocumentManager } from './document-manager.js';
 import { DiagnosticsScheduler } from './diagnostics-scheduler.js';
-import { TypeSystem } from './type-system.js';
+import {
+  TypeSystem,
+  type WorkspaceSchemaLoader,
+} from './type-system.js';
 
-export function startServer(connection: Connection): void {
-  const typeSystem = new TypeSystem({
-    log: (message) => connection.console.log(message),
-    error: (message) => connection.console.error(message),
-  });
+export interface StartServerDependencies {
+  /** Optional loader for `.liquid-schema.json` at workspace root (Node). */
+  workspaceSchemaLoader?: WorkspaceSchemaLoader;
+}
+
+/**
+ * Runtime-agnostic LSP entry point. Wires TypeSystem, DocumentManager,
+ * DiagnosticsScheduler, and all feature handlers onto the given connection.
+ */
+export function startServer(
+  connection: Connection,
+  dependencies: StartServerDependencies = {},
+): void {
+  const typeSystem = new TypeSystem(
+    {
+      log: (message) => connection.console.log(message),
+      error: (message) => connection.console.error(message),
+    },
+    dependencies.workspaceSchemaLoader,
+  );
   const documentManager = new DocumentManager(connection);
   const liquidEngine = createLiquidEngine();
 
@@ -79,7 +97,8 @@ export function startServer(connection: Connection): void {
 
   connection.onCompletion((params) => {
     return handleCompletion(
-      documentManager.documents,
+      documentManager,
+      liquidEngine,
       params,
       typeSystem.getLiquidSchema(),
     );
@@ -114,7 +133,7 @@ export function startServer(connection: Connection): void {
   });
 
   connection.onDocumentSymbol((params) => {
-    return handleDocumentSymbol(documentManager.documents, params);
+    return handleDocumentSymbol(documentManager, liquidEngine, params);
   });
 
   connection.onNotification(

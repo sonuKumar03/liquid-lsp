@@ -53,6 +53,7 @@ export function startServer(
       document,
       liquidEngine,
       typeSystem.getLiquidSchema(),
+      typeSystem.getVariableDeclarations(),
       typeSystem.getSchemaLoadErrors(),
       tokens,
     );

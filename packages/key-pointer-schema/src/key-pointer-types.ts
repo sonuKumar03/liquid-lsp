@@ -81,3 +81,10 @@ export function loadTypeRegistry(): Map<
   cachedRegistry = registry;
   return registry;
 }
+
+export function supportsKeyPointerComputation(
+  dataType: KeyPointerDataType,
+): boolean {
+  const definition = loadTypeRegistry().get(dataType);
+  return definition?.supports_computation ?? false;
+}

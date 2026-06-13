@@ -6,6 +6,7 @@ export {
   isKnownKeyPointerDataType,
   formatKnownKeyPointerDataTypes,
   loadTypeRegistry,
+  supportsKeyPointerComputation,
   type KeyPointerDataType,
   type KeyPointerSelectOption,
   type KeyPointerTypeDefinition,

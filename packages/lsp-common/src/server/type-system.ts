@@ -3,6 +3,7 @@ import {
   parseVariableSchema,
   type LiquidType,
   type SchemaLoadError,
+  type VariableDeclaration,
 } from 'key-pointer-schema';
 
 export interface TypeSystemLogger {
@@ -26,6 +27,7 @@ const defaultLogger: TypeSystemLogger = {
  */
 export class TypeSystem {
   private liquidSchema = new Map<string, LiquidType>();
+  private variableDeclarations = new Map<string, VariableDeclaration>();
   private schemaLoadErrors: SchemaLoadError[] = [];
   private contextData: Record<string, unknown> = {};
   private workspaceRoot: string | null = null;
@@ -37,6 +39,10 @@ export class TypeSystem {
 
   getLiquidSchema(): Map<string, LiquidType> {
     return this.liquidSchema;
+  }
+
+  getVariableDeclarations(): Map<string, VariableDeclaration> {
+    return this.variableDeclarations;
   }
 
   getSchemaLoadErrors(): SchemaLoadError[] {
@@ -68,6 +74,7 @@ export class TypeSystem {
     }
 
     this.liquidSchema = parsed.liquidSchema;
+    this.variableDeclarations = parsed.variables;
     this.schemaLoadErrors = parsed.errors;
 
     if (this.schemaLoadErrors.length > 0) {
@@ -92,7 +99,7 @@ export class TypeSystem {
       const fileResult = parseVariableSchema(raw);
       const merged = mergeVariableSchemas(
         {
-          variables: new Map(),
+          variables: this.variableDeclarations,
           liquidSchema: this.liquidSchema,
           errors: [],
           usedLegacyLiquidSchema: false,
@@ -100,6 +107,7 @@ export class TypeSystem {
         fileResult,
       );
       this.liquidSchema = merged.liquidSchema;
+      this.variableDeclarations = merged.variables;
       this.schemaLoadErrors = [...this.schemaLoadErrors, ...merged.errors];
       this.logger.log(
         `LSP server: Loaded workspace schema for ${rootPath}`,

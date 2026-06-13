@@ -3,6 +3,8 @@ export const SCHEMA_ERROR_CODES = {
   INVALID_VARIABLE_DECLARATION: 'key_pointer.schema.invalid_variable',
   DUPLICATE_VARIABLE: 'key_pointer.schema.duplicate_variable',
   SCHEMA_LOAD_ERROR: 'key_pointer.schema.load_error',
+  COMPUTATION_ASSIGN_NOT_SUPPORTED:
+    'key_pointer.computation.assign_not_supported',
 } as const;
 
 export type SchemaErrorCode =

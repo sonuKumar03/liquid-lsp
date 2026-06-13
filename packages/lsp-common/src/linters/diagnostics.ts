@@ -13,7 +13,7 @@ import {
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 import type { LiquidType } from '../shared/schema.js';
-import type { SchemaLoadError } from 'key-pointer-schema';
+import type { SchemaLoadError, VariableDeclaration } from 'key-pointer-schema';
 import { schemaLoadErrorsToDiagnostics } from '../shared/schema-load-errors.js';
 import { collectEngineValidationDiagnostics } from '../shared/engine-validations.js';
 import { collectLifecycleDiagnostics } from './lifecycle.js';
@@ -23,6 +23,7 @@ export async function validateTextDocument(
   textDocument: TextDocument,
   liquidEngine: Liquid,
   globalSchema?: Map<string, LiquidType>,
+  schemaVariables?: Map<string, VariableDeclaration>,
   schemaLoadErrors?: SchemaLoadError[],
   precomputedTokens?: Token[],
 ): Promise<void> {
@@ -44,6 +45,7 @@ export async function validateTextDocument(
     diagnostics,
     liquidEngine,
     globalSchema,
+    schemaVariables,
     precomputedTokens,
   );
 

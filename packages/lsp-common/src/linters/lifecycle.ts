@@ -17,6 +17,8 @@ import {
 import { MATH_FILTERS, STRING_FILTERS } from '../shared/local-variable-types.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { LiquidType } from '../shared/schema.js';
+import type { VariableDeclaration } from 'key-pointer-schema';
+import { supportsKeyPointerComputation } from 'key-pointer-schema';
 import { findVariableDeclarations } from '../shared/variable-declarations.js';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 
@@ -32,6 +34,7 @@ export function collectLifecycleDiagnostics(
   diagnostics: Diagnostic[],
   liquidEngine: Liquid,
   globalSchema?: Map<string, LiquidType>,
+  schemaVariables?: Map<string, VariableDeclaration>,
   precomputedTokens?: Token[],
 ): void {
   const text = textDocument.getText();
@@ -57,6 +60,7 @@ export function collectLifecycleDiagnostics(
           activeVars,
           line,
           liquidEngine,
+          schemaVariables,
         );
       } else if (token.kind === TokenKind.Output) {
         const expr = token.getText().slice(2, -2).trim();
@@ -100,6 +104,7 @@ function collectTagDiagnostics(
   activeVars: Map<string, ActiveVar>,
   line: number,
   engine: Liquid,
+  schemaVariables?: Map<string, VariableDeclaration>,
 ): void {
   const tokenText = token.getText();
   const name = token.name;
@@ -110,6 +115,14 @@ function collectTagDiagnostics(
       const varName = parsed.key;
       const expr = parsed.value;
       const prev = activeVars.get(varName);
+
+      validateNonComputableSchemaAssignment(
+        doc,
+        diagnostics,
+        token,
+        varName,
+        schemaVariables,
+      );
 
       const inferredType =
         name === 'parseAssign'
@@ -234,6 +247,48 @@ function validateDropdownValue(
     severity: DiagnosticSeverity.Warning,
     range: Range.create(doc.positionAt(tokenBegin), doc.positionAt(tokenEnd)),
     message: `Value "${strVal}" is not a valid option for dropdown variable "${varName}". Valid options are: ${prev.type.options.map((o) => `"${o}"`).join(', ')}.`,
+    source: 'liquid-lsp-linter',
+  });
+}
+
+function validateNonComputableSchemaAssignment(
+  doc: TextDocument,
+  diagnostics: Diagnostic[],
+  token: TagToken,
+  varName: string,
+  schemaVariables?: Map<string, VariableDeclaration>,
+): void {
+  if (!schemaVariables?.has(varName)) {
+    return;
+  }
+
+  const declaration = schemaVariables.get(varName);
+  if (!declaration || supportsKeyPointerComputation(declaration.data_type)) {
+    return;
+  }
+
+  const tokenText = token.getText();
+  const offset = tokenText.indexOf(varName);
+  const start = {
+    line: doc.positionAt(token.begin).line,
+    character:
+      doc.positionAt(token.begin).character +
+      (offset !== -1 ? offset : 0),
+  };
+  const end = {
+    line: start.line,
+    character: start.character + varName.length,
+  };
+
+  diagnostics.push({
+    severity: DiagnosticSeverity.Warning,
+    range: Range.create(start, end),
+    message: `Variable "${varName}" has key-pointer type "${declaration.data_type}", which does not support liquid computation assignments.`,
+    code: DIAGNOSTIC_CODES.COMPUTATION_ASSIGN_NOT_SUPPORTED,
+    data: {
+      field_name: varName,
+      data_type: declaration.data_type,
+    },
     source: 'liquid-lsp-linter',
   });
 }

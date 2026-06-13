@@ -11,6 +11,7 @@ import {
   isKnownKeyPointerDataType,
   KNOWN_KEY_POINTER_DATA_TYPES,
   loadTypeRegistry,
+  supportsKeyPointerComputation,
 } from './key-pointer-types.js';
 import { keyPointerTypeToLiquid } from './key-pointer-to-liquid.js';
 
@@ -28,6 +29,12 @@ describe('key-pointer-types', () => {
   it('rejects unknown type strings', () => {
     expect(isKnownKeyPointerDataType('currency')).toBe(true);
     expect(isKnownKeyPointerDataType('bogus')).toBe(false);
+  });
+
+  it('reports computation support from the type registry', () => {
+    expect(supportsKeyPointerComputation('currency')).toBe(true);
+    expect(supportsKeyPointerComputation('address')).toBe(false);
+    expect(supportsKeyPointerComputation('rich-text')).toBe(false);
   });
 });
 

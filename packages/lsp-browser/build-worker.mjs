@@ -28,6 +28,16 @@ const nodeBuiltinStubs = {
     }
     export default { fileURLToPath };
   `,
+  module: `
+    export function createRequire(url) {
+      const req = (id) => {
+        throw new Error('createRequire is not available in the browser worker: ' + id);
+      };
+      req.resolve = () => '';
+      return req;
+    }
+    export default { createRequire };
+  `,
   assert: `
     export default function assert(value, message) {
       if (!value) throw new Error(message ?? 'Assertion failed');

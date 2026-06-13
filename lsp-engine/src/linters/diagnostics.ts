@@ -11,9 +11,9 @@ import {
   EXPECTED_FILTER_NAME_MESSAGE,
   hasInlineMathOperators,
   hasSingleEqualsAssignment,
-  isConditionalTagLine,
-  SINGLE_EQUALS_ASSIGNMENT_REGEX
+  isConditionalTagLine
 } from '../shared/liquid-syntax.js';
+import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 import { findVariableDeclarations } from '../definitions/definitions.js';
 import type { LiquidType } from '../shared/schema.js';
 
@@ -27,11 +27,9 @@ export async function validateTextDocument(
   const text = textDocument.getText();
   const diagnostics: Diagnostic[] = [];
 
-  checkUnclosedDelimiters(text, diagnostics, textDocument);
-
   collectSyntaxDiagnostics(textDocument, diagnostics, liquidEngine);
-  checkVariableLifecycles(textDocument, diagnostics, globalSchema);
-  checkUnusedVariables(textDocument, diagnostics);
+  collectLifecycleDiagnostics(textDocument, diagnostics, globalSchema);
+  collectUsageDiagnostics(textDocument, diagnostics);
 
   // Asynchronously send/push the diagnostics back to the editor
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
@@ -91,6 +89,7 @@ function collectSyntaxDiagnostics(
             severity: DiagnosticSeverity.Error,
             range: { start, end },
             message: getEnhancedErrorMessage(EXPECTED_FILTER_NAME_MESSAGE, lineText),
+            code: DIAGNOSTIC_CODES.EXPECTED_FILTER_NAME,
             source: 'liquid-lsp'
           });
           continue;
@@ -410,6 +409,8 @@ function processExpression(
           severity: DiagnosticSeverity.Warning,
           range: { start, end },
           message,
+          code: DIAGNOSTIC_CODES.UNKNOWN_FILTER,
+          data: { filterName, suggestedFilter: closestFilter },
           source: 'liquid-lsp-linter'
         });
       }
@@ -545,13 +546,14 @@ function checkVariableLifecycles(
 
       // 1. Check single equals assignment inside conditionals (if, unless, elsif, when)
       if (isConditionalTagLine(name)) {
-        if (SINGLE_EQUALS_ASSIGNMENT_REGEX.test(textWithoutQuotes)) {
+        if (hasSingleEqualsAssignment(textWithoutQuotes)) {
           const start = doc.positionAt(token.begin);
           const end = doc.positionAt(token.end);
           pushUniqueDiagnostic(diagnostics, {
             severity: DiagnosticSeverity.Error,
             range: { start, end },
             message: 'Assignments are not allowed inside conditional statements. Did you mean "=="?',
+            code: DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT,
             source: 'liquid-lsp'
           });
         }
@@ -565,6 +567,7 @@ function checkVariableLifecycles(
           severity: DiagnosticSeverity.Error,
           range: { start, end },
           message: 'Liquid does not support inline mathematical operators. Use filters instead, e.g. "| plus: 2".',
+          code: DIAGNOSTIC_CODES.INLINE_MATH,
           source: 'liquid-lsp'
         });
       }
@@ -577,6 +580,7 @@ function checkVariableLifecycles(
           severity: DiagnosticSeverity.Error,
           range: { start, end },
           message: 'Liquid does not support inline mathematical operators. Use filters instead, e.g. "| plus: 2".',
+          code: DIAGNOSTIC_CODES.INLINE_MATH,
           source: 'liquid-lsp'
         });
       }
@@ -795,15 +799,30 @@ function checkUnclosedDelimiters(text: string, diagnostics: Diagnostic[], doc: T
       const end = doc.positionAt(endIdx);
 
       const rawTag = text.slice(startIdx, endIdx).trim();
+      const tagName = rawTag.match(/^\{%\s*(\w+)/)?.[1] ?? '';
 
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
         range: { start, end },
         message: `tag ${rawTag} not closed`,
+        code: DIAGNOSTIC_CODES.UNCLOSED_DELIMITER,
+        data: { tagName, rawTag },
         source: 'liquid-lsp'
       });
     }
   }
+}
+
+function collectLifecycleDiagnostics(
+  textDocument: TextDocument,
+  diagnostics: Diagnostic[],
+  globalSchema?: Map<string, LiquidType>
+): void {
+  checkVariableLifecycles(textDocument, diagnostics, globalSchema);
+}
+
+function collectUsageDiagnostics(textDocument: TextDocument, diagnostics: Diagnostic[]): void {
+  checkUnusedVariables(textDocument, diagnostics);
 }
 
 function pushUniqueDiagnostic(diagnostics: Diagnostic[], diag: Diagnostic): void {

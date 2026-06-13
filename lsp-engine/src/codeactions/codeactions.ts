@@ -7,6 +7,7 @@ import {
   INLINE_MATH_OPERATOR_MESSAGE,
   SINGLE_EQUALS_ASSIGNMENT_REGEX
 } from '../shared/liquid-syntax.js';
+import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 import { convertToLiquidMath } from '../shared/utils.js';
 
 export function handleCodeAction(
@@ -32,11 +33,13 @@ export function handleCodeAction(
     if (typeof message !== 'string') {
       continue;
     }
+    const data = diagnostic.data as
+      | { tagName?: string; suggestedFilter?: string }
+      | undefined;
 
-    // 1. Pattern to match: "tag {% name ... %} not closed"
-    const match = message.match(/tag \{%\s*(\w+).*?%\} not closed/);
-    if (match && match[1]) {
-      const tagName = match[1];
+    if (diagnostic.code === DIAGNOSTIC_CODES.UNCLOSED_DELIMITER) {
+      const tagName = data?.tagName ?? null;
+      if (!tagName) continue;
       const endTagName = `end${tagName}`;
 
       // Insert the closing tag at the end of the document
@@ -65,35 +68,36 @@ export function handleCodeAction(
       );
       action.diagnostics = [diagnostic];
       codeActions.push(action);
+      continue;
     }
 
-    // 2. Pattern to match: Unknown filter "name". Did you mean "closest"?
-    const filterMatch = message.match(/Unknown filter "([a-zA-Z0-9_-]+)"\. Did you mean "([a-zA-Z0-9_-]+)"\?/);
-    if (filterMatch && filterMatch[1] && filterMatch[2]) {
-      const suggestedFilter = filterMatch[2];
+    if (diagnostic.code === DIAGNOSTIC_CODES.UNKNOWN_FILTER) {
+      const suggestedFilter = data?.suggestedFilter;
+      if (suggestedFilter) {
 
-      const edit = {
-        changes: {
-          [params.textDocument.uri]: [
-            {
-              range: diagnostic.range,
-              newText: suggestedFilter
-            }
-          ]
-        }
-      };
+        const edit = {
+          changes: {
+            [params.textDocument.uri]: [
+              {
+                range: diagnostic.range,
+                newText: suggestedFilter
+              }
+            ]
+          }
+        };
 
-      const action = CodeAction.create(
-        `Change to "${suggestedFilter}"`,
-        edit,
-        CodeActionKind.QuickFix
-      );
-      action.diagnostics = [diagnostic];
-      codeActions.push(action);
+        const action = CodeAction.create(
+          `Change to "${suggestedFilter}"`,
+          edit,
+          CodeActionKind.QuickFix
+        );
+        action.diagnostics = [diagnostic];
+        codeActions.push(action);
+      }
     }
 
     // 3. Pattern to match: "Liquid does not support inline mathematical operators"
-    if (message.includes(INLINE_MATH_OPERATOR_MESSAGE)) {
+    if (diagnostic.code === DIAGNOSTIC_CODES.INLINE_MATH || message.includes(INLINE_MATH_OPERATOR_MESSAGE)) {
       const startLine = diagnostic.range.start.line;
       const lineText = doc.getText({
         start: { line: startLine, character: 0 },
@@ -127,7 +131,7 @@ export function handleCodeAction(
     }
 
     // 4. Pattern to match: "Assignments are not allowed inside conditional statements"
-    if (message.includes(CONDITIONAL_ASSIGNMENT_MESSAGE)) {
+    if (diagnostic.code === DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT || message.includes(CONDITIONAL_ASSIGNMENT_MESSAGE)) {
       const startLine = diagnostic.range.start.line;
       const lineText = doc.getText({
         start: { line: startLine, character: 0 },

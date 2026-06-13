@@ -351,3 +351,54 @@ test('Liquid manual syntax diagnostics (unclosed curly delimiters)', () => new P
 
   child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { capabilities: {} } }));
 }));
+
+test('Liquid filter name syntax diagnostics', () => new Promise<void>((resolve) => {
+  const child = startLspServer();
+  let step = 0;
+
+  new LSPMessageReader(child.stdout!, (res) => {
+    if (res.method === 'window/logMessage') return;
+
+    if (step === 0 && res.id === 1) {
+      child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', method: 'initialized', params: {} }));
+      child.stdin?.write(formatLSPMessage({
+        jsonrpc: '2.0',
+        method: 'textDocument/didOpen',
+        params: {
+          textDocument: {
+            uri: 'file:///t.liquid',
+            languageId: 'liquid',
+            version: 1,
+            text: [
+              '{% assignVar name = user.first_name | "uppercase" %}',
+              '{% assignVar age = 30 | invalidFilter %}',
+              '{% assign x = "hello | world" %}'
+            ].join('\n')
+          }
+        }
+      }));
+      step = 1;
+    } else if (step === 1 && res.method === 'textDocument/publishDiagnostics') {
+      const diagnostics = res.params.diagnostics;
+
+      // 1. Invalid filter name syntax (expected filter name) on line 0
+      const syntaxError = diagnostics.find((d: any) => d.range.start.line === 0 && d.message.includes('Expected filter name'));
+      expect(syntaxError).toBeDefined();
+      expect(syntaxError.severity).toBe(1); // Error
+
+      // 2. Unknown filter warning on line 1
+      const unknownFilter = diagnostics.find((d: any) => d.range.start.line === 1 && d.message.includes('Unknown filter'));
+      expect(unknownFilter).toBeDefined();
+      expect(unknownFilter.severity).toBe(2); // Warning
+
+      // 3. String literal containing pipe should NOT cause filter diagnostics on line 2
+      const line2FilterDiagnostics = diagnostics.filter((d: any) => d.range.start.line === 2 && d.message.toLowerCase().includes('filter'));
+      expect(line2FilterDiagnostics.length).toBe(0);
+
+      child.kill('SIGINT');
+      resolve();
+    }
+  });
+
+  child.stdin?.write(formatLSPMessage({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { capabilities: {} } }));
+}));

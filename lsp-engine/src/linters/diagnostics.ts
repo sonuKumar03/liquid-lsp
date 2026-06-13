@@ -153,33 +153,7 @@ export async function validateTextDocument(
     }
   }
 
-  // 2. Check for Semantic Warnings (Option B: Unknown Filters Linter)
-  const filterPattern = /\|\s*([a-zA-Z0-9_-]+)/g;
-  let match: RegExpExecArray | null;
-  while ((match = filterPattern.exec(text))) {
-    const filterName = match[1];
-    if (!filterName) continue;
-    // Check if it is a known filter
-    const isKnown = LIQUID_FILTERS.some(f => f.label === filterName);
-    if (!isKnown) {
-      const matchIndex = match.index;
-      const filterOffset = match[0].indexOf(filterName);
-      const start = textDocument.positionAt(matchIndex + filterOffset);
-      const end = textDocument.positionAt(matchIndex + filterOffset + filterName.length);
 
-      const closestFilter = getClosestFilter(filterName);
-      const message = closestFilter 
-        ? `Unknown filter "${filterName}". Did you mean "${closestFilter}"?`
-        : `Unknown filter "${filterName}".`;
-
-      diagnostics.push({
-        severity: DiagnosticSeverity.Warning,
-        range: { start, end },
-        message,
-        source: 'liquid-lsp-linter'
-      });
-    }
-  }
 
   // 3. Check for lifecycles, redundant redefinitions, and type mismatches
   checkVariableLifecycles(textDocument, diagnostics, globalSchema);
@@ -379,6 +353,64 @@ function processExpression(
   diagnostics: Diagnostic[],
   activeVars: Map<string, { declRange: Range; line: number; hasBeenRead: boolean; type: LiquidType }>
 ): LiquidType {
+  // 1. Strict filter syntax and validity checking
+  const spacedExpr = expr.replace(/"[^"]*"/g, (m) => '"' + ' '.repeat(m.length - 2) + '"')
+                         .replace(/'[^']*'/g, (m) => "'" + ' '.repeat(m.length - 2) + "'");
+
+  let pipeIdx = spacedExpr.indexOf('|');
+  while (pipeIdx !== -1) {
+    const afterPipe = expr.substring(pipeIdx + 1);
+    const trimmedAfterPipe = afterPipe.trimStart();
+    const leadingWhitespaceLen = afterPipe.length - trimmedAfterPipe.length;
+    const filterNameStart = pipeIdx + 1 + leadingWhitespaceLen;
+
+    const filterNameMatch = trimmedAfterPipe.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)/);
+    if (!filterNameMatch) {
+      // Syntax error: expected filter name!
+      const tokenText = token.getText();
+      const exprOffsetInToken = tokenText.indexOf(expr);
+      const errorStartOffset = token.begin + (exprOffsetInToken !== -1 ? exprOffsetInToken : 0) + filterNameStart;
+
+      const matchWord = trimmedAfterPipe.match(/^[^\s|]*/);
+      const highlightLen = Math.max(1, matchWord ? matchWord[0].length : 1);
+
+      const start = doc.positionAt(errorStartOffset);
+      const end = doc.positionAt(errorStartOffset + highlightLen);
+
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range: { start, end },
+        message: 'Expected filter name.',
+        source: 'liquid-lsp-linter'
+      });
+    } else {
+      const filterName = filterNameMatch[1]!;
+      const isKnown = LIQUID_FILTERS.some(f => f.label === filterName);
+      if (!isKnown) {
+        // Unknown filter warning
+        const tokenText = token.getText();
+        const exprOffsetInToken = tokenText.indexOf(expr);
+        const errorStartOffset = token.begin + (exprOffsetInToken !== -1 ? exprOffsetInToken : 0) + filterNameStart;
+
+        const start = doc.positionAt(errorStartOffset);
+        const end = doc.positionAt(errorStartOffset + filterName.length);
+
+        const closestFilter = getClosestFilter(filterName);
+        const message = closestFilter 
+          ? `Unknown filter "${filterName}". Did you mean "${closestFilter}"?`
+          : `Unknown filter "${filterName}".`;
+
+        diagnostics.push({
+          severity: DiagnosticSeverity.Warning,
+          range: { start, end },
+          message,
+          source: 'liquid-lsp-linter'
+        });
+      }
+    }
+    pipeIdx = spacedExpr.indexOf('|', pipeIdx + 1);
+  }
+
   const cleanExpr = expr.replace(/"[^"]*"/g, '""').replace(/'[^']*'/g, "''");
 
   const parts = cleanExpr.split('|');

@@ -109,6 +109,7 @@ For browser-based editors (like Monaco Editor) that cannot launch local child pr
    ```
    This exposes a WebSocket LSP gateway endpoint at `ws://localhost:3000/lsp`.
 2. Connect your Monaco Editor (or web client) to the WebSocket endpoint to receive real-time lints, diagnostics, completions, and hover documentation.
+3. **Angular Integration**: For a step-by-step example of setting up Monaco Editor inside an Angular application and linking it to this WebSocket gateway, refer to the [Angular Integration Guide](./angular_integration.md).
 
 ---
 

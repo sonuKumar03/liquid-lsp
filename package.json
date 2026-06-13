@@ -5,8 +5,7 @@
   "workspaces": [
     "lsp-engine",
     "vscode-extension",
-    "express-server",
-    "liquidjs"
+    "express-server"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

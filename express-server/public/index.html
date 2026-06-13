@@ -259,6 +259,55 @@
       padding: 24px;
       font-style: italic;
     }
+
+    /* Light Theme Styling Overrides */
+    body.light-theme {
+      --bg-main: #f8fafc;
+      --bg-panel: #ffffff;
+      --border-color: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+    }
+
+    body.light-theme .brand-title {
+      background: linear-gradient(to right, #0f172a, #475569);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    body.light-theme .status-indicator {
+      background: #f1f5f9;
+    }
+
+    body.light-theme .btn {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      border-color: #cbd5e1;
+    }
+
+    body.light-theme .btn:hover {
+      background-color: #e2e8f0;
+      border-color: #94a3b8;
+    }
+
+    body.light-theme .btn-primary {
+      background: linear-gradient(135deg, var(--accent-primary), #7c3aed);
+      border: none;
+      color: white;
+    }
+
+    body.light-theme .btn-primary:hover {
+      background: linear-gradient(135deg, #be185d, var(--accent-primary));
+    }
+
+    body.light-theme .diagnostics-header {
+      background-color: #f1f5f9;
+      border-bottom: 1px solid #cbd5e1;
+    }
+
+    body.light-theme .diagnostic-entry {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
   </style>
 </head>
 <body>
@@ -275,6 +324,9 @@
         <div class="status-dot" id="status-dot"></div>
         <span id="status-text">Connecting...</span>
       </div>
+      <button class="btn" id="btn-theme-toggle">
+        <i class="fa-solid fa-sun" id="theme-icon"></i> <span id="theme-text">Light Mode</span>
+      </button>
       <button class="btn btn-primary" id="btn-format">
         <i class="fa-solid fa-wand-magic-sparkles"></i> Format Template
       </button>
@@ -356,8 +408,14 @@
     monaco.languages.register({ id: 'liquid' });
     const model = monaco.editor.createModel(initialText, 'liquid', monaco.Uri.parse('inmemory://model/1'));
     
-    // Custom VS-Dark-based editor layout
-    monaco.editor.defineTheme('spotdraft-dark', {
+    // Load saved theme preference
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    if (savedTheme === 'light') {
+      document.body.classList.add('light-theme');
+    }
+
+    // Custom dark theme definition
+    monaco.editor.defineTheme('liquid-dark', {
       base: 'vs-dark',
       inherit: true,
       rules: [
@@ -373,9 +431,26 @@
       }
     });
 
+    // Custom light theme definition
+    monaco.editor.defineTheme('liquid-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'keyword', foreground: '7c3aed', fontStyle: 'bold' },
+        { token: 'string', foreground: '059669' },
+        { token: 'number', foreground: 'd97706' }
+      ],
+      colors: {
+        'editor.background': '#ffffff',
+        'editor.lineHighlightBackground': '#f1f5f9',
+        'editorLineNumber.foreground': '#94a3b8',
+        'editorLineNumber.activeForeground': '#7c3aed'
+      }
+    });
+
     const editor = monaco.editor.create(document.getElementById('monaco-editor'), {
       model: model,
-      theme: 'spotdraft-dark',
+      theme: savedTheme === 'light' ? 'liquid-light' : 'liquid-dark',
       automaticLayout: true,
       fontSize: 14,
       fontFamily: "'Fira Code', monospace",
@@ -593,6 +668,31 @@
     // Handle manual format button click
     document.getElementById('btn-format').addEventListener('click', () => {
       editor.getAction('editor.action.formatDocument').run();
+    });
+
+    // Theme toggling event listener
+    const btnThemeToggle = document.getElementById('btn-theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    const themeText = document.getElementById('theme-text');
+
+    if (savedTheme === 'light') {
+      themeIcon.className = 'fa-solid fa-moon';
+      themeText.textContent = 'Dark Mode';
+    }
+
+    btnThemeToggle.addEventListener('click', () => {
+      const isLight = document.body.classList.toggle('light-theme');
+      if (isLight) {
+        themeIcon.className = 'fa-solid fa-moon';
+        themeText.textContent = 'Dark Mode';
+        monaco.editor.setTheme('liquid-light');
+        localStorage.setItem('theme', 'light');
+      } else {
+        themeIcon.className = 'fa-solid fa-sun';
+        themeText.textContent = 'Light Mode';
+        monaco.editor.setTheme('liquid-dark');
+        localStorage.setItem('theme', 'dark');
+      }
     });
 
     // Collapsible diagnostics shelf toggle

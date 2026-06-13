@@ -18,7 +18,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.min.css"
     />
     <!-- LiquidJS Browser Build -->
-    <script src="https://cdn.jsdelivr.net/npm/liquidjs@10.19.0/dist/liquid.browser.min.js"></script>
+    <script src="/liquid.js"></script>
     <style>
       :root {
         --bg-main: #0b0f19;
@@ -1122,49 +1122,7 @@
         });
 
         // Client-side LiquidJS Engine Setup
-        const liquid = new liquidjs.Liquid();
-
-        // Register Custom Tags matching LSP Environment
-        liquid.registerTag('assignVar', {
-          parse(tagToken) {
-            const match = tagToken.args.match(/([a-zA-Z0-9_-]+)\s*=\s*(.*)/);
-            if (match) {
-              this.key = match[1];
-              this.valExpr = match[2];
-            }
-          },
-          async render(context) {
-            if (!this.key) return;
-            const val = await this.liquid.evalValue(this.valExpr, context);
-            context.set(this.key, val);
-          },
-        });
-
-        liquid.registerTag('parseAssign', {
-          parse(tagToken) {
-            const match = tagToken.args.match(/([a-zA-Z0-9_-]+)\s*=\s*(.*)/);
-            if (match) {
-              this.key = match[1];
-              this.valExpr = match[2];
-            }
-          },
-          async render(context) {
-            if (!this.key) return;
-            const valStr = await this.liquid.evalValue(this.valExpr, context);
-            let parsed = null;
-            try {
-              parsed = JSON.parse(valStr);
-            } catch (e) {
-              console.error('parseAssign JSON parsing error', e);
-            }
-            context.set(this.key, parsed);
-          },
-        });
-
-        liquid.registerTag('computeColumn', {
-          parse() {},
-          render() {},
-        });
+        const liquid = new Liquid();
 
         // Register Custom Filters matching LSP Environment
         liquid.registerFilter('sumArray', (arr, key) => {

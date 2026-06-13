@@ -177,3 +177,110 @@ test('Liquid variable auto-completions', () =>
       }),
     );
   }));
+
+test('Liquid schema variable and property dot-completions', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{{ user.\n{{ ',
+              },
+            },
+          }),
+        );
+
+        // 1. Trigger dot completions on "user." (line 0, character 8)
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/completion',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 0, character: 8 },
+            },
+          }),
+        );
+
+        step = 1;
+      } else if (step === 1 && res.id === 2) {
+        const items = res.result;
+        expect(items.length).toBeGreaterThan(0);
+        // Verify that fields of composite type 'user' are returned
+        const hasFirstName = items.some(
+          (item: any) => item.label === 'first_name',
+        );
+        expect(hasFirstName).toBe(true);
+
+        // 2. Trigger variable completions in output block (line 1, character 3)
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 3,
+            method: 'textDocument/completion',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 1, character: 3 },
+            },
+          }),
+        );
+
+        step = 2;
+      } else if (step === 2 && res.id === 3) {
+        const items = res.result;
+        expect(items.length).toBeGreaterThan(0);
+        // Verify that top-level schema variables are suggested
+        const hasUser = items.some((item: any) => item.label === 'user');
+        const hasStatus = items.some((item: any) => item.label === 'status');
+        expect(hasUser).toBe(true);
+        expect(hasStatus).toBe(true);
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    // Initialize with initializationOptions schema
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          capabilities: {},
+          initializationOptions: {
+            schema: {
+              status: { type: 'string' },
+              user: {
+                type: 'composite',
+                fields: {
+                  first_name: { type: 'string' },
+                  last_name: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      }),
+    );
+  }));

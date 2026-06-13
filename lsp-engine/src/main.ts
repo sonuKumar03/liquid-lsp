@@ -89,7 +89,7 @@ connection.onInitialize((params) => {
       textDocumentSync: TextDocumentSyncKind.Incremental,
       completionProvider: {
         resolveProvider: true,
-        triggerCharacters: [' ', '|'],
+        triggerCharacters: [' ', '|', '.'],
       },
       hoverProvider: true,
       documentOnTypeFormattingProvider: {
@@ -136,7 +136,7 @@ connection.onHover((params) => {
 
 // Autocomplete suggestions (Triggered on typing. Implemented in src/completions/completions.ts)
 connection.onCompletion((params) => {
-  return handleCompletion(documents, params);
+  return handleCompletion(documents, params, globalSchema);
 });
 
 // Resolve lazy documentation for completions (Loads filter/tag docs dynamically. Implemented in src/completions/completions.ts)

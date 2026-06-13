@@ -83,6 +83,13 @@ app.get('/', (req, res) => {
   res.sendFile(path.resolve(__dirname, '../public/index.html'));
 });
 
+// Serve local SpotDraft LiquidJS browser build
+app.get('/liquid.js', (req, res) => {
+  res.sendFile(
+    path.resolve(__dirname, '../../node_modules/liquidjs/dist/liquid.js'),
+  );
+});
+
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
   console.log('Client connected via WebSocket.');

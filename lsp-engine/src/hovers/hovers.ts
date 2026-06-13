@@ -51,29 +51,28 @@ export function resolveTypeForPath(
     if (!fieldNameRaw) continue;
     const fieldName = fieldNameRaw.replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
 
-    if (typeof currentType === 'object') {
-      if (currentType.kind === 'composite') {
-        const nextType = currentType.fields.get(fieldName);
-        if (nextType) {
-          currentType = nextType;
-        } else {
-          return 'unknown';
-        }
+    const currentTypeStr =
+      typeof currentType === 'object' && currentType.kind === 'primitive'
+        ? currentType.type
+        : currentType;
+
+    if (typeof currentType === 'object' && currentType.kind === 'composite') {
+      const nextType = currentType.fields.get(fieldName);
+      if (nextType) {
+        currentType = nextType;
+      } else {
+        return 'unknown';
+      }
+    } else if (currentTypeStr === 'currency') {
+      if (fieldName === 'amount') {
+        currentType = 'number';
+      } else if (fieldName === 'symbol') {
+        currentType = 'string';
       } else {
         return 'unknown';
       }
     } else {
-      if (currentType === 'currency') {
-        if (fieldName === 'amount') {
-          currentType = 'number';
-        } else if (fieldName === 'symbol') {
-          currentType = 'string';
-        } else {
-          return 'unknown';
-        }
-      } else {
-        return 'unknown';
-      }
+      return 'unknown';
     }
   }
 
@@ -84,14 +83,18 @@ export function formatLiquidType(type: LiquidType): string {
   if (typeof type === 'string') {
     return `\`${type}\``;
   }
+  const optStr = type.optional ? ' (optional)' : '';
+  if (type.kind === 'primitive') {
+    return `\`${type.type}\`${optStr}`;
+  }
   if (type.kind === 'dropdown') {
-    return `\`dropdown\` (Options: ${type.options.map((o) => `"${o}"`).join(', ')})`;
+    return `\`dropdown\` (Options: ${type.options.map((o) => `"${o}"`).join(', ')})${optStr}`;
   }
   if (type.kind === 'composite') {
     const fieldsStr = Array.from(type.fields.keys())
       .map((k) => `"${k}"`)
       .join(', ');
-    return `\`object\` (Fields: ${fieldsStr})`;
+    return `\`object\` (Fields: ${fieldsStr})${optStr}`;
   }
   return '`unknown`';
 }

@@ -626,6 +626,8 @@
           '<h3>User Information</h3>',
           'User Name: <b>{{ username }}</b><br>',
           'Account Status: <i>{{ status }}</i><br>',
+          '{% comment %} TRY: user.address is optional, so accessing zipcode below shows a warning. {% endcomment %}',
+          'Zipcode: <b>{{ user.address.zipcode }}</b><br>',
           '',
           '{% comment %} 1. Conditional comparison & Dropdown Option Check {% endcomment %}',
           '{% comment %} TRY: Click the lightbulb on "status = \'Active\'" to correct the conditional comparison error! {% endcomment %}',
@@ -922,6 +924,29 @@
           },
         });
 
+        // Go-to-Definition Provider
+        monaco.languages.registerDefinitionProvider('liquid', {
+          provideDefinition: async function (model, position) {
+            const res = await sendRequest('textDocument/definition', {
+              textDocument: { uri: 'inmemory://model/1' },
+              position: {
+                line: position.lineNumber - 1,
+                character: position.column - 1,
+              },
+            });
+            if (!res) return null;
+            return {
+              uri: monaco.Uri.parse(res.uri),
+              range: new monaco.Range(
+                res.range.start.line + 1,
+                res.range.start.character + 1,
+                res.range.end.line + 1,
+                res.range.end.character + 1
+              )
+            };
+          }
+        });
+
         // Formatting Provider
         monaco.languages.registerDocumentFormattingEditProvider('liquid', {
           provideDocumentFormattingEdits: async function (model, options) {
@@ -1198,6 +1223,9 @@
           price: 150.0,
           user: {
             first_name: 'Alex',
+            address: {
+              zipcode: '12345'
+            },
             items: [
               { title: 'Item A', amount: 100 },
               { title: 'Item B', amount: 200 },

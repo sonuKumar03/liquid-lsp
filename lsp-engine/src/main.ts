@@ -47,6 +47,7 @@ const pendingValidationTimers = new Map<string, NodeJS.Timeout>();
  */
 let globalSchema = new Map<string, LiquidType>();
 let globalContextData: any = {};
+let workspaceRoot: string | null = null;
 
 connection.onInitialize((params) => {
   connection.console.log('LSP server: onInitialize handshake started.');
@@ -63,6 +64,7 @@ connection.onInitialize((params) => {
 
   // 2. Load schema from local .liquid-schema.json in workspace if it exists
   const rootPath = params.rootPath;
+  workspaceRoot = rootPath ?? null;
   if (rootPath) {
     const configPath = path.join(rootPath, '.liquid-schema.json');
     if (fs.existsSync(configPath)) {
@@ -162,7 +164,7 @@ connection.onDocumentFormatting((params) => {
 
 // Go to Definition (Triggered on variable reference cmd-click. Implemented in src/definitions/definitions.ts)
 connection.onDefinition((params) => {
-  return handleDefinition(documents, params);
+  return handleDefinition(documents, params, workspaceRoot);
 });
 
 // Code Actions / Quick Fixes (Triggered when editor squiggles offer fixes. Implemented in src/codeactions/codeactions.ts)
@@ -183,6 +185,45 @@ connection.onNotification(
       if (params.contextData) {
         globalContextData = params.contextData;
       }
+
+      // Merge optional flags from local .liquid-schema.json if it exists
+      const rootPath = workspaceRoot;
+      if (rootPath) {
+        const configPath = path.join(rootPath, '.liquid-schema.json');
+        if (fs.existsSync(configPath)) {
+          try {
+            const rawData = fs.readFileSync(configPath, 'utf8');
+            const parsed = JSON.parse(rawData);
+            const fileSchema = parseSchema(parsed);
+
+            const mergeOptionalFlags = (target: LiquidType, source: LiquidType) => {
+              if (typeof source === 'object' && typeof target === 'object') {
+                if (source.optional) {
+                  (target as any).optional = true;
+                }
+                if (source.kind === 'composite' && target.kind === 'composite') {
+                  for (const [k, targetField] of target.fields.entries()) {
+                    const sourceField = source.fields.get(k);
+                    if (sourceField) {
+                      mergeOptionalFlags(targetField, sourceField);
+                    }
+                  }
+                }
+              }
+            };
+
+            for (const [k, targetVal] of globalSchema.entries()) {
+              const sourceVal = fileSchema.get(k);
+              if (sourceVal) {
+                mergeOptionalFlags(targetVal, sourceVal);
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+
       connection.console.log(
         'LSP server: updated variable schema dynamically.',
       );

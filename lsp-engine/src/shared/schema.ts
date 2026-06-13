@@ -4,8 +4,9 @@ export type LiquidType =
   | 'boolean'
   | 'date'
   | 'currency'
-  | { kind: 'dropdown'; options: string[] }
-  | { kind: 'composite'; fields: Map<string, LiquidType> }
+  | { kind: 'primitive'; type: 'string' | 'number' | 'boolean' | 'date' | 'currency'; optional?: boolean }
+  | { kind: 'dropdown'; options: string[]; optional?: boolean }
+  | { kind: 'composite'; fields: Map<string, LiquidType>; optional?: boolean }
   | 'unknown';
 
 export function parseType(value: any): LiquidType {
@@ -22,10 +23,12 @@ export function parseType(value: any): LiquidType {
     return 'unknown';
   }
   if (value && typeof value === 'object') {
+    const optional = value.optional === true || value.nullable === true;
     if (value.type === 'dropdown' && Array.isArray(value.options)) {
       return {
         kind: 'dropdown',
         options: value.options.map((o: any) => String(o)),
+        ...(optional ? { optional } : {}),
       };
     }
     if (
@@ -37,7 +40,11 @@ export function parseType(value: any): LiquidType {
       for (const [k, v] of Object.entries(value.fields)) {
         fields.set(k, parseType(v));
       }
-      return { kind: 'composite', fields };
+      return {
+        kind: 'composite',
+        fields,
+        ...(optional ? { optional } : {}),
+      };
     }
     if (
       typeof value.type === 'string' &&
@@ -47,6 +54,13 @@ export function parseType(value: any): LiquidType {
         value.type === 'date' ||
         value.type === 'currency')
     ) {
+      if (optional) {
+        return {
+          kind: 'primitive',
+          type: value.type as any,
+          optional: true,
+        };
+      }
       return value.type;
     }
   }

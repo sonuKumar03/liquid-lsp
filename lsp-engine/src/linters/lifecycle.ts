@@ -272,6 +272,16 @@ function processParseAssignExpression(
         (offset !== -1 ? offset + fieldNameRaw.length : token.getText().length),
     );
 
+    if (typeof currentType === 'object' && currentType.optional === true) {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Warning,
+        range: { start, end },
+        message: `Property "${fieldName}" is accessed on optional parent. Consider checking if the parent exists first or using a default filter.`,
+        source: 'liquid-lsp-linter',
+        code: 'liquid.linter.optional_access',
+      });
+    }
+
     if (typeof currentType === 'object') {
       if (currentType.kind === 'composite') {
         const nextType = currentType.fields.get(fieldName);
@@ -487,23 +497,33 @@ function processExpression(
       currentType = v.type;
     }
   } else {
-    const words = basePart.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
-    const keywords = new Set([
-      'true',
-      'false',
-      'nil',
-      'null',
-      'and',
-      'or',
-      'contains',
-      'in',
-    ]);
-    for (const word of words) {
-      if (!keywords.has(word) && activeVars.has(word)) {
-        activeVars.get(word)!.hasBeenRead = true;
+    if (basePart.includes('.')) {
+      currentType = processParseAssignExpression(
+        basePart,
+        token,
+        doc,
+        diagnostics,
+        activeVars,
+      );
+    } else {
+      const words = basePart.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
+      const keywords = new Set([
+        'true',
+        'false',
+        'nil',
+        'null',
+        'and',
+        'or',
+        'contains',
+        'in',
+      ]);
+      for (const word of words) {
+        if (!keywords.has(word) && activeVars.has(word)) {
+          activeVars.get(word)!.hasBeenRead = true;
+        }
       }
+      if (/[=!<>+]/.test(basePart)) currentType = 'boolean';
     }
-    if (/[=!<>+]/.test(basePart)) currentType = 'boolean';
   }
 
   return applyFilterTypes(

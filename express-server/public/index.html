@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Monaco CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.min.css">
+  <!-- LiquidJS Browser Build -->
+  <script src="https://cdn.jsdelivr.net/npm/liquidjs@10.19.0/dist/liquid.browser.min.js"></script>
   <style>
     :root {
       --bg-main: #0b0f19;
@@ -308,6 +310,162 @@
     body.light-theme .diagnostic-entry {
       border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     }
+
+    .editor-container {
+      flex: 1.2;
+    }
+
+    /* Preview container styling */
+    .preview-container {
+      flex: 0.8;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-panel);
+      border-left: 1px solid var(--border-color);
+      overflow: hidden;
+    }
+
+    .preview-header {
+      height: 36px;
+      background-color: #1f2937;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .preview-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-main);
+    }
+
+    .preview-tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .preview-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .preview-tab-btn:hover {
+      color: var(--text-main);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .preview-tab-btn.active {
+      color: white;
+      background-color: var(--accent-primary);
+    }
+
+    .preview-content {
+      flex: 1;
+      overflow: auto;
+      position: relative;
+    }
+
+    .preview-pane {
+      display: none;
+      width: 100%;
+      height: 100%;
+      padding: 20px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--text-main);
+      box-sizing: border-box;
+    }
+
+    .preview-pane.active {
+      display: block;
+    }
+
+    /* Rendered HTML pane */
+    #preview-rendered {
+      background-color: var(--bg-panel);
+    }
+
+    /* Raw text pane */
+    #preview-raw {
+      font-family: var(--font-fira), 'Fira Code', monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      background-color: rgba(0, 0, 0, 0.1);
+      margin: 0;
+      border-radius: 0;
+      border: none;
+    }
+
+    /* Context JSON editor */
+    .context-textarea {
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.2);
+      border: none;
+      color: #00e5ff;
+      font-family: var(--font-fira), 'Fira Code', monospace;
+      font-size: 0.85rem;
+      padding: 16px;
+      resize: none;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    .context-textarea:focus {
+      box-shadow: inset 0 0 0 1px var(--accent-primary);
+    }
+
+    /* Light Theme Overrides for Preview */
+    body.light-theme .preview-header {
+      background-color: #f1f5f9;
+      border-bottom: 1px solid #cbd5e1;
+    }
+
+    body.light-theme .preview-tab-btn:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    body.light-theme .preview-tab-btn.active {
+      color: white;
+      background-color: var(--accent-primary);
+    }
+
+    body.light-theme #preview-raw {
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+
+    body.light-theme .context-textarea {
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+
+    /* Overlay error box inside preview */
+    .preview-error {
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid #ef4444;
+      color: #ef4444;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: var(--font-fira), 'Fira Code', monospace;
+      font-size: 0.8rem;
+      margin: 16px;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body class="light-theme">
@@ -352,6 +510,27 @@
           <div class="diagnostic-empty">No issues found. Your template is fully valid!</div>
         </div>
       </footer>
+    </section>
+
+    <!-- Output Preview Panel -->
+    <section class="preview-container">
+      <header class="preview-header">
+        <div class="preview-title">
+          <i class="fa-solid fa-desktop" style="color: var(--accent-secondary);"></i> Live Output Preview
+        </div>
+        <div class="preview-tabs">
+          <button class="preview-tab-btn active" data-tab="rendered">Rendered HTML</button>
+          <button class="preview-tab-btn" data-tab="raw">Raw Text</button>
+          <button class="preview-tab-btn" data-tab="context">Mock Context</button>
+        </div>
+      </header>
+      <div class="preview-content">
+        <div id="preview-rendered" class="preview-pane active"></div>
+        <pre id="preview-raw" class="preview-pane"></pre>
+        <div id="preview-context-pane" class="preview-pane" style="padding: 0;">
+          <textarea id="preview-context-input" class="context-textarea" spellcheck="false"></textarea>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -775,6 +954,169 @@
       isCollapsed = !isCollapsed;
       panel.style.height = isCollapsed ? '36px' : '160px';
     });
+
+    // Tab switching logic for Output Preview
+    const tabBtns = document.querySelectorAll('.preview-tab-btn');
+    const panes = {
+      rendered: document.getElementById('preview-rendered'),
+      raw: document.getElementById('preview-raw'),
+      context: document.getElementById('preview-context-pane')
+    };
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const targetTab = btn.getAttribute('data-tab');
+        Object.keys(panes).forEach(tab => {
+          if (tab === targetTab) {
+            panes[tab].classList.add('active');
+          } else {
+            panes[tab].classList.remove('active');
+          }
+        });
+      });
+    });
+
+    // Client-side LiquidJS Engine Setup
+    const liquid = new liquidjs.Liquid();
+
+    // Register Custom Tags matching LSP Environment
+    liquid.registerTag('assignVar', {
+      parse(tagToken) {
+        const match = tagToken.args.match(/([a-zA-Z0-9_-]+)\s*=\s*(.*)/);
+        if (match) {
+          this.key = match[1];
+          this.valExpr = match[2];
+        }
+      },
+      async render(scope) {
+        if (!this.key) return;
+        const val = await this.liquid.evalValue(this.valExpr, scope);
+        scope.set(this.key, val);
+      }
+    });
+
+    liquid.registerTag('parseAssign', {
+      parse(tagToken) {
+        const match = tagToken.args.match(/([a-zA-Z0-9_-]+)\s*=\s*(.*)/);
+        if (match) {
+          this.key = match[1];
+          this.valExpr = match[2];
+        }
+      },
+      async render(scope) {
+        if (!this.key) return;
+        const valStr = await this.liquid.evalValue(this.valExpr, scope);
+        try {
+          const parsed = JSON.parse(valStr);
+          scope.set(this.key, parsed);
+        } catch (e) {
+          console.error("parseAssign JSON parsing error", e);
+          scope.set(this.key, null);
+        }
+      }
+    });
+
+    liquid.registerTag('computeColumn', {
+      parse() {},
+      render() {}
+    });
+
+    // Register Custom Filters matching LSP Environment
+    liquid.registerFilter('sumArray', (arr, key) => {
+      if (!Array.isArray(arr)) return 0;
+      return arr.reduce((sum, item) => {
+        const val = Number(item && key ? item[key] : item);
+        return sum + (isNaN(val) ? 0 : val);
+      }, 0);
+    });
+
+    liquid.registerFilter('toCurrency', (val, currency = 'USD') => {
+      const num = Number(val);
+      if (isNaN(num)) return val;
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(num);
+    });
+
+    liquid.registerFilter('toDuration', (val, unit = 'DAYS') => {
+      const num = Number(val);
+      if (isNaN(num)) return val;
+      const unitStr = unit.toLowerCase();
+      return `${num} ${num === 1 ? unitStr.replace(/s$/, '') : unitStr}`;
+    });
+
+    liquid.registerFilter('updateAttribute', (obj, attr, val) => {
+      if (obj && typeof obj === 'object') {
+        const copy = { ...obj };
+        copy[attr] = val;
+        return copy;
+      }
+      return obj;
+    });
+
+    liquid.registerFilter('updateTypeAttribute', (val) => val);
+
+    // Default JSON Mock Context
+    const defaultContext = {
+      status: "Active",
+      price: 150.00,
+      user: {
+        first_name: "Alex",
+        items: [
+          { title: "Item A", amount: 100 },
+          { title: "Item B", amount: 200 }
+        ]
+      }
+    };
+
+    const contextInput = document.getElementById('preview-context-input');
+    contextInput.value = JSON.stringify(defaultContext, null, 2);
+
+    // Debounced Live Preview Update Loop
+    let previewDebounceTimer = null;
+    function updatePreview() {
+      if (previewDebounceTimer) {
+        clearTimeout(previewDebounceTimer);
+      }
+      previewDebounceTimer = setTimeout(async () => {
+        const renderedPane = document.getElementById('preview-rendered');
+        const rawPane = document.getElementById('preview-raw');
+        
+        let contextData = {};
+        try {
+          contextData = JSON.parse(contextInput.value);
+          contextInput.style.boxShadow = ''; // Reset border outline
+        } catch (err) {
+          contextInput.style.boxShadow = 'inset 0 0 0 1px #ef4444';
+          renderedPane.innerHTML = `<div class="preview-error">Invalid Mock Context JSON:\n${err.message}</div>`;
+          rawPane.textContent = `Error: Invalid Mock Context JSON\n${err.message}`;
+          return;
+        }
+
+        try {
+          const templateText = model.getValue();
+          const html = await liquid.parseAndRender(templateText, contextData);
+          renderedPane.innerHTML = html;
+          rawPane.textContent = html;
+        } catch (err) {
+          renderedPane.innerHTML = `<div class="preview-error">Liquid Render Error:\n${err.message}</div>`;
+          rawPane.textContent = `Error: Liquid Render Error\n${err.message}`;
+        }
+      }, 100);
+    }
+
+    // Bind event listeners
+    model.onDidChangeContent(() => {
+      updatePreview();
+    });
+
+    contextInput.addEventListener('input', () => {
+      updatePreview();
+    });
+
+    // Run preview once on initial load
+    setTimeout(updatePreview, 300);
   </script>
 </body>
 </html>

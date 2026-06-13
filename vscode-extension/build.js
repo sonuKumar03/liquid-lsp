@@ -58,6 +58,14 @@ if (fs.existsSync(srcDir)) {
     'liquid-core',
     path.resolve(__dirname, '../packages/liquid-core'),
   );
+  bundleWorkspacePackage(
+    'lsp-common',
+    path.resolve(__dirname, '../packages/lsp-common'),
+  );
+  bundleWorkspacePackage(
+    'lsp-node',
+    path.resolve(__dirname, '../packages/lsp-node'),
+  );
 
   console.log('Server files copied successfully.');
 } else {

@@ -2,7 +2,6 @@ import { DiagnosticSeverity } from 'vscode-languageserver/node';
 import type { Diagnostic, Connection } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
-  createLiquidEngine,
   type Liquid,
   type Token,
   TokenKind,
@@ -24,6 +23,7 @@ export async function validateTextDocument(
   liquidEngine: Liquid,
   globalSchema?: Map<string, LiquidType>,
   schemaLoadErrors?: SchemaLoadError[],
+  precomputedTokens?: Token[],
 ): Promise<void> {
   connection.console.log(
     'LSP server: validating document: ' + textDocument.uri,
@@ -32,7 +32,12 @@ export async function validateTextDocument(
   const diagnostics: Diagnostic[] = [];
 
   checkUnclosedDelimiters(text, diagnostics, textDocument);
-  collectSyntaxDiagnostics(textDocument, diagnostics, liquidEngine);
+  collectSyntaxDiagnostics(
+    textDocument,
+    diagnostics,
+    liquidEngine,
+    precomputedTokens,
+  );
   collectLifecycleDiagnostics(
     textDocument,
     diagnostics,
@@ -51,12 +56,17 @@ function collectSyntaxDiagnostics(
   textDocument: TextDocument,
   diagnostics: Diagnostic[],
   liquidEngine: Liquid,
+  precomputedTokens?: Token[],
 ): void {
   let tokens: Token[] = [];
-  try {
-    tokens = tokenizeTopLevel(textDocument.getText(), liquidEngine);
-  } catch {
-    // Ignore tokenization errors and proceed with empty token array
+  if (precomputedTokens) {
+    tokens = precomputedTokens;
+  } else {
+    try {
+      tokens = tokenizeTopLevel(textDocument.getText(), liquidEngine);
+    } catch {
+      tokens = [];
+    }
   }
 
   let hasTokenErrors = false;

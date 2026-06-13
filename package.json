@@ -5,6 +5,8 @@
   "workspaces": [
     "packages/key-pointer-schema",
     "packages/liquid-core",
+    "packages/lsp-common",
+    "packages/lsp-node",
     "lsp-engine",
     "vscode-extension",
     "express-server"

@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.use(express.static(path.resolve(__dirname, '../public')));
 const server = createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
@@ -70,9 +71,9 @@ function formatLSPMessage(payload: string): string {
   return `Content-Length: ${Buffer.byteLength(payload, 'utf8')}\r\n\r\n${payload}`;
 }
 
-// Serve a static welcome page on HTTP GET
+// Serve Monaco Web Editor on HTTP GET
 app.get('/', (req, res) => {
-  res.send('<h1>Liquid LSP Express WebSocket Gateway</h1><p>Connect using <code>ws://localhost:3000/lsp</code></p>');
+  res.sendFile(path.resolve(__dirname, '../public/index.html'));
 });
 
 // Handle WebSocket connections

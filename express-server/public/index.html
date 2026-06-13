@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SpotDraft Liquid Monaco Editor</title>
+  <!-- Typography & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Monaco CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.min.css">
+  <style>
+    :root {
+      --bg-main: #0b0f19;
+      --bg-panel: #111827;
+      --bg-sidebar: #0f172a;
+      --border-color: #1f2937;
+      --accent-primary: #a855f7; /* Violet */
+      --accent-secondary: #00e5ff; /* Cyan */
+      --accent-success: #10b981; /* Emerald */
+      --accent-warning: #f59e0b; /* Amber */
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --font-outfit: 'Outfit', sans-serif;
+      --font-inter: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-inter);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navbar styling */
+    .navbar {
+      height: 60px;
+      background-color: var(--bg-panel);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      font-family: var(--font-outfit);
+      box-shadow: 0 4px 10px rgba(168, 85, 247, 0.4);
+    }
+
+    .brand-title {
+      font-family: var(--font-outfit);
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      background: linear-gradient(to right, #ffffff, #d1d5db);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      background-color: #1e293b;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background-color: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-primary), #7c3aed);
+      border: none;
+      color: white;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #be185d, var(--accent-primary));
+      transform: translateY(-1px);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: #1e293b;
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #ef4444; /* red by default */
+      box-shadow: 0 0 8px #ef4444;
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.connected {
+      background-color: var(--accent-success);
+      box-shadow: 0 0 8px var(--accent-success);
+    }
+
+    /* Main Dashboard Layout */
+    .dashboard {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Sidebar - Variable Catalog */
+    .sidebar {
+      width: 300px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-title {
+      font-family: var(--font-outfit);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .schema-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .schema-item {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .schema-item:hover {
+      border-color: var(--accent-secondary);
+      background: #334155;
+      transform: translateY(-1px);
+    }
+
+    .schema-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .schema-name {
+      font-family: var(--font-outfit);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .schema-type {
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .type-string { background-color: rgba(0, 229, 255, 0.15); color: var(--accent-secondary); }
+    .type-number { background-color: rgba(245, 158, 11, 0.15); color: var(--accent-warning); }
+    .type-dropdown { background-color: rgba(168, 85, 247, 0.15); color: var(--accent-primary); }
+    .type-composite { background-color: rgba(16, 185, 129, 0.15); color: var(--accent-success); }
+    .type-currency { background-color: #3b82f633; color: #3b82f6; }
+
+    .schema-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.25;
+    }
+
+    .schema-subfields {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .subfield {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      padding: 2px 4px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* Editor Container */
+    .editor-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-main);
+      position: relative;
+    }
+
+    #monaco-editor {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Bottom Shelf - Diagnostics & Errors */
+    .diagnostics-panel {
+      height: 160px;
+      background-color: var(--bg-panel);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: height 0.2s ease;
+    }
+
+    .diagnostics-header {
+      height: 36px;
+      background-color: #1f2937;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .diagnostics-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diagnostics-count {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+    }
+
+    .diagnostics-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .diagnostic-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .diagnostic-entry.error {
+      border-left: 3px solid #ef4444;
+    }
+    .diagnostic-entry.warning {
+      border-left: 3px solid var(--accent-warning);
+    }
+
+    .diagnostic-icon {
+      margin-top: 2px;
+    }
+    .diagnostic-entry.error .diagnostic-icon { color: #ef4444; }
+    .diagnostic-entry.warning .diagnostic-icon { color: var(--accent-warning); }
+
+    .diagnostic-message {
+      flex: 1;
+      color: var(--text-main);
+      line-height: 1.35;
+    }
+
+    .diagnostic-loc {
+      font-family: var(--font-fira);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .diagnostic-empty {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 24px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-logo">L</div>
+      <span class="brand-title">SpotDraft Liquid Workspace</span>
+    </div>
+    
+    <div class="controls">
+      <div class="status-indicator">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Connecting...</span>
+      </div>
+      <button class="btn btn-primary" id="btn-format">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Format Template
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Dashboard -->
+  <main class="dashboard">
+    <!-- Variables Catalog Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">
+          <i class="fa-solid fa-database" style="color: var(--accent-secondary);"></i> Predefined Schema
+        </div>
+        <p class="sidebar-desc">Click variables to insert them into your template.</p>
+      </div>
+
+      <div class="schema-list" id="schema-list">
+        <!-- Injected dynamically -->
+      </div>
+    </aside>
+
+    <!-- Editor and Panel Container -->
+    <section class="editor-container">
+      <div id="monaco-editor"></div>
+
+      <!-- Diagnostics Collapsible Shelf -->
+      <footer class="diagnostics-panel" id="diagnostics-panel">
+        <div class="diagnostics-header" id="diagnostics-header">
+          <div class="diagnostics-title">
+            <i class="fa-solid fa-circle-exclamation" style="color: var(--accent-warning);"></i> Template Diagnostics
+          </div>
+          <span class="diagnostics-count" id="diagnostics-count">0 Issues</span>
+        </div>
+        <div class="diagnostics-list" id="diagnostics-list">
+          <div class="diagnostic-empty">No issues found. Your template is fully valid!</div>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <!-- Monaco Editor Dependencies -->
+  <script>
+    var require = { paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs' } };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/loader.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.nls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.js"></script>
+
+  <!-- Client-side WebSocket & LSP Controller -->
+  <script>
+    // 1. Predefined variables schema
+    const schema = {
+      status: {
+        type: 'dropdown',
+        options: ['Active', 'Inactive']
+      },
+      price: 'currency',
+      user: {
+        type: 'composite',
+        fields: {
+          first_name: 'string',
+          items: {
+            type: 'composite',
+            fields: {
+              title: 'string'
+            }
+          }
+        }
+      }
+    };
+
+    // Render Schema Catalog Sidebar UI
+    const schemaList = document.getElementById('schema-list');
+    
+    function renderSchemaItems(parentKey, obj) {
+      for (const [key, value] of Object.entries(obj)) {
+        const fullKey = parentKey ? `${parentKey}.${key}` : key;
+        const item = document.createElement('div');
+        item.className = 'schema-item';
+        
+        let typeLabel = '';
+        let descText = '';
+        let subfieldsHtml = '';
+
+        if (typeof value === 'string') {
+          typeLabel = `<span class="schema-type type-${value}">${value}</span>`;
+          descText = `Global contract variable referencing a primitive ${value}.`;
+        } else if (value.type === 'dropdown') {
+          typeLabel = `<span class="schema-type type-dropdown">dropdown</span>`;
+          descText = `Dropdown selection. Valid options: ${value.options.map(o => `"${o}"`).join(', ')}.`;
+        } else if (value.type === 'composite') {
+          typeLabel = `<span class="schema-type type-composite">object</span>`;
+          descText = `Structured composite object containing child properties.`;
+          
+          let subfields = [];
+          for (const [subKey, subVal] of Object.entries(value.fields)) {
+            const subType = typeof subVal === 'string' ? subVal : subVal.type;
+            subfields.push(`
+              <div class="subfield">
+                <span>${subKey}</span>
+                <span style="opacity: 0.7; font-size: 0.65rem;">${subType}</span>
+              </div>
+            `);
+          }
+          subfieldsHtml = `<div class="schema-subfields">${subfields.join('')}</div>`;
+        }
+
+        item.innerHTML = `
+          <div class="schema-item-header">
+            <span class="schema-name">${fullKey}</span>
+            ${typeLabel}
+          </div>
+          <p class="schema-desc">${descText}</p>
+          ${subfieldsHtml}
+        `;
+
+        item.addEventListener('click', () => {
+          if (editor) {
+            const position = editor.getPosition();
+            const textToInsert = `{{ ${fullKey} }}`;
+            editor.executeEdits('schema-click', [{
+              range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+              text: textToInsert,
+              forceMoveMarkers: true
+            }]);
+            editor.focus();
+          }
+        });
+
+        schemaList.appendChild(item);
+      }
+    }
+    renderSchemaItems('', schema);
+
+    // 2. Pre-populated sample LiquidJS code in the editor
+    const initialText = [
+      '{% assignVar name = user.first_name %}',
+      '<h2>Welcome, {{ name }}!</h2>',
+      '',
+      '{% if status = "Active" %}',
+      '  <p>Your subscription is active.</p>',
+      '{% else %}',
+      '  <p>Your subscription status: {{ status | default: "Pending" }}</p>',
+      '{% endif %}',
+      '',
+      '{% parseAssign items = \'[{"title": "Item A", "amount": 100}, {"title": "Item B", "amount": 200}]\' %}',
+      '',
+      '<p>Total items cost: {{ items | sumArray: "amount" | toCurrency: "USD" }}</p>'
+    ].join('\n');
+
+    // Initialize Monaco editor
+    monaco.languages.register({ id: 'liquid' });
+    const model = monaco.editor.createModel(initialText, 'liquid', monaco.Uri.parse('inmemory://model/1'));
+    
+    // Custom VS-Dark-based editor layout
+    monaco.editor.defineTheme('spotdraft-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'keyword', foreground: 'a855f7', fontStyle: 'bold' },
+        { token: 'string', foreground: '10b981' },
+        { token: 'number', foreground: 'f59e0b' }
+      ],
+      colors: {
+        'editor.background': '#0b0f19',
+        'editor.lineHighlightBackground': '#111827',
+        'editorLineNumber.foreground': '#4b5563',
+        'editorLineNumber.activeForeground': '#00e5ff'
+      }
+    });
+
+    const editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+      model: model,
+      theme: 'spotdraft-dark',
+      automaticLayout: true,
+      fontSize: 14,
+      fontFamily: "'Fira Code', monospace",
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      tabSize: 2
+    });
+
+    // 3. Connect to express LSP WebSocket Server
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/lsp`;
+    const ws = new WebSocket(wsUrl);
+
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+
+    let isConnected = false;
+    let requestId = 0;
+    const pendingRequests = new Map();
+    let docVersion = 1;
+
+    function sendRequest(method, params) {
+      return new Promise((resolve) => {
+        if (!isConnected) {
+          resolve(null);
+          return;
+        }
+        const id = ++requestId;
+        pendingRequests.set(id, resolve);
+        ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
+      });
+    }
+
+    function sendNotification(method, params) {
+      if (isConnected) {
+        ws.send(JSON.stringify({ jsonrpc: '2.0', method, params }));
+      }
+    }
+
+    ws.onopen = () => {
+      isConnected = true;
+      statusDot.className = 'status-dot connected';
+      statusText.innerText = 'Connected';
+
+      // Handshake: Initialize LSP server and pass our variable schema
+      sendRequest('initialize', {
+        capabilities: {},
+        initializationOptions: { schema }
+      }).then(() => {
+        sendNotification('initialized', {});
+        // Announce current model buffer
+        sendNotification('textDocument/didOpen', {
+          textDocument: {
+            uri: 'inmemory://model/1',
+            languageId: 'liquid',
+            version: docVersion,
+            text: model.getValue()
+          }
+        });
+      });
+    };
+
+    ws.onclose = () => {
+      isConnected = false;
+      statusDot.className = 'status-dot';
+      statusText.innerText = 'Disconnected';
+    };
+
+    // Diagnostics Panel updates
+    const diagnosticsList = document.getElementById('diagnostics-list');
+    const diagnosticsCount = document.getElementById('diagnostics-count');
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      
+      // Resolve pending JSON-RPC request-response cycles
+      if (msg.id !== undefined && pendingRequests.has(msg.id)) {
+        const resolve = pendingRequests.get(msg.id);
+        pendingRequests.delete(msg.id);
+        resolve(msg.result);
+      }
+      
+      // Handle publishDiagnostics notifications
+      if (msg.method === 'textDocument/publishDiagnostics') {
+        const diagnostics = msg.params.diagnostics;
+        const markers = diagnostics.map(d => ({
+          severity: d.severity === 1 ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+          startLineNumber: d.range.start.line + 1,
+          startColumn: d.range.start.character + 1,
+          endLineNumber: d.range.end.line + 1,
+          endColumn: d.range.end.character + 1,
+          message: d.message
+        }));
+
+        // Set warnings inside the Monaco Editor text frame
+        monaco.editor.setModelMarkers(model, 'liquid', markers);
+
+        // Update Bottom diagnostics list shelf UI
+        if (markers.length === 0) {
+          diagnosticsList.innerHTML = `<div class="diagnostic-empty">No issues found. Your template is fully valid!</div>`;
+          diagnosticsCount.innerText = `0 Issues`;
+          diagnosticsCount.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        } else {
+          diagnosticsCount.innerText = `${markers.length} Issue${markers.length > 1 ? 's' : ''}`;
+          diagnosticsCount.style.backgroundColor = markers.some(m => m.severity === monaco.MarkerSeverity.Error) ? '#ef4444' : 'var(--accent-warning)';
+          
+          diagnosticsList.innerHTML = markers.map(m => `
+            <div class="diagnostic-entry ${m.severity === monaco.MarkerSeverity.Error ? 'error' : 'warning'}">
+              <i class="fa-solid ${m.severity === monaco.MarkerSeverity.Error ? 'fa-circle-xmark' : 'fa-triangle-exclamation'} diagnostic-icon"></i>
+              <div class="diagnostic-message">${m.message}</div>
+              <div class="diagnostic-loc">Line ${m.startLineNumber}, Col ${m.startColumn}</div>
+            </div>
+          `).join('');
+        }
+      }
+    };
+
+    // Forward buffer content changes to server linter
+    model.onDidChangeContent(() => {
+      sendNotification('textDocument/didChange', {
+        textDocument: { uri: 'inmemory://model/1', version: ++docVersion },
+        contentChanges: [{ text: model.getValue() }]
+      });
+    });
+
+    // 4. Register LSP Language providers inside Monaco
+    
+    // Hover Provider
+    monaco.languages.registerHoverProvider('liquid', {
+      provideHover: async function(model, position) {
+        const res = await sendRequest('textDocument/hover', {
+          textDocument: { uri: 'inmemory://model/1' },
+          position: { line: position.lineNumber - 1, character: position.column - 1 }
+        });
+        if (!res || !res.contents) return null;
+        return {
+          range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+          contents: [{ value: res.contents.value }]
+        };
+      }
+    });
+
+    // Completions Provider
+    monaco.languages.registerCompletionItemProvider('liquid', {
+      triggerCharacters: [' ', '|'],
+      provideCompletionItems: async function(model, position) {
+        const res = await sendRequest('textDocument/completion', {
+          textDocument: { uri: 'inmemory://model/1' },
+          position: { line: position.lineNumber - 1, character: position.column - 1 }
+        });
+        if (!res) return { suggestions: [] };
+        
+        const items = Array.isArray(res) ? res : res.items;
+        const suggestions = items.map(item => ({
+          label: item.label,
+          kind: item.kind === 14 ? monaco.languages.CompletionItemKind.Keyword : monaco.languages.CompletionItemKind.Function,
+          insertText: item.insertText || item.label,
+          insertTextRules: item.insertTextFormat === 2 ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet : undefined,
+          documentation: item.documentation,
+          detail: item.detail,
+          range: {
+            startLineNumber: position.lineNumber,
+            startColumn: position.column - (item.label.startsWith('|') ? 1 : 0),
+            endLineNumber: position.lineNumber,
+            endColumn: position.column
+          }
+        }));
+        return { suggestions };
+      }
+    });
+
+    // Formatting Provider
+    monaco.languages.registerDocumentFormattingEditProvider('liquid', {
+      provideDocumentFormattingEdits: async function(model, options) {
+        const res = await sendRequest('textDocument/formatting', {
+          textDocument: { uri: 'inmemory://model/1' },
+          options: { tabSize: options.tabSize, insertSpaces: options.insertSpaces }
+        });
+        if (!res || res.length === 0) return [];
+        return res.map(edit => ({
+          range: new monaco.Range(
+            edit.range.start.line + 1,
+            edit.range.start.character + 1,
+            edit.range.end.line + 1,
+            edit.range.end.character + 1
+          ),
+          text: edit.newText
+        }));
+      }
+    });
+
+    // On Type Formatting Provider (auto-closes end blocks!)
+    monaco.languages.registerOnTypeFormattingEditProvider('liquid', {
+      autoFormatTriggerCharacters: ['}', '%'],
+      provideOnTypeFormattingEdits: async function(model, position, ch, options) {
+        const res = await sendRequest('textDocument/onTypeFormatting', {
+          textDocument: { uri: 'inmemory://model/1' },
+          position: { line: position.lineNumber - 1, character: position.column - 1 },
+          ch,
+          options: { tabSize: options.tabSize, insertSpaces: options.insertSpaces }
+        });
+        if (!res || res.length === 0) return [];
+        return res.map(edit => ({
+          range: new monaco.Range(
+            edit.range.start.line + 1,
+            edit.range.start.character + 1,
+            edit.range.end.line + 1,
+            edit.range.end.character + 1
+          ),
+          text: edit.newText
+        }));
+      }
+    });
+
+    // Handle manual format button click
+    document.getElementById('btn-format').addEventListener('click', () => {
+      editor.getAction('editor.action.formatDocument').run();
+    });
+
+    // Collapsible diagnostics shelf toggle
+    let isCollapsed = false;
+    const panel = document.getElementById('diagnostics-panel');
+    document.getElementById('diagnostics-header').addEventListener('click', () => {
+      isCollapsed = !isCollapsed;
+      panel.style.height = isCollapsed ? '36px' : '160px';
+    });
+  </script>
+</body>
+</html>

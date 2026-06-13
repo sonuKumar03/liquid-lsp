@@ -1,3 +1,4 @@
+/** Maps key-pointer wire types (19 allowlisted) to internal `LiquidType` for LSP inference. */
 import type { LiquidType } from './liquid-types.js';
 import type {
   KeyPointerDataType,

@@ -118,7 +118,7 @@ documents.onDidChangeContent(change => {
 
 // Hover tooltip provider (Triggered on hover over variables/tags/filters. Implemented in src/hovers/hovers.ts)
 connection.onHover(params => {
-  return handleHover(documents, params);
+  return handleHover(documents, params, globalSchema);
 });
 
 // Autocomplete suggestions (Triggered on typing. Implemented in src/completions/completions.ts)

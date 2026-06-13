@@ -1,3 +1,5 @@
+import { SCHEMA_ERROR_CODES } from 'key-pointer-schema';
+
 export const DIAGNOSTIC_CODES = {
   UNCLOSED_DELIMITER: 'liquid.syntax.unclosed_delimiter',
   UNKNOWN_FILTER: 'liquid.filter.unknown',
@@ -5,10 +7,7 @@ export const DIAGNOSTIC_CODES = {
   CONDITIONAL_ASSIGNMENT: 'liquid.syntax.conditional_assignment',
   INLINE_MATH: 'liquid.syntax.inline_math',
   UNKNOWN_TAG: 'liquid.tag.unknown',
-  UNKNOWN_KEY_POINTER_TYPE: 'key_pointer.schema.unknown_type',
-  INVALID_VARIABLE_DECLARATION: 'key_pointer.schema.invalid_variable',
-  DUPLICATE_VARIABLE: 'key_pointer.schema.duplicate_variable',
-  SCHEMA_LOAD_ERROR: 'key_pointer.schema.load_error',
+  ...SCHEMA_ERROR_CODES,
 } as const;
 
 export type DiagnosticCode =

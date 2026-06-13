@@ -1,5 +1,5 @@
-import { parseSchema } from './schema.js';
-import { DIAGNOSTIC_CODES } from './diagnostic-codes.js';
+import { parseSchema } from './liquid-types.js';
+import { SCHEMA_ERROR_CODES } from './schema-error-codes.js';
 import {
   formatKnownKeyPointerDataTypes,
   isKnownKeyPointerDataType,
@@ -82,7 +82,7 @@ function parseVariableEntry(
   if (typeof fieldName !== 'string' || fieldName.trim() === '') {
     errors.push({
       severity: 'error',
-      code: DIAGNOSTIC_CODES.INVALID_VARIABLE_DECLARATION,
+      code: SCHEMA_ERROR_CODES.INVALID_VARIABLE_DECLARATION,
       message: `Variable at index ${index} is missing a valid field_name.`,
     });
     return { errors };
@@ -91,7 +91,7 @@ function parseVariableEntry(
   if (typeof dataType !== 'string') {
     errors.push({
       severity: 'error',
-      code: DIAGNOSTIC_CODES.INVALID_VARIABLE_DECLARATION,
+      code: SCHEMA_ERROR_CODES.INVALID_VARIABLE_DECLARATION,
       message: `Variable "${fieldName}" is missing data_type.`,
       field_name: fieldName,
     });
@@ -101,7 +101,7 @@ function parseVariableEntry(
   if (!isKnownKeyPointerDataType(dataType)) {
     errors.push({
       severity: 'error',
-      code: DIAGNOSTIC_CODES.UNKNOWN_KEY_POINTER_TYPE,
+      code: SCHEMA_ERROR_CODES.UNKNOWN_KEY_POINTER_TYPE,
       message: `Variable "${fieldName}" uses unknown key pointer type "${dataType}". Supported types: ${formatKnownKeyPointerDataTypes()}.`,
       field_name: fieldName,
     });
@@ -111,7 +111,7 @@ function parseVariableEntry(
   if (!FIELD_NAME_PATTERN.test(fieldName)) {
     errors.push({
       severity: 'error',
-      code: DIAGNOSTIC_CODES.INVALID_VARIABLE_DECLARATION,
+      code: SCHEMA_ERROR_CODES.INVALID_VARIABLE_DECLARATION,
       message: `Variable "${fieldName}" has an invalid field_name.`,
       field_name: fieldName,
     });
@@ -125,7 +125,7 @@ function parseVariableEntry(
   ) {
     errors.push({
       severity: 'warning',
-      code: DIAGNOSTIC_CODES.SCHEMA_LOAD_ERROR,
+      code: SCHEMA_ERROR_CODES.SCHEMA_LOAD_ERROR,
       message: `Variable "${fieldName}" (${dataType}) has no options defined.`,
       field_name: fieldName,
     });
@@ -150,7 +150,7 @@ function parseVariablesArray(rawVariables: unknown[]): ParseVariableSchemaResult
     if (!raw || typeof raw !== 'object') {
       result.errors.push({
         severity: 'error',
-        code: DIAGNOSTIC_CODES.INVALID_VARIABLE_DECLARATION,
+        code: SCHEMA_ERROR_CODES.INVALID_VARIABLE_DECLARATION,
         message: `Variable at index ${index} must be an object.`,
       });
       continue;
@@ -169,7 +169,7 @@ function parseVariablesArray(rawVariables: unknown[]): ParseVariableSchemaResult
     if (result.variables.has(declaration.field_name)) {
       result.errors.push({
         severity: 'error',
-        code: DIAGNOSTIC_CODES.DUPLICATE_VARIABLE,
+        code: SCHEMA_ERROR_CODES.DUPLICATE_VARIABLE,
         message: `Duplicate variable "${declaration.field_name}".`,
         field_name: declaration.field_name,
       });
@@ -203,7 +203,7 @@ export function parseVariableSchema(raw: unknown): ParseVariableSchemaResult {
       errors: [
         {
           severity: 'error',
-          code: DIAGNOSTIC_CODES.SCHEMA_LOAD_ERROR,
+          code: SCHEMA_ERROR_CODES.SCHEMA_LOAD_ERROR,
           message: 'Variable schema must be an object.',
         },
       ],
@@ -234,7 +234,7 @@ export function parseVariableSchema(raw: unknown): ParseVariableSchemaResult {
     errors: [
       {
         severity: 'error',
-        code: DIAGNOSTIC_CODES.SCHEMA_LOAD_ERROR,
+        code: SCHEMA_ERROR_CODES.SCHEMA_LOAD_ERROR,
         message:
           'Unrecognized variable schema format. Use { variables: [...] } or a flat map of field_name to data_type.',
       },
@@ -258,7 +258,7 @@ export function mergeVariableSchemas(
     if (merged.variables.has(fieldName)) {
       merged.errors.push({
         severity: 'error',
-        code: DIAGNOSTIC_CODES.DUPLICATE_VARIABLE,
+        code: SCHEMA_ERROR_CODES.DUPLICATE_VARIABLE,
         message: `Duplicate variable "${fieldName}".`,
         field_name: fieldName,
       });

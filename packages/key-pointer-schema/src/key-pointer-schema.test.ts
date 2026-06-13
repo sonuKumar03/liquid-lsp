@@ -1,16 +1,23 @@
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { describe, expect, it } from 'vitest';
-import { DIAGNOSTIC_CODES } from './diagnostic-codes.js';
+import {
+  mergeVariableSchemas,
+  parseVariableSchema,
+  SCHEMA_ERROR_CODES,
+} from './index.js';
 import {
   isKnownKeyPointerDataType,
   KNOWN_KEY_POINTER_DATA_TYPES,
   loadTypeRegistry,
 } from './key-pointer-types.js';
-import {
-  mergeVariableSchemas,
-  parseVariableSchema,
-} from './key-pointer-schema.js';
 import { keyPointerTypeToLiquid } from './key-pointer-to-liquid.js';
-import { schemaLoadErrorsToDiagnostics } from './schema-load-errors.js';
+
+const packageRoot = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+);
 
 describe('key-pointer-types', () => {
   it('loads the bundled type registry', () => {
@@ -60,6 +67,19 @@ describe('parseVariableSchema', () => {
     expect(result.variables.get('sd_term_length')?.data_type).toBe('duration');
   });
 
+  it('parses bundled fixture file', () => {
+    const fixturePath = join(packageRoot, 'fixtures', 'key-pointer-variables.json');
+    const raw = JSON.parse(readFileSync(fixturePath, 'utf8'));
+    const result = parseVariableSchema(raw);
+
+    expect(result.errors.filter((e) => e.severity === 'error')).toHaveLength(0);
+    expect(result.variables.size).toBe(4);
+    expect(result.variables.get('sd_payment')?.data_type).toBe('currency');
+    expect(result.variables.get('effective_execution_same')?.data_type).toBe(
+      'check-box',
+    );
+  });
+
   it('errors on unknown data_type', () => {
     const result = parseVariableSchema({
       variables: [{ field_name: 'custom_field', data_type: 'bogus' }],
@@ -69,7 +89,7 @@ describe('parseVariableSchema', () => {
     expect(result.errors).toEqual([
       expect.objectContaining({
         severity: 'error',
-        code: DIAGNOSTIC_CODES.UNKNOWN_KEY_POINTER_TYPE,
+        code: SCHEMA_ERROR_CODES.UNKNOWN_KEY_POINTER_TYPE,
         field_name: 'custom_field',
       }),
     ]);
@@ -84,9 +104,9 @@ describe('parseVariableSchema', () => {
     });
 
     expect(result.variables.size).toBe(1);
-    expect(result.errors.some((e) => e.code === DIAGNOSTIC_CODES.DUPLICATE_VARIABLE)).toBe(
-      true,
-    );
+    expect(
+      result.errors.some((e) => e.code === SCHEMA_ERROR_CODES.DUPLICATE_VARIABLE),
+    ).toBe(true);
   });
 
   it('supports legacy liquid schema objects', () => {
@@ -150,7 +170,7 @@ describe('mergeVariableSchemas', () => {
 
     expect(merged.variables.size).toBe(1);
     expect(
-      merged.errors.some((e) => e.code === DIAGNOSTIC_CODES.DUPLICATE_VARIABLE),
+      merged.errors.some((e) => e.code === SCHEMA_ERROR_CODES.DUPLICATE_VARIABLE),
     ).toBe(true);
   });
 });
@@ -167,19 +187,8 @@ describe('keyPointerTypeToLiquid', () => {
       ]),
     });
   });
-});
 
-describe('schemaLoadErrorsToDiagnostics', () => {
-  it('creates line-zero diagnostics for schema errors', () => {
-    const diagnostics = schemaLoadErrorsToDiagnostics([
-      {
-        severity: 'error',
-        code: DIAGNOSTIC_CODES.UNKNOWN_KEY_POINTER_TYPE,
-        message: 'bad type',
-      },
-    ]);
-
-    expect(diagnostics[0]?.range.start).toEqual({ line: 0, character: 0 });
-    expect(diagnostics[0]?.message).toBe('bad type');
+  it('maps currency to liquid currency primitive', () => {
+    expect(keyPointerTypeToLiquid('currency')).toBe('currency');
   });
 });

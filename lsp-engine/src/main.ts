@@ -28,7 +28,7 @@ import {
   mergeVariableSchemas,
   parseVariableSchema,
   type SchemaLoadError,
-} from './shared/key-pointer-schema.js';
+} from 'key-pointer-schema';
 
 // Initialize LSP connection (handles communication over JSON-RPC stdio/ipc)
 const connection = createConnection(ProposedFeatures.all);

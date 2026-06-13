@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
+    "packages/key-pointer-schema",
     "lsp-engine",
     "vscode-extension",
     "express-server"

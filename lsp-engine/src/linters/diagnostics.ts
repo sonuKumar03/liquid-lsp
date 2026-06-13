@@ -7,7 +7,7 @@ const { Tokenizer, TokenKind, TagToken: TagTokenClass } = liquidjs;
 import { cleanErrorMessage, getEnhancedErrorMessage } from '../shared/utils.js';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 import type { LiquidType } from '../shared/schema.js';
-import type { SchemaLoadError } from '../shared/key-pointer-schema.types.js';
+import type { SchemaLoadError } from 'key-pointer-schema';
 import { schemaLoadErrorsToDiagnostics } from '../shared/schema-load-errors.js';
 import { collectLifecycleDiagnostics } from './lifecycle.js';
 

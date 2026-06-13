@@ -1,4 +1,4 @@
-import type { LiquidType } from './schema.js';
+import type { LiquidType } from './liquid-types.js';
 import type {
   KeyPointerDataType,
   KeyPointerSelectOption,

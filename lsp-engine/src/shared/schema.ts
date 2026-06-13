@@ -39,6 +39,16 @@ export function parseType(value: any): LiquidType {
       }
       return { kind: 'composite', fields };
     }
+    if (
+      typeof value.type === 'string' &&
+      (value.type === 'string' ||
+        value.type === 'number' ||
+        value.type === 'boolean' ||
+        value.type === 'date' ||
+        value.type === 'currency')
+    ) {
+      return value.type;
+    }
   }
   return 'unknown';
 }

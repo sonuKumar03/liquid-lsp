@@ -284,3 +284,133 @@ test('Liquid schema variable and property dot-completions', () =>
       }),
     );
   }));
+
+test('Liquid typed-pipe filter auto-completions', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{% assignVar local_str = user.first_name %}\n{{ local_str | \n{{ user.created_at | \n{{ 42 | ',
+              },
+            },
+          }),
+        );
+
+        // 1. Trigger filter completions on "local_str | " (line 1, character 14) -> Should suggest string filters but not abs
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/completion',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 1, character: 14 },
+            },
+          }),
+        );
+
+        step = 1;
+      } else if (step === 1 && res.id === 2) {
+        const items = res.result;
+        expect(items.length).toBeGreaterThan(0);
+        const hasUpcase = items.some((item: any) => item.label === 'upcase');
+        const hasAbs = items.some((item: any) => item.label === 'abs');
+        const hasDate = items.some((item: any) => item.label === 'date');
+        expect(hasUpcase).toBe(true);
+        expect(hasAbs).toBe(false);
+        expect(hasDate).toBe(false);
+
+        // 2. Trigger filter completions on "user.created_at | " (line 2, character 21) -> Should suggest date filters but not upcase or abs
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 3,
+            method: 'textDocument/completion',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 2, character: 21 },
+            },
+          }),
+        );
+
+        step = 2;
+      } else if (step === 2 && res.id === 3) {
+        const items = res.result;
+        expect(items.length).toBeGreaterThan(0);
+        const hasDate = items.some((item: any) => item.label === 'date');
+        const hasUpcase = items.some((item: any) => item.label === 'upcase');
+        const hasAbs = items.some((item: any) => item.label === 'abs');
+        expect(hasDate).toBe(true);
+        expect(hasUpcase).toBe(false);
+        expect(hasAbs).toBe(false);
+
+        // 3. Trigger filter completions on "42 | " (line 3, character 8) -> Should suggest number filters but not date
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 4,
+            method: 'textDocument/completion',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 3, character: 8 },
+            },
+          }),
+        );
+
+        step = 3;
+      } else if (step === 3 && res.id === 4) {
+        const items = res.result;
+        expect(items.length).toBeGreaterThan(0);
+        const hasAbs = items.some((item: any) => item.label === 'abs');
+        const hasDate = items.some((item: any) => item.label === 'date');
+        expect(hasAbs).toBe(true);
+        expect(hasDate).toBe(false);
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    // Initialize with initializationOptions schema
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          capabilities: {},
+          initializationOptions: {
+            schema: {
+              user: {
+                type: 'composite',
+                fields: {
+                  first_name: { type: 'string' },
+                  created_at: { type: 'date' },
+                },
+              },
+            },
+          },
+        },
+      }),
+    );
+  }));

@@ -83,6 +83,124 @@ export function extractDeclaredVariables(
 }
 
 /**
+ * Extract variable types from the document (including schema and local assignments)
+ */
+export function extractLocalVariableTypes(
+  text: string,
+  globalSchema?: Map<string, LiquidType>,
+): Map<string, LiquidType> {
+  const localTypes = new Map<string, LiquidType>();
+
+  if (globalSchema) {
+    for (const [k, v] of globalSchema.entries()) {
+      localTypes.set(k, v);
+    }
+  }
+
+  // Parse assign, assignVar, and parseAssign
+  const assignPattern =
+    /\{%\s*(assign|assignVar|parseAssign)\s+([a-zA-Z0-9_-]+)\s*=\s*([^%]+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = assignPattern.exec(text))) {
+    const tag = match[1];
+    const varName = match[2];
+    const valExprRaw = match[3];
+    if (varName && valExprRaw) {
+      const valExpr = valExprRaw.replace(/%\}.*$/, '').trim();
+      const filterParts = valExpr.split('|');
+      const basePart = filterParts[0] ? filterParts[0].trim() : '';
+
+      let resolvedType: LiquidType;
+      if (/^["'].*["']$/.test(basePart)) {
+        resolvedType = 'string';
+      } else if (/^\d+(\.\d+)?$/.test(basePart)) {
+        resolvedType = 'number';
+      } else if (/^(true|false)$/.test(basePart)) {
+        resolvedType = 'boolean';
+      } else {
+        resolvedType = resolveTypeForPath(basePart, localTypes);
+      }
+
+      if (filterParts.length > 1) {
+        for (let i = 1; i < filterParts.length; i++) {
+          const filterName = (filterParts[i] ?? '')
+            .trim()
+            .split(':')[0]
+            ?.trim();
+          if (filterName === 'toCurrency') {
+            resolvedType = 'currency';
+          } else if (
+            [
+              'upcase',
+              'downcase',
+              'append',
+              'prepend',
+              'replace',
+              'slice',
+              'strip',
+              'truncate',
+            ].includes(filterName || '')
+          ) {
+            resolvedType = 'string';
+          } else if (
+            [
+              'abs',
+              'ceil',
+              'floor',
+              'round',
+              'plus',
+              'minus',
+              'times',
+              'divided_by',
+              'modulo',
+              'size',
+              'sumArray',
+            ].includes(filterName || '')
+          ) {
+            resolvedType = 'number';
+          }
+        }
+      }
+
+      if (
+        tag === 'parseAssign' &&
+        filterParts.length === 1 &&
+        !basePart.includes('[')
+      ) {
+        if (
+          typeof resolvedType === 'object' &&
+          resolvedType.kind === 'composite'
+        ) {
+          resolvedType = 'string';
+        } else if (resolvedType === 'currency') {
+          resolvedType = 'number';
+        }
+      }
+
+      localTypes.set(varName, resolvedType);
+    }
+  }
+
+  // Parse capture
+  const capturePattern = /\{%\s*capture\s+([a-zA-Z0-9_-]+)\s*%\}/g;
+  while ((match = capturePattern.exec(text))) {
+    if (match[1]) {
+      localTypes.set(match[1], 'string');
+    }
+  }
+
+  // Parse for loop
+  const forPattern = /\{%\s*for\s+([a-zA-Z0-9_-]+)\s+in\s+/g;
+  while ((match = forPattern.exec(text))) {
+    if (match[1]) {
+      localTypes.set(match[1], 'unknown');
+    }
+  }
+
+  return localTypes;
+}
+
+/**
  * Handles completion requests (textDocument/completion) from the editor client.
  */
 export function handleCompletion(
@@ -98,6 +216,8 @@ export function handleCompletion(
     start: { line: position.line, character: 0 },
     end: position,
   });
+
+  const localSchema = extractLocalVariableTypes(doc.getText(), globalSchema);
 
   // Check if cursor is after a dot for nested property completion (e.g., "user.")
   const lastDot = lineText.lastIndexOf('.');
@@ -117,8 +237,8 @@ export function handleCompletion(
       start--;
     }
     const varPath = pathWithoutDot.substring(start).trim();
-    if (varPath && globalSchema) {
-      const resolvedType = resolveTypeForPath(varPath, globalSchema);
+    if (varPath) {
+      const resolvedType = resolveTypeForPath(varPath, localSchema);
       if (typeof resolvedType === 'object') {
         if (resolvedType.kind === 'composite') {
           const items: CompletionItem[] = [];
@@ -169,6 +289,93 @@ export function handleCompletion(
     lastPipe !== -1 &&
     (lastPipe > lastTagOpen || lastPipe > lastOutputOpen)
   ) {
+    const exprBeforePipe = lineText.substring(0, lastPipe);
+    const openBound = Math.max(
+      exprBeforePipe.lastIndexOf('{%'),
+      exprBeforePipe.lastIndexOf('{{'),
+    );
+    let rawExpr = exprBeforePipe;
+    if (openBound !== -1) {
+      rawExpr = exprBeforePipe.substring(openBound + 2);
+    }
+    const cleanExpr = rawExpr.trim();
+    // Split by other pipes if there are multiple filters chained
+    const parts = cleanExpr.split('|');
+    const baseVarExpr = parts[0] ? parts[0].trim() : '';
+
+    // Extract the variable/property path. E.g., if it is "user.first_name", extract that.
+    // If it has spaces (like "if status"), take the last word/identifier.
+    let start = baseVarExpr.length;
+    while (
+      start > 0 &&
+      /[a-zA-Z0-9_.[\]'"-]/.test(baseVarExpr[start - 1] || '')
+    ) {
+      start--;
+    }
+    const varPath = baseVarExpr.substring(start).trim();
+
+    let resolvedType: LiquidType = 'unknown';
+    if (varPath) {
+      resolvedType = resolveTypeForPath(varPath, localSchema);
+      if (resolvedType === 'unknown') {
+        if (/^["'].*["']$/.test(varPath)) {
+          resolvedType = 'string';
+        } else if (/^\d+(\.\d+)?$/.test(varPath)) {
+          resolvedType = 'number';
+        }
+      }
+    }
+
+    // Filter categorization based on type
+    const stringFilters = [
+      'append',
+      'capitalize',
+      'downcase',
+      'escape',
+      'prepend',
+      'replace',
+      'slice',
+      'split',
+      'strip',
+      'truncate',
+      'upcase',
+      'default',
+    ];
+    const numberFilters = [
+      'abs',
+      'ceil',
+      'divided_by',
+      'floor',
+      'minus',
+      'modulo',
+      'plus',
+      'round',
+      'times',
+      'toDuration',
+      'toCurrency',
+      'default',
+    ];
+    const dateFilters = ['date', 'default'];
+    const currencyFilters = ['toCurrency', 'default'];
+
+    let filterNames: string[] | null = null;
+
+    if (resolvedType === 'date') {
+      filterNames = dateFilters;
+    } else if (
+      resolvedType === 'string' ||
+      (typeof resolvedType === 'object' && resolvedType.kind === 'dropdown')
+    ) {
+      filterNames = stringFilters;
+    } else if (resolvedType === 'number') {
+      filterNames = numberFilters;
+    } else if (resolvedType === 'currency') {
+      filterNames = currencyFilters;
+    }
+
+    if (filterNames !== null) {
+      return LIQUID_FILTERS.filter((item) => filterNames!.includes(item.label));
+    }
     return LIQUID_FILTERS;
   }
 

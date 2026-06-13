@@ -98,6 +98,17 @@ app.get('/lsp-worker.js', (req, res) => {
   );
 });
 
+// Main-thread client for worker transport (vscode-jsonrpc browser protocol)
+app.get('/lsp-browser-client.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(
+    path.resolve(
+      __dirname,
+      '../../packages/lsp-browser/dist/browser-client.js',
+    ),
+  );
+});
+
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
   console.log('Client connected via WebSocket.');

@@ -97,6 +97,17 @@
         -webkit-text-fill-color: transparent;
       }
 
+      .brand-subtitle {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+
+      .brand-text {
+        display: flex;
+        flex-direction: column;
+      }
+
       .controls {
         display: flex;
         align-items: center;
@@ -133,6 +144,17 @@
       .btn-primary:hover {
         background: linear-gradient(135deg, #be185d, var(--accent-primary));
         transform: translateY(-1px);
+      }
+
+      .lsp-transport-select {
+        background-color: #1e293b;
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        max-width: 220px;
       }
 
       .status-indicator {
@@ -318,6 +340,12 @@
         background: linear-gradient(135deg, #be185d, var(--accent-primary));
       }
 
+      body.light-theme .lsp-transport-select {
+        background-color: #f1f5f9;
+        color: #0f172a;
+        border-color: #cbd5e1;
+      }
+
       body.light-theme .diagnostics-header {
         background-color: #f1f5f9;
         border-bottom: 1px solid #cbd5e1;
@@ -489,10 +517,30 @@
     <header class="navbar">
       <div class="brand">
         <div class="brand-logo">L</div>
-        <span class="brand-title">Liquid Workspace</span>
+        <div class="brand-text">
+          <span class="brand-title">Liquid Workspace</span>
+          <span class="brand-subtitle">
+            Schema:
+            <a
+              href="/playground-variables.json"
+              target="_blank"
+              rel="noopener"
+              style="color: var(--accent-secondary)"
+              >playground-variables.json</a>
+            (key-pointer)
+          </span>
+        </div>
       </div>
 
       <div class="controls">
+        <select
+          id="lsp-transport-select"
+          class="lsp-transport-select"
+          title="Dev: choose where the LSP runs"
+        >
+          <option value="websocket">LSP: WebSocket (Node)</option>
+          <option value="worker">LSP: Worker (browser)</option>
+        </select>
         <div class="status-indicator">
           <div class="status-dot" id="status-dot"></div>
           <span id="status-text">Connecting...</span>
@@ -554,6 +602,12 @@
               Mock Context
             </button>
           </div>
+          <div
+            class="preview-title"
+            style="font-size: 0.75rem; color: var(--text-muted); margin-left: 8px"
+          >
+            Values only — types from playground-variables.json
+          </div>
         </header>
         <div class="preview-content">
           <div id="preview-rendered" class="preview-pane active"></div>
@@ -587,73 +641,69 @@
 
     <!-- Client-side WebSocket & LSP Controller -->
     <script>
-      require(['vs/editor/editor.main'], function () {
-        // 1. Predefined variables schema
-        const schema = {
-          status: {
-            type: 'dropdown',
-            options: ['Active', 'Inactive'],
+      require(['vs/editor/editor.main'], async function () {
+        const keyPointerPayload = await fetch('/playground-variables.json').then(
+          (res) => {
+            if (!res.ok) {
+              throw new Error('Failed to load playground-variables.json');
+            }
+            return res.json();
           },
-          price: 'currency',
-          user: {
-            type: 'composite',
-            fields: {
-              first_name: 'string',
-              items: {
-                type: 'composite',
-                fields: {
-                  title: 'string',
-                },
-              },
-            },
-          },
-        };
+        );
+        const keyPointerVariables = keyPointerPayload.variables;
 
         // 2. Pre-populated sample LiquidJS code in the editor
         const initialText = [
           '{% comment %}',
-          '  Liquid Computational Worksheet Playground',
-          '  ==========================================',
-          '  ',
-          '  Features to test in this editor:',
-          '  1. HOVERS: Hover over variables like "user" or "status" to see type info.',
-          '  2. AUTOCOMPLETE: Try typing "user." or "|" after a variable to see typed filter recommendations.',
-          '  3. QUICK-FIXES: Notice the error squiggle on "status = \'Active\'" line below. Hover it and click the lightbulb to fix it!',
-          '  4. FORMATTING: Click the "Format" button to strictly format indentations, spacing, and quotes.',
+          '  Key-pointer LSP playground (schema: /playground-variables.json)',
+          '  Intentional errors — verify squiggles, hovers, completions, quick-fixes:',
+          '  E1  if sd_term_type = "Fixed"     → assignment in condition',
+          '  E2  assignVar sd_term_type = "Yearly" → invalid dropdown option',
+          '  E3  sd_company_name | plus: 1    → math filter on string',
+          '  E4  sd_company_name | "uppercase" → expected filter name',
+          '  E5  sd_payment | plus: unknown_fee → use before assign',
+          '  E6  parseAssign line_items = [1, 2,] → invalid JSON',
+          '  E7  assign x = 1 + 2             → inline math',
+          '  E8  sd_registered_address.zipcode → unknown address field',
           '{% endcomment %}',
           '',
-          '{% assignVar username = user.first_name %}',
-          '<h3>User Information</h3>',
-          'User Name: <b>{{ username }}</b><br>',
-          'Account Status: <i>{{ status }}</i><br>',
-          '{% comment %} TRY: user.address is optional, so accessing zipcode below shows a warning. {% endcomment %}',
-          'Zipcode: <b>{{ user.address.zipcode }}</b><br>',
-          '',
-          '{% comment %} 1. Conditional comparison & Dropdown Option Check {% endcomment %}',
-          '{% comment %} TRY: Click the lightbulb on "status = \'Active\'" to correct the conditional comparison error! {% endcomment %}',
-          '{% if status = "Active" %}',
-          '  {% assignVar isActive = true %}',
+          '{% comment %} E1: quick-fix conditional comparison {% endcomment %}',
+          '{% if sd_term_type = "Fixed" %}',
+          '  {% assignVar is_fixed_term = true %}',
           '{% else %}',
-          '  {% assignVar isActive = false %}',
+          '  {% assignVar is_fixed_term = false %}',
           '{% endif %}',
-          'Is Active: <b>{{ isActive }}</b>',
           '',
-          '<br><br>',
-          '<h3>Pricing Details</h3>',
-          'Base Price: <b>{{ price.amount | toCurrency: "USD" }}</b><br>',
-          'Adjusted Price (with tax): <b>{{ price.amount | plus: 25 | toCurrency: "USD" }}</b>',
+          '{% comment %} E2: dropdown option not in schema {% endcomment %}',
+          '{% assignVar sd_term_type = "Yearly" %}',
           '',
-          '<br><br>',
-          '<h3>Line Items</h3>',
-          '{% parseAssign localItems = \'[{"title": "Premium Subscription", "cost": 450}, {"title": "Onboarding Pack", "cost": 50}]\' %}',
+          '{% comment %} E3 + E4: filter diagnostics {% endcomment %}',
+          '{% assignVar company_slug = sd_company_name | plus: 1 %}',
+          '{% assignVar bad_filter = sd_company_name | "uppercase" %}',
           '',
-          '{% for item in localItems %}',
-          '  - {{ item.title }}: <b>{{ item.cost | toCurrency: "USD" }}</b><br>',
+          '{% comment %} E5: dependency / use-before-assign {% endcomment %}',
+          '{% assignVar fee_total = sd_payment | plus: unknown_fee %}',
+          '',
+          '{% comment %} E6: parseAssign JSON {% endcomment %}',
+          '{% parseAssign line_items = [1, 2,] %}',
+          '',
+          '{% comment %} E7: inline math {% endcomment %}',
+          '{% assign inline_math = 1 + 2 %}',
+          '',
+          '<h3>Contract summary</h3>',
+          'Payment: <b>{{ sd_payment.amount | toCurrency: "USD" }}</b><br>',
+          'Term type: <i>{{ sd_term_type }}</i> (fixed? {{ is_fixed_term }})<br>',
+          'Company: {{ sd_company_name }}<br>',
+          '{% comment %} E8: invalid property on address composite {% endcomment %}',
+          'Zip: {{ sd_registered_address.zipcode }}<br>',
+          'City: {{ sd_registered_address.city_name }}<br>',
+          'Duration: {{ sd_term_length.days | toDuration: "DAYS" }}<br>',
+          'Same execution date: {{ effective_execution_same }}',
+          '',
+          '{% parseAssign local_items = \'[{"title": "License", "cost": 450}, {"title": "Support", "cost": 50}]\' %}',
+          '{% for row in local_items %}',
+          '  - {{ row.title }}: {{ row.cost | toCurrency: "USD" }}<br>',
           '{% endfor %}',
-          '',
-          '<br>',
-          'Total Cost: <b>{{ localItems | sumArray: "cost" | toCurrency: "USD" }}</b><br>',
-          'Service Duration: <b>{{ 14 | toDuration: "DAYS" }}</b>',
         ].join('\n');
 
         // Initialize Monaco editor
@@ -718,51 +768,115 @@
           },
         );
 
-        // 3. Connect to express LSP WebSocket Server
-        const wsProtocol =
-          window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.host}/lsp`;
-        const ws = new WebSocket(wsUrl);
+        // 3. LSP transport (dev: WebSocket → Node, or browser worker)
+        const LSP_TRANSPORT_KEY = 'liquid-playground-lsp-transport';
+        const urlParams = new URLSearchParams(window.location.search);
+        let lspTransport =
+          urlParams.get('lsp') ||
+          localStorage.getItem(LSP_TRANSPORT_KEY) ||
+          'websocket';
+        if (lspTransport !== 'websocket' && lspTransport !== 'worker') {
+          lspTransport = 'websocket';
+        }
+        localStorage.setItem(LSP_TRANSPORT_KEY, lspTransport);
+
+        const transportSelect = document.getElementById('lsp-transport-select');
+        transportSelect.value = lspTransport;
+        transportSelect.addEventListener('change', () => {
+          const mode = transportSelect.value;
+          localStorage.setItem(LSP_TRANSPORT_KEY, mode);
+          const url = new URL(window.location.href);
+          url.searchParams.set('lsp', mode);
+          window.location.assign(url.toString());
+        });
 
         const statusDot = document.getElementById('status-dot');
         const statusText = document.getElementById('status-text');
+        const diagnosticsList = document.getElementById('diagnostics-list');
+        const diagnosticsCount = document.getElementById('diagnostics-count');
 
         let isConnected = false;
         let requestId = 0;
         const pendingRequests = new Map();
         let docVersion = 1;
         let latestDiagnostics = [];
+        let sendLspJson = null;
+        let lspDispose = null;
+        let sendRequest = async () => null;
+        let sendNotification = () => {};
 
-        function sendRequest(method, params) {
-          return new Promise((resolve) => {
-            if (!isConnected) {
-              resolve(null);
-              return;
-            }
-            const id = ++requestId;
-            pendingRequests.set(id, resolve);
-            ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
-          });
+        function markLspConnected(label) {
+          statusDot.className = 'status-dot connected';
+          statusText.innerText = 'Connected (' + label + ')';
         }
 
-        function sendNotification(method, params) {
-          if (isConnected) {
-            ws.send(JSON.stringify({ jsonrpc: '2.0', method, params }));
+        function markLspDisconnected(label) {
+          isConnected = false;
+          statusDot.className = 'status-dot';
+          statusText.innerText = label;
+        }
+
+        function applyDiagnostics(diagnostics) {
+          latestDiagnostics = diagnostics;
+          const markers = diagnostics.map((d) => ({
+            severity:
+              d.severity === 1
+                ? monaco.MarkerSeverity.Error
+                : monaco.MarkerSeverity.Warning,
+            startLineNumber: d.range.start.line + 1,
+            startColumn: d.range.start.character + 1,
+            endLineNumber: d.range.end.line + 1,
+            endColumn: d.range.end.character + 1,
+            message: d.message,
+          }));
+
+          monaco.editor.setModelMarkers(model, 'liquid', markers);
+
+          if (markers.length === 0) {
+            diagnosticsList.innerHTML =
+              '<div class="diagnostic-empty">No issues found. Your template is fully valid!</div>';
+            diagnosticsCount.innerText = '0 Issues';
+            diagnosticsCount.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+          } else {
+            diagnosticsCount.innerText = `${markers.length} Issue${markers.length > 1 ? 's' : ''}`;
+            diagnosticsCount.style.backgroundColor = markers.some(
+              (m) => m.severity === monaco.MarkerSeverity.Error,
+            )
+              ? '#ef4444'
+              : 'var(--accent-warning)';
+
+            diagnosticsList.innerHTML = markers
+              .map(
+                (m) => `
+            <div class="diagnostic-entry ${m.severity === monaco.MarkerSeverity.Error ? 'error' : 'warning'}">
+              <i class="fa-solid ${m.severity === monaco.MarkerSeverity.Error ? 'fa-circle-xmark' : 'fa-triangle-exclamation'} diagnostic-icon"></i>
+              <div class="diagnostic-message">${m.message}</div>
+              <div class="diagnostic-loc">Line ${m.startLineNumber}, Col ${m.startColumn}</div>
+            </div>
+          `,
+              )
+              .join('');
           }
         }
 
-        ws.onopen = () => {
-          isConnected = true;
-          statusDot.className = 'status-dot connected';
-          statusText.innerText = 'Connected';
+        function handleLspMessage(msg) {
+          if (msg.id !== undefined && pendingRequests.has(msg.id)) {
+            const resolve = pendingRequests.get(msg.id);
+            pendingRequests.delete(msg.id);
+            resolve(msg.result);
+          }
 
-          // Handshake: Initialize LSP server and pass our variable schema
+          if (msg.method === 'textDocument/publishDiagnostics') {
+            applyDiagnostics(msg.params.diagnostics);
+          }
+        }
+
+        function startLspHandshake() {
           sendRequest('initialize', {
             capabilities: {},
-            initializationOptions: { schema },
+            initializationOptions: { variables: keyPointerVariables },
           }).then(() => {
             sendNotification('initialized', {});
-            // Announce current model buffer
             sendNotification('textDocument/didOpen', {
               textDocument: {
                 uri: 'inmemory://model/1',
@@ -772,75 +886,91 @@
               },
             });
           });
-        };
+        }
 
-        ws.onclose = () => {
-          isConnected = false;
-          statusDot.className = 'status-dot';
-          statusText.innerText = 'Disconnected';
-        };
+        function connectWebSocketLsp() {
+          const wsProtocol =
+            window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const wsUrl = `${wsProtocol}//${window.location.host}/lsp`;
+          const ws = new WebSocket(wsUrl);
 
-        // Diagnostics Panel updates
-        const diagnosticsList = document.getElementById('diagnostics-list');
-        const diagnosticsCount = document.getElementById('diagnostics-count');
-
-        ws.onmessage = (event) => {
-          const msg = JSON.parse(event.data);
-
-          // Resolve pending JSON-RPC request-response cycles
-          if (msg.id !== undefined && pendingRequests.has(msg.id)) {
-            const resolve = pendingRequests.get(msg.id);
-            pendingRequests.delete(msg.id);
-            resolve(msg.result);
-          }
-
-          // Handle publishDiagnostics notifications
-          if (msg.method === 'textDocument/publishDiagnostics') {
-            const diagnostics = msg.params.diagnostics;
-            latestDiagnostics = diagnostics;
-            const markers = diagnostics.map((d) => ({
-              severity:
-                d.severity === 1
-                  ? monaco.MarkerSeverity.Error
-                  : monaco.MarkerSeverity.Warning,
-              startLineNumber: d.range.start.line + 1,
-              startColumn: d.range.start.character + 1,
-              endLineNumber: d.range.end.line + 1,
-              endColumn: d.range.end.character + 1,
-              message: d.message,
-            }));
-
-            // Set warnings inside the Monaco Editor text frame
-            monaco.editor.setModelMarkers(model, 'liquid', markers);
-
-            // Update Bottom diagnostics list shelf UI
-            if (markers.length === 0) {
-              diagnosticsList.innerHTML = `<div class="diagnostic-empty">No issues found. Your template is fully valid!</div>`;
-              diagnosticsCount.innerText = `0 Issues`;
-              diagnosticsCount.style.backgroundColor =
-                'rgba(255, 255, 255, 0.1)';
-            } else {
-              diagnosticsCount.innerText = `${markers.length} Issue${markers.length > 1 ? 's' : ''}`;
-              diagnosticsCount.style.backgroundColor = markers.some(
-                (m) => m.severity === monaco.MarkerSeverity.Error,
-              )
-                ? '#ef4444'
-                : 'var(--accent-warning)';
-
-              diagnosticsList.innerHTML = markers
-                .map(
-                  (m) => `
-            <div class="diagnostic-entry ${m.severity === monaco.MarkerSeverity.Error ? 'error' : 'warning'}">
-              <i class="fa-solid ${m.severity === monaco.MarkerSeverity.Error ? 'fa-circle-xmark' : 'fa-triangle-exclamation'} diagnostic-icon"></i>
-              <div class="diagnostic-message">${m.message}</div>
-              <div class="diagnostic-loc">Line ${m.startLineNumber}, Col ${m.startColumn}</div>
-            </div>
-          `,
-                )
-                .join('');
+          sendLspJson = (obj) => ws.send(JSON.stringify(obj));
+          sendRequest = (method, params) =>
+            new Promise((resolve) => {
+              if (!isConnected || !sendLspJson) {
+                resolve(null);
+                return;
+              }
+              const id = ++requestId;
+              pendingRequests.set(id, resolve);
+              sendLspJson({ jsonrpc: '2.0', id, method, params });
+            });
+          sendNotification = (method, params) => {
+            if (isConnected && sendLspJson) {
+              sendLspJson({ jsonrpc: '2.0', method, params });
             }
+          };
+          lspDispose = () => {
+            isConnected = false;
+            ws.close();
+          };
+
+          ws.onopen = () => {
+            isConnected = true;
+            markLspConnected('WebSocket / Node');
+            startLspHandshake();
+          };
+
+          ws.onclose = () => markLspDisconnected('Disconnected');
+          ws.onerror = () => markLspDisconnected('WebSocket error');
+
+          ws.onmessage = (event) => handleLspMessage(JSON.parse(event.data));
+        }
+
+        async function ensureWorkerClient() {
+          if (window.__liquidConnectBrowserLspWorker) {
+            return;
           }
-        };
+          const mod = await import('/lsp-browser-client.js');
+          window.__liquidConnectBrowserLspWorker = mod.connectBrowserLspWorker;
+        }
+
+        async function connectWorkerLsp() {
+          markLspDisconnected('Loading worker...');
+          try {
+            await ensureWorkerClient();
+            const client = await window.__liquidConnectBrowserLspWorker(
+              '/lsp-worker.js',
+            );
+            lspDispose = () => {
+              isConnected = false;
+              client.dispose();
+            };
+            client.onNotification((method, params) => {
+              if (method === 'textDocument/publishDiagnostics') {
+                applyDiagnostics(params.diagnostics);
+              }
+            });
+            sendRequest = (method, params) => client.sendRequest(method, params);
+            sendNotification = (method, params) =>
+              client.sendNotification(method, params);
+            isConnected = true;
+            markLspConnected('Worker / browser');
+            startLspHandshake();
+          } catch (err) {
+            console.error('Worker LSP failed:', err);
+            markLspDisconnected('Worker error');
+          }
+        }
+
+        if (lspTransport === 'worker') {
+          connectWorkerLsp().catch((err) => {
+            console.error('Worker LSP failed:', err);
+            markLspDisconnected('Worker error');
+          });
+        } else {
+          connectWebSocketLsp();
+        }
 
         // Forward buffer content changes to server linter
         model.onDidChangeContent(() => {
@@ -1217,57 +1347,33 @@
 
         liquid.registerFilter('updateTypeAttribute', (val) => val);
 
-        // Default JSON Mock Context
+        // Default mock context (values for key-pointer variables above)
         const defaultContext = {
-          status: 'Active',
-          price: 150.0,
-          user: {
-            first_name: 'Alex',
-            address: {
-              zipcode: '12345'
-            },
-            items: [
-              { title: 'Item A', amount: 100 },
-              { title: 'Item B', amount: 200 },
-            ],
+          sd_payment: { amount: 150000, symbol: 'USD' },
+          sd_term_type: 'Fixed',
+          sd_term_length: { value: 12, type: 'MONTHS', days: 365 },
+          effective_execution_same: true,
+          sd_company_name: 'Acme Corp',
+          sd_registered_address: {
+            street: '1 Market St',
+            city_name: 'San Francisco',
+            state_name: 'CA',
+            pincode: '94105',
+            country_name: 'United States',
+            country_id: 1,
+            country_iso_code: 'US',
           },
+          sd_line_items: [],
         };
 
         const contextInput = document.getElementById('preview-context-input');
         contextInput.value = JSON.stringify(defaultContext, null, 2);
 
-        // Helper to extract LSP schema format from JSON context dynamically
-        function jsonToSchema(val) {
-          if (val === null || val === undefined) return 'string';
-          if (typeof val === 'string') return 'string';
-          if (typeof val === 'number') return 'number';
-          if (typeof val === 'boolean') return 'boolean';
-          if (Array.isArray(val)) {
-            if (
-              val.length > 0 &&
-              typeof val[0] === 'object' &&
-              val[0] !== null
-            ) {
-              const mergedFields = {};
-              val.forEach((item) => {
-                if (item && typeof item === 'object') {
-                  Object.keys(item).forEach((k) => {
-                    mergedFields[k] = jsonToSchema(item[k]);
-                  });
-                }
-              });
-              return { type: 'composite', fields: mergedFields };
-            }
-            return 'string';
-          }
-          if (typeof val === 'object') {
-            const fields = {};
-            Object.keys(val).forEach((k) => {
-              fields[k] = jsonToSchema(val[k]);
-            });
-            return { type: 'composite', fields };
-          }
-          return 'string';
+        function notifyLspContext(contextData) {
+          sendNotification('workspace/updateSchema', {
+            schema: { variables: keyPointerVariables },
+            contextData,
+          });
         }
 
         // Debounced Live Preview Update Loop
@@ -1283,14 +1389,9 @@
             let contextData = {};
             try {
               contextData = JSON.parse(contextInput.value);
-              contextInput.style.boxShadow = ''; // Reset border outline
+              contextInput.style.boxShadow = '';
 
-              // Infer schema from contextData and notify LSP server
-              const newSchema = {};
-              Object.keys(contextData).forEach((key) => {
-                newSchema[key] = jsonToSchema(contextData[key]);
-              });
-              sendNotification('workspace/updateSchema', { schema: newSchema, contextData });
+              notifyLspContext(contextData);
             } catch (err) {
               contextInput.style.boxShadow = 'inset 0 0 0 1px #ef4444';
               renderedPane.innerHTML = `<div class="preview-error">Invalid Mock Context JSON:\n${err.message}</div>`;

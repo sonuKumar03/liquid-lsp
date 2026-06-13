@@ -1,9 +1,32 @@
 import { test, expect } from 'vitest';
+import { formatLiquid } from './formatting.js';
 import {
   startLspServer,
   LSPMessageReader,
   formatLSPMessage,
 } from '../shared/test-utils.js';
+
+test('formatLiquid does not nest after same-line comments', () => {
+  const input = [
+    '{% comment %} E1 fix {% endcomment %}',
+    '{% if x == 1 %}',
+    '  hello',
+    '{% endif %}',
+    '{% comment %} E2 fix {% endcomment %}',
+    'plain line',
+  ].join('\n');
+
+  expect(formatLiquid(input)).toBe(
+    [
+      '{% comment %} E1 fix {% endcomment %}',
+      '{% if x == 1 %}',
+      '  hello',
+      '{% endif %}',
+      '{% comment %} E2 fix {% endcomment %}',
+      'plain line',
+    ].join('\n'),
+  );
+});
 
 test('Liquid auto-close block tags', () =>
   new Promise<void>((resolve) => {

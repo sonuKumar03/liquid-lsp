@@ -80,6 +80,19 @@ export function handleDocumentFormatting(
   ];
 }
 
+function extractBlockTagsFromLine(line: string): string[] {
+  const tags: string[] = [];
+  const tagRe = /\{%-?\s*(\w+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = tagRe.exec(line)) !== null) {
+    const tagName = match[1];
+    if (tagName) {
+      tags.push(tagName);
+    }
+  }
+  return tags;
+}
+
 export function formatLiquid(text: string): string {
   const lines = text.split(/\r?\n/);
   let indentLevel = 0;
@@ -89,23 +102,22 @@ export function formatLiquid(text: string): string {
     const trimmedLine = line.trim();
     if (!trimmedLine) return '';
 
-    // 1. Check if the line starts with a block closer or middle tag
-    let decreaseBefore = false;
-    let isMiddle = false;
-
-    const tagMatch = trimmedLine.match(/^\{%-?\s*(\w+)/);
-    if (tagMatch && tagMatch[1]) {
-      const tagName = tagMatch[1];
+    const blockTags = extractBlockTagsFromLine(trimmedLine);
+    let closeTagCount = 0;
+    let openTagCount = 0;
+    for (const tagName of blockTags) {
       if (BLOCK_CLOSE_TAG_NAMES.has(tagName)) {
-        decreaseBefore = true;
-      } else if (BLOCK_MIDDLE_TAG_NAMES.has(tagName)) {
-        isMiddle = true;
+        closeTagCount++;
+      }
+      if (BLOCK_OPEN_TAG_NAMES.has(tagName)) {
+        openTagCount++;
       }
     }
 
-    if (decreaseBefore) {
-      indentLevel = Math.max(0, indentLevel - 1);
-    }
+    const indentBefore = Math.max(0, indentLevel - closeTagCount);
+    const isMiddle =
+      blockTags.length > 0 &&
+      BLOCK_MIDDLE_TAG_NAMES.has(blockTags[0] as string);
 
     // 2. Format expressions inside tags/outputs on the line and normalize spaces
     let formattedLineText = trimmedLine;
@@ -129,16 +141,13 @@ export function formatLiquid(text: string): string {
     );
 
     // 3. Apply indentation
-    const currentIndent = isMiddle ? Math.max(0, indentLevel - 1) : indentLevel;
+    const currentIndent = isMiddle
+      ? Math.max(0, indentBefore - 1)
+      : indentBefore;
     const indentedLine = indentString.repeat(currentIndent) + formattedLineText;
 
-    // 4. Check if the line ends with or contains a block opener tag
-    if (tagMatch && tagMatch[1]) {
-      const tagName = tagMatch[1];
-      if (BLOCK_OPEN_TAG_NAMES.has(tagName)) {
-        indentLevel++;
-      }
-    }
+    // 4. Update indent for following lines (open/close on the same line net out)
+    indentLevel = Math.max(0, indentLevel - closeTagCount + openTagCount);
 
     return indentedLine;
   });

@@ -34,18 +34,6 @@ const documents = new TextDocuments(TextDocument);
 
 // Initialize Liquid parsing engine used to validate syntax blocks
 const liquidEngine = new Liquid();
-const isV10 =
-  (liquidjs as any).version && (liquidjs as any).version.startsWith('10.');
-if (isV10) {
-  liquidEngine.registerTag('parseAssign', {
-    parse() {},
-    render() {},
-  });
-  liquidEngine.registerTag('assignVar', {
-    parse() {},
-    render() {},
-  });
-}
 
 // Debounce map for diagnostic pushes to prevent validation thrashing on rapid keystrokes
 const pendingValidationTimers = new Map<string, NodeJS.Timeout>();

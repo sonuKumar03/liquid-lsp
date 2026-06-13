@@ -5,6 +5,9 @@ import { workspace } from 'vscode';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
 import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node';
 
+const DEFAULT_REMOTE_LSP_PORT = 6009;
+const DEFAULT_LSP_INSPECT_PORT = 6009;
+
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
@@ -13,7 +16,7 @@ export function activate(context: ExtensionContext) {
   const config = workspace.getConfiguration('liquid');
   const mode = config.get<'local' | 'remote'>('server.mode') || 'local';
   const host = config.get<string>('server.host') || 'localhost';
-  const port = config.get<number>('server.port') || 6009;
+  const port = config.get<number>('server.port') || DEFAULT_REMOTE_LSP_PORT;
 
   // Path to the compiled server file
   const serverModule = context.asAbsolutePath(path.join('dist', 'server', 'main.js'));
@@ -36,7 +39,7 @@ export function activate(context: ExtensionContext) {
       debug: {
         module: serverModule,
         transport: TransportKind.stdio,
-        options: { execArgv: ['--nolazy', '--inspect=6009'] }
+        options: { execArgv: [`--nolazy`, `--inspect=${DEFAULT_LSP_INSPECT_PORT}`] }
       }
     };
   }

@@ -1,6 +1,12 @@
 import type { DocumentOnTypeFormattingParams, DocumentFormattingParams, TextEdit } from 'vscode-languageserver/node';
 import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import {
+  AUTO_CLOSE_BLOCK_TAG_NAMES,
+  BLOCK_CLOSE_TAG_NAMES,
+  BLOCK_MIDDLE_TAG_NAMES,
+  BLOCK_OPEN_TAG_NAMES
+} from '../shared/liquid-syntax.js';
 
 export function handleOnTypeFormatting(
   documents: TextDocuments<TextDocument>,
@@ -24,9 +30,7 @@ export function handleOnTypeFormatting(
     const firstWord = tagContent.split(/\s+/)[0];
     if (!firstWord) return null;
 
-    // List of block tags that require closing
-    const blockTags = ['if', 'for', 'unless', 'capture', 'tablerow', 'case', 'comment'];
-    if (blockTags.includes(firstWord)) {
+    if (AUTO_CLOSE_BLOCK_TAG_NAMES.includes(firstWord as typeof AUTO_CLOSE_BLOCK_TAG_NAMES[number])) {
       const endTag = `end${firstWord}`;
       
       // Auto-insert a double newline and the closing tag
@@ -73,10 +77,6 @@ export function formatLiquid(text: string): string {
   let indentLevel = 0;
   const indentString = '  '; // 2 spaces
 
-  const blockOpeners = new Set(['if', 'unless', 'for', 'tablerow', 'case', 'comment', 'capture', 'computeColumn']);
-  const blockClosers = new Set(['endif', 'endunless', 'endfor', 'endtablerow', 'endcase', 'endcomment', 'endcapture', 'endcomputeColumn']);
-  const blockMiddles = new Set(['else', 'elsif', 'when']);
-
   const formattedLines = lines.map((line) => {
     const trimmedLine = line.trim();
     if (!trimmedLine) return '';
@@ -88,9 +88,9 @@ export function formatLiquid(text: string): string {
     const tagMatch = trimmedLine.match(/^\{%-?\s*(\w+)/);
     if (tagMatch && tagMatch[1]) {
       const tagName = tagMatch[1];
-      if (blockClosers.has(tagName)) {
+      if (BLOCK_CLOSE_TAG_NAMES.has(tagName)) {
         decreaseBefore = true;
-      } else if (blockMiddles.has(tagName)) {
+      } else if (BLOCK_MIDDLE_TAG_NAMES.has(tagName)) {
         isMiddle = true;
       }
     }
@@ -121,7 +121,7 @@ export function formatLiquid(text: string): string {
     // 4. Check if the line ends with or contains a block opener tag
     if (tagMatch && tagMatch[1]) {
       const tagName = tagMatch[1];
-      if (blockOpeners.has(tagName)) {
+      if (BLOCK_OPEN_TAG_NAMES.has(tagName)) {
         indentLevel++;
       }
     }
@@ -169,4 +169,3 @@ function formatExpression(expr: string): string {
 
   return parts.join('');
 }
-

@@ -1,5 +1,13 @@
 import { closest, distance } from 'fastest-levenshtein';
 import { LIQUID_FILTERS } from './constants.js';
+import {
+  CONDITIONAL_ASSIGNMENT_MESSAGE,
+  EXPECTED_FILTER_NAME_MESSAGE,
+  INLINE_MATH_OPERATOR_MESSAGE,
+  hasInlineMathOperators,
+  hasSingleEqualsAssignment,
+  isConditionalTagLine
+} from './liquid-syntax.js';
 
 /**
  * Truncates and formats complex parser/compiler error messages to a single line.
@@ -50,18 +58,13 @@ export function getWordAtPosition(text: string, character: number): string {
 export function getEnhancedErrorMessage(msg: string, lineText: string): string {
   const cleanMsg = cleanErrorMessage(msg);
 
-  if (cleanMsg.includes('expected "|" before filter')) {
-    // 1. Check if they wrote a single equal assignment inside a conditional block
-    const singleEqualRegex = /(?<![=!<>])=(?![=<>])/;
-    const isConditional = /\b(if|unless|elsif|when)\b/.test(lineText);
-    if (isConditional && singleEqualRegex.test(lineText)) {
-      return 'Assignments are not allowed inside conditional statements. Did you mean "=="?';
+  if (cleanMsg.includes(EXPECTED_FILTER_NAME_MESSAGE)) {
+    if (isConditionalTagLine(lineText) && hasSingleEqualsAssignment(lineText)) {
+      return CONDITIONAL_ASSIGNMENT_MESSAGE;
     }
 
-    // 2. Check if they used math operators (+, -, *, /)
-    const mathOperatorRegex = /\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//;
-    if (mathOperatorRegex.test(lineText)) {
-      return 'Liquid does not support inline mathematical operators. Use filters instead, e.g. "| plus: 2".';
+    if (hasInlineMathOperators(lineText)) {
+      return INLINE_MATH_OPERATOR_MESSAGE;
     }
   }
 

@@ -5,6 +5,8 @@ import { spawn } from 'child_process';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
+const DEFAULT_EXPRESS_GATEWAY_PORT = 3000;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -145,7 +147,7 @@ server.on('upgrade', (request, socket, head) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || DEFAULT_EXPRESS_GATEWAY_PORT;
 server.listen(PORT, () => {
   console.log(`Express WebSocket LSP Gateway listening on port ${PORT}`);
   console.log(`WebSocket endpoint: ws://localhost:${PORT}/lsp`);

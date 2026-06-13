@@ -2,6 +2,11 @@ import { CodeAction, CodeActionKind, Command } from 'vscode-languageserver/node'
 import type { CodeActionParams } from 'vscode-languageserver/node';
 import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import {
+  CONDITIONAL_ASSIGNMENT_MESSAGE,
+  INLINE_MATH_OPERATOR_MESSAGE,
+  SINGLE_EQUALS_ASSIGNMENT_REGEX
+} from '../shared/liquid-syntax.js';
 import { convertToLiquidMath } from '../shared/utils.js';
 
 export function handleCodeAction(
@@ -88,7 +93,7 @@ export function handleCodeAction(
     }
 
     // 3. Pattern to match: "Liquid does not support inline mathematical operators"
-    if (message.includes('Liquid does not support inline mathematical operators')) {
+    if (message.includes(INLINE_MATH_OPERATOR_MESSAGE)) {
       const startLine = diagnostic.range.start.line;
       const lineText = doc.getText({
         start: { line: startLine, character: 0 },
@@ -122,14 +127,14 @@ export function handleCodeAction(
     }
 
     // 4. Pattern to match: "Assignments are not allowed inside conditional statements"
-    if (message.includes('Assignments are not allowed inside conditional statements')) {
+    if (message.includes(CONDITIONAL_ASSIGNMENT_MESSAGE)) {
       const startLine = diagnostic.range.start.line;
       const lineText = doc.getText({
         start: { line: startLine, character: 0 },
         end: { line: startLine + 1, character: 0 }
       });
 
-      const matchIndex = lineText.search(/(?<![=!<>])=(?![=<>])/);
+      const matchIndex = lineText.search(SINGLE_EQUALS_ASSIGNMENT_REGEX);
       if (matchIndex !== -1) {
         const edit = {
           changes: {

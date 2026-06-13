@@ -109,7 +109,16 @@ For browser-based editors (like Monaco Editor) that cannot launch local child pr
    ```
    This exposes a WebSocket LSP gateway endpoint at `ws://localhost:3000/lsp`.
 2. Connect your Monaco Editor (or web client) to the WebSocket endpoint to receive real-time lints, diagnostics, completions, and hover documentation.
-3. **Angular Integration**: For a step-by-step example of setting up Monaco Editor inside an Angular application and linking it to this WebSocket gateway, refer to the [Angular Integration Guide](./angular_integration.md).
+3. **Web Playground Testing**: The `express-server` includes a pre-packaged web interface to interactively test the LSP:
+   * **Start server**: Run `npm start --workspace=express-server`.
+   * **Open UI**: Navigate to `http://localhost:3000` in your browser.
+   * **Features to test**:
+     * **Diagnostics**: Look for red error squiggles on initial load (e.g. `status = "Active"` assignment warning).
+     * **Formatting**: Click the **Format Template** button (or press `Alt+Shift+F`) to trigger strict template indentation, spacing, and quote normalization.
+     * **Completions**: Type `user.` or trigger completions inside output delimiters to see variable auto-completes.
+     * **Hovers**: Hover over schema variables (like `user.first_name`) to view type details.
+     * **Themes**: Toggle the **Dark Mode** / **Light Mode** button in the header.
+4. **Angular Integration**: For a step-by-step example of setting up Monaco Editor inside an Angular application and linking it to this WebSocket gateway, refer to the [Angular Integration Guide](./angular_integration.md).
 
 ---
 

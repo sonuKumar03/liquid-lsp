@@ -69,43 +69,67 @@ export function handleDocumentFormatting(
 }
 
 export function formatLiquid(text: string): string {
-  // 1. Format tags: {% ... %}
-  let formatted = text.replace(/\{%([\s\S]*?)%\}/g, (match, content) => {
-    const lines = content.split('\n');
-    const formattedLines = lines.map((line: string, index: number) => {
-      let formattedLine = formatExpression(line);
-      if (index === 0) {
-        formattedLine = formattedLine.trimStart();
+  const lines = text.split(/\r?\n/);
+  let indentLevel = 0;
+  const indentString = '  '; // 2 spaces
+
+  const blockOpeners = new Set(['if', 'unless', 'for', 'tablerow', 'case', 'comment', 'capture', 'computeColumn']);
+  const blockClosers = new Set(['endif', 'endunless', 'endfor', 'endtablerow', 'endcase', 'endcomment', 'endcapture', 'endcomputeColumn']);
+  const blockMiddles = new Set(['else', 'elsif', 'when']);
+
+  const formattedLines = lines.map((line) => {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) return '';
+
+    // 1. Check if the line starts with a block closer or middle tag
+    let decreaseBefore = false;
+    let isMiddle = false;
+
+    const tagMatch = trimmedLine.match(/^\{%-?\s*(\w+)/);
+    if (tagMatch && tagMatch[1]) {
+      const tagName = tagMatch[1];
+      if (blockClosers.has(tagName)) {
+        decreaseBefore = true;
+      } else if (blockMiddles.has(tagName)) {
+        isMiddle = true;
       }
-      if (index === lines.length - 1) {
-        formattedLine = formattedLine.trimEnd();
-      }
-      return formattedLine;
+    }
+
+    if (decreaseBefore) {
+      indentLevel = Math.max(0, indentLevel - 1);
+    }
+
+    // 2. Format expressions inside tags/outputs on the line and normalize spaces
+    let formattedLineText = trimmedLine;
+    
+    // Format {% ... %} tags
+    formattedLineText = formattedLineText.replace(/\{%(-?)([\s\S]*?)(-?)%\}/g, (match, dash1, content, dash2) => {
+      const cleanContent = formatExpression(content.trim()).trim();
+      return `{%${dash1} ${cleanContent} ${dash2}%}`;
     });
-    const joined = formattedLines.join('\n');
-    if (!joined.trim()) return '{% %}';
-    return `{% ${joined.trim()} %}`;
+
+    // Format {{ ... }} outputs
+    formattedLineText = formattedLineText.replace(/\{\{(-?)([\s\S]*?)(-?)\}\}/g, (match, dash1, content, dash2) => {
+      const cleanContent = formatExpression(content.trim()).trim();
+      return `{{${dash1} ${cleanContent} ${dash2}}}`;
+    });
+
+    // 3. Apply indentation
+    const currentIndent = isMiddle ? Math.max(0, indentLevel - 1) : indentLevel;
+    const indentedLine = indentString.repeat(currentIndent) + formattedLineText;
+
+    // 4. Check if the line ends with or contains a block opener tag
+    if (tagMatch && tagMatch[1]) {
+      const tagName = tagMatch[1];
+      if (blockOpeners.has(tagName)) {
+        indentLevel++;
+      }
+    }
+
+    return indentedLine;
   });
 
-  // 2. Format outputs: {{ ... }}
-  formatted = formatted.replace(/\{\{([\s\S]*?)\}\}/g, (match, content) => {
-    const lines = content.split('\n');
-    const formattedLines = lines.map((line: string, index: number) => {
-      let formattedLine = formatExpression(line);
-      if (index === 0) {
-        formattedLine = formattedLine.trimStart();
-      }
-      if (index === lines.length - 1) {
-        formattedLine = formattedLine.trimEnd();
-      }
-      return formattedLine;
-    });
-    const joined = formattedLines.join('\n');
-    if (!joined.trim()) return '{{ }}';
-    return `{{ ${joined.trim()} }}`;
-  });
-
-  return formatted;
+  return formattedLines.join('\n');
 }
 
 function formatExpression(expr: string): string {
@@ -130,6 +154,19 @@ function formatExpression(expr: string): string {
     
     parts[i] = code;
   }
+  
+  // Normalize single quotes to double quotes for string literals (odd indices)
+  // unless the literal contains a nested double quote (to avoid escaping complexity).
+  for (let i = 1; i < parts.length; i += 2) {
+    const literal = parts[i] ?? '';
+    if (literal.startsWith("'")) {
+      const inner = literal.slice(1, -1);
+      if (!inner.includes('"')) {
+        parts[i] = `"${inner}"`;
+      }
+    }
+  }
+
   return parts.join('');
 }
 

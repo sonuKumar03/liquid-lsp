@@ -122,7 +122,8 @@ export function startServer(
 
   connection.onDefinition((params) => {
     return handleDefinition(
-      documentManager.documents,
+      documentManager,
+      liquidEngine,
       params,
       typeSystem.getWorkspaceRoot(),
     );

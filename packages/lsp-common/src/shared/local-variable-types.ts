@@ -10,7 +10,7 @@ import { collectVariableNamesFromTokens } from '../shared/token-variables.js';
 
 const ASSIGN_TAG_NAMES = new Set(['assign', 'assignVar', 'parseAssign']);
 
-const STRING_FILTERS = new Set([
+export const STRING_FILTERS = new Set([
   'upcase',
   'downcase',
   'append',
@@ -21,7 +21,7 @@ const STRING_FILTERS = new Set([
   'truncate',
 ]);
 
-const MATH_FILTERS = new Set([
+export const MATH_FILTERS = new Set([
   'abs',
   'ceil',
   'floor',
@@ -35,7 +35,7 @@ const MATH_FILTERS = new Set([
   'sumArray',
 ]);
 
-function inferLiteralType(value: string): LiquidType {
+export function inferLiteralType(value: string): LiquidType {
   if (lexical.isLiteral(value)) {
     const literal = lexical.parseLiteral(value);
     if (typeof literal === 'boolean') {
@@ -49,7 +49,7 @@ function inferLiteralType(value: string): LiquidType {
   return 'unknown';
 }
 
-function applyFilterTypeRules(
+export function applyFilterTypeRules(
   filterName: string,
   currentType: LiquidType,
 ): LiquidType {
@@ -65,7 +65,7 @@ function applyFilterTypeRules(
   return currentType;
 }
 
-function inferTypeFromAssignValue(
+export function inferTypeFromAssignValue(
   engine: Liquid,
   tagName: string,
   valueExpr: string,

@@ -1,10 +1,10 @@
 import { Location, Range } from 'vscode-languageserver';
 import type { DefinitionParams } from 'vscode-languageserver';
-import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getWordAtPosition } from 'liquid-core';
+import { getWordAtPosition, type Liquid } from 'liquid-core';
 import { getVariablePathAtPosition } from '../hovers/hovers.js';
-import { findVariableDeclarations } from '../shared/variable-declarations.js';
+import { findVariableDeclarationsFromTokens } from '../shared/variable-declarations.js';
+import type { DocumentManager } from '../server/document-manager.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -45,11 +45,12 @@ export function locatePathInJson(jsonText: string, varPath: string): Range | nul
 }
 
 export function handleDefinition(
-  documents: TextDocuments<TextDocument>,
+  documentManager: DocumentManager,
+  liquidEngine: Liquid,
   params: DefinitionParams,
   workspaceRoot?: string | null,
 ): Location | null {
-  const doc = documents.get(params.textDocument.uri);
+  const doc = documentManager.documents.get(params.textDocument.uri);
   if (!doc) return null;
 
   const position = params.position;
@@ -74,7 +75,11 @@ export function handleDefinition(
     return null;
   }
 
-  const declarations = findVariableDeclarations(doc);
+  const tokens = documentManager.getTokens(
+    params.textDocument.uri,
+    liquidEngine,
+  );
+  const declarations = findVariableDeclarationsFromTokens(doc, tokens);
   const matched = declarations.find((d) => d.name === word);
   if (matched) {
     return Location.create(doc.uri, matched.range);

@@ -2,14 +2,19 @@ import { DiagnosticSeverity, Range } from 'vscode-languageserver';
 import type { Diagnostic } from 'vscode-languageserver';
 import type { Liquid, Token, TagToken } from 'liquid-core';
 import {
-  Tokenizer,
   TokenKind,
   TagTokenClass,
   tokenizeTopLevel,
   isKnownLiquidFilter,
   isConditionalTagLine,
   getClosestFilter,
+  parseAssignKeyValue,
+  parseCaptureVariable,
+  parseForLoopVariable,
+  parseOutputValue,
+  lexical,
 } from 'liquid-core';
+import { MATH_FILTERS, STRING_FILTERS } from '../shared/local-variable-types.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { LiquidType } from '../shared/schema.js';
 import { findVariableDeclarations } from '../shared/variable-declarations.js';
@@ -51,10 +56,18 @@ export function collectLifecycleDiagnostics(
           token,
           activeVars,
           line,
+          liquidEngine,
         );
       } else if (token.kind === TokenKind.Output) {
         const expr = token.getText().slice(2, -2).trim();
-        processExpression(expr, token, textDocument, diagnostics, activeVars);
+        processExpression(
+          expr,
+          token,
+          textDocument,
+          diagnostics,
+          activeVars,
+          liquidEngine,
+        );
       }
     }
   } catch {
@@ -86,53 +99,35 @@ function collectTagDiagnostics(
   token: TagToken,
   activeVars: Map<string, ActiveVar>,
   line: number,
+  engine: Liquid,
 ): void {
   const tokenText = token.getText();
   const name = token.name;
 
-  if (name === 'assign' || name === 'assignVar') {
-    const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)\s*=\s*(.+)/);
-    if (match) {
-      const varName = match[1] ?? '';
-      const expr = match[2] ?? '';
+  if (name === 'assign' || name === 'assignVar' || name === 'parseAssign') {
+    const parsed = parseAssignKeyValue(token.args);
+    if (parsed) {
+      const varName = parsed.key;
+      const expr = parsed.value;
       const prev = activeVars.get(varName);
 
-      const inferredType = processExpression(
-        expr,
-        token,
-        doc,
-        diagnostics,
-        activeVars,
-      );
-      redefineIfNeeded(diagnostics, activeVars, varName);
-      activeVars.set(
-        varName,
-        createDecl(varName, line, tokenText, inferredType),
-      );
-      validateDropdownValue(
-        doc,
-        diagnostics,
-        prev,
-        varName,
-        expr,
-        token.begin,
-        token.end,
-      );
-    }
-  } else if (name === 'parseAssign') {
-    const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)\s*=\s*(.+)/);
-    if (match) {
-      const varName = match[1] ?? '';
-      const expr = (match[2] ?? '').trim();
-      const prev = activeVars.get(varName);
-
-      const inferredType = processParseAssignExpression(
-        expr,
-        token,
-        doc,
-        diagnostics,
-        activeVars,
-      );
+      const inferredType =
+        name === 'parseAssign'
+          ? processParseAssignExpression(
+              expr,
+              token,
+              doc,
+              diagnostics,
+              activeVars,
+            )
+          : processExpression(
+              expr,
+              token,
+              doc,
+              diagnostics,
+              activeVars,
+              engine,
+            );
       redefineIfNeeded(diagnostics, activeVars, varName);
       activeVars.set(
         varName,
@@ -149,22 +144,38 @@ function collectTagDiagnostics(
       );
     }
   } else if (name === 'capture') {
-    const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)/);
-    if (match) {
-      const varName = match[1] ?? '';
+    const varName = parseCaptureVariable(token.args);
+    if (varName) {
       redefineIfNeeded(diagnostics, activeVars, varName);
       activeVars.set(varName, createDecl(varName, line, tokenText, 'string'));
     }
   } else if (name === 'for') {
-    const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)\s+in\s+(.+)/);
-    if (match) {
-      const varName = match[1] ?? '';
-      const expr = match[2] ?? '';
-      processExpression(expr, token, doc, diagnostics, activeVars);
+    const varName = parseForLoopVariable(token.args);
+    if (varName) {
+      const collectionExpr = token.args
+        .replace(new RegExp(`^\\s*${varName}\\s+in\\s+`), '')
+        .trim();
+      if (collectionExpr) {
+        processExpression(
+          collectionExpr,
+          token,
+          doc,
+          diagnostics,
+          activeVars,
+          engine,
+        );
+      }
       activeVars.set(varName, createDecl(varName, line, tokenText, 'unknown'));
     }
   } else if (isConditionalTagLine(name)) {
-    processExpression(token.args, token, doc, diagnostics, activeVars);
+    processExpression(
+      token.args,
+      token,
+      doc,
+      diagnostics,
+      activeVars,
+      engine,
+    );
   }
 }
 
@@ -351,85 +362,32 @@ function processParseAssignExpression(
   }
 
   if (filterParts.length > 1) {
-    const MATH_FILTERS = new Set([
-      'plus',
-      'minus',
-      'times',
-      'divided_by',
-      'modulo',
-      'round',
-      'ceil',
-      'floor',
-      'abs',
-      'size',
-    ]);
-    const STRING_FILTERS = new Set([
-      'upcase',
-      'downcase',
-      'capitalize',
-      'escape',
-      'replace',
-      'prepend',
-      'append',
-      'join',
-      'slice',
-      'truncate',
-      'split',
-      'strip',
-    ]);
-
-    for (let i = 1; i < filterParts.length; i++) {
-      const filterPart = (filterParts[i] ?? '').trim();
-      if (!filterPart) continue;
-
-      const filterMatch = filterPart.match(/^([a-zA-Z0-9_-]+)/);
-      if (!filterMatch) continue;
-
-      const filterName = filterMatch[1];
-      if (!filterName) continue;
-
-      if (MATH_FILTERS.has(filterName)) {
-        if (currentType === 'string') {
-          const tokenText = token.getText();
-          const filterOffsetInToken = tokenText.indexOf(filterName);
-          const start = doc.positionAt(
-            token.begin +
-              (filterOffsetInToken !== -1 ? filterOffsetInToken : 0),
-          );
-          const end = doc.positionAt(
-            token.begin +
-              (filterOffsetInToken !== -1
-                ? filterOffsetInToken + filterName.length
-                : tokenText.length),
-          );
-          diagnostics.push({
-            severity: DiagnosticSeverity.Warning,
-            range: { start, end },
-            message: `Type mismatch: Math filter "${filterName}" is applied to a string value.`,
-            source: 'liquid-lsp-linter',
-          });
-        }
-        currentType = 'number';
-      } else if (STRING_FILTERS.has(filterName)) {
-        currentType = 'string';
-      }
-    }
+    currentType = applyFilterTypeWarnings(
+      expr,
+      token,
+      doc,
+      diagnostics,
+      activeVars,
+      currentType,
+    );
   }
 
   return currentType;
 }
 
-function processExpression(
+function buildSpacedFilterExpr(expr: string): string {
+  return expr
+    .replace(/"[^"]*"/g, (m) => '"' + ' '.repeat(m.length - 2) + '"')
+    .replace(/'[^']*'/g, (m) => "'" + ' '.repeat(m.length - 2) + "'");
+}
+
+function validateFilterNameSyntax(
   expr: string,
   token: Token,
   doc: TextDocument,
   diagnostics: Diagnostic[],
-  activeVars: Map<string, ActiveVar>,
-): LiquidType {
-  const spacedExpr = expr
-    .replace(/"[^"]*"/g, (m) => '"' + ' '.repeat(m.length - 2) + '"')
-    .replace(/'[^']*'/g, (m) => "'" + ' '.repeat(m.length - 2) + "'");
-
+): void {
+  const spacedExpr = buildSpacedFilterExpr(expr);
   let pipeIdx = spacedExpr.indexOf('|');
   while (pipeIdx !== -1) {
     const afterPipe = expr.substring(pipeIdx + 1);
@@ -437,9 +395,7 @@ function processExpression(
     const leadingWhitespaceLen = afterPipe.length - trimmedAfterPipe.length;
     const filterNameStart = pipeIdx + 1 + leadingWhitespaceLen;
 
-    const filterNameMatch = trimmedAfterPipe.match(
-      /^([a-zA-Z_][a-zA-Z0-9_-]*)/,
-    );
+    const filterNameMatch = trimmedAfterPipe.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)/);
     if (!filterNameMatch) {
       const tokenText = token.getText();
       const exprOffsetInToken = tokenText.indexOf(expr);
@@ -449,33 +405,34 @@ function processExpression(
         filterNameStart;
       const matchWord = trimmedAfterPipe.match(/^[^\s|]*/);
       const highlightLen = Math.max(1, matchWord ? matchWord[0].length : 1);
-      const start = doc.positionAt(errorStartOffset);
-      const end = doc.positionAt(errorStartOffset + highlightLen);
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
-        range: { start, end },
+        range: {
+          start: doc.positionAt(errorStartOffset),
+          end: doc.positionAt(errorStartOffset + highlightLen),
+        },
         message: 'Expected filter name.',
         source: 'liquid-lsp-linter',
       });
     } else {
       const filterName = filterNameMatch[1]!;
-      const isKnown = isKnownLiquidFilter(filterName);
-      if (!isKnown) {
+      if (!isKnownLiquidFilter(filterName)) {
         const tokenText = token.getText();
         const exprOffsetInToken = tokenText.indexOf(expr);
         const errorStartOffset =
           token.begin +
           (exprOffsetInToken !== -1 ? exprOffsetInToken : 0) +
           filterNameStart;
-        const start = doc.positionAt(errorStartOffset);
-        const end = doc.positionAt(errorStartOffset + filterName.length);
         const closestFilter = getClosestFilter(filterName);
         const message = closestFilter
           ? `Unknown filter "${filterName}". Did you mean "${closestFilter}"?`
           : `Unknown filter "${filterName}".`;
         diagnostics.push({
           severity: DiagnosticSeverity.Warning,
-          range: { start, end },
+          range: {
+            start: doc.positionAt(errorStartOffset),
+            end: doc.positionAt(errorStartOffset + filterName.length),
+          },
           message,
           code: DIAGNOSTIC_CODES.UNKNOWN_FILTER,
           data: { filterName, suggestedFilter: closestFilter },
@@ -485,66 +442,9 @@ function processExpression(
     }
     pipeIdx = spacedExpr.indexOf('|', pipeIdx + 1);
   }
-
-  const cleanExpr = expr.replace(/"[^"]*"/g, '""').replace(/'[^']*'/g, "''");
-  const parts = cleanExpr.split('|');
-  const basePart = (parts[0] ?? '').trim();
-
-  let currentType: LiquidType = 'unknown';
-  if (/^""|''$/.test(basePart)) {
-    currentType = 'string';
-  } else if (/^(true|false)$/.test(basePart)) {
-    currentType = 'boolean';
-  } else if (/^\d+(\.\d+)?$/.test(basePart)) {
-    currentType = 'number';
-  } else if (/^[a-zA-Z0-9_-]+$/.test(basePart)) {
-    const varName = basePart;
-    if (activeVars.has(varName)) {
-      const v = activeVars.get(varName)!;
-      v.hasBeenRead = true;
-      currentType = v.type;
-    }
-  } else {
-    if (basePart.includes('.')) {
-      currentType = processParseAssignExpression(
-        basePart,
-        token,
-        doc,
-        diagnostics,
-        activeVars,
-      );
-    } else {
-      const words = basePart.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
-      const keywords = new Set([
-        'true',
-        'false',
-        'nil',
-        'null',
-        'and',
-        'or',
-        'contains',
-        'in',
-      ]);
-      for (const word of words) {
-        if (!keywords.has(word) && activeVars.has(word)) {
-          activeVars.get(word)!.hasBeenRead = true;
-        }
-      }
-      if (/[=!<>+]/.test(basePart)) currentType = 'boolean';
-    }
-  }
-
-  return applyFilterTypes(
-    expr,
-    token,
-    doc,
-    diagnostics,
-    activeVars,
-    currentType,
-  );
 }
 
-function applyFilterTypes(
+function applyFilterTypeWarnings(
   expr: string,
   token: Token,
   doc: TextDocument,
@@ -552,32 +452,6 @@ function applyFilterTypes(
   activeVars: Map<string, ActiveVar>,
   currentType: LiquidType,
 ): LiquidType {
-  const MATH_FILTERS = new Set([
-    'plus',
-    'minus',
-    'times',
-    'divided_by',
-    'modulo',
-    'round',
-    'ceil',
-    'floor',
-    'abs',
-    'size',
-  ]);
-  const STRING_FILTERS = new Set([
-    'upcase',
-    'downcase',
-    'capitalize',
-    'escape',
-    'replace',
-    'prepend',
-    'append',
-    'join',
-    'slice',
-    'truncate',
-    'split',
-    'strip',
-  ]);
   const parts = expr
     .replace(/"[^"]*"/g, '""')
     .replace(/'[^']*'/g, "''")
@@ -633,15 +507,135 @@ function applyFilterTypes(
           source: 'liquid-lsp-linter',
         });
       }
-      return 'number';
-    }
-
-    if (STRING_FILTERS.has(filterName)) {
-      return 'string';
+      currentType = 'number';
+    } else if (STRING_FILTERS.has(filterName)) {
+      currentType = 'string';
     }
   }
 
   return currentType;
+}
+
+function resolveBaseExpressionType(
+  basePart: string,
+  token: Token,
+  doc: TextDocument,
+  diagnostics: Diagnostic[],
+  activeVars: Map<string, ActiveVar>,
+): LiquidType {
+  let currentType: LiquidType = 'unknown';
+  if (/^""|''$/.test(basePart)) {
+    currentType = 'string';
+  } else if (/^(true|false)$/.test(basePart)) {
+    currentType = 'boolean';
+  } else if (/^\d+(\.\d+)?$/.test(basePart)) {
+    currentType = 'number';
+  } else if (/^[a-zA-Z0-9_-]+$/.test(basePart)) {
+    const varName = basePart;
+    if (activeVars.has(varName)) {
+      const v = activeVars.get(varName)!;
+      v.hasBeenRead = true;
+      currentType = v.type;
+    }
+  } else if (basePart.includes('.')) {
+    currentType = processParseAssignExpression(
+      basePart,
+      token,
+      doc,
+      diagnostics,
+      activeVars,
+    );
+  } else {
+    const words = basePart.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
+    const keywords = new Set([
+      'true',
+      'false',
+      'nil',
+      'null',
+      'and',
+      'or',
+      'contains',
+      'in',
+    ]);
+    for (const word of words) {
+      if (!keywords.has(word) && activeVars.has(word)) {
+        activeVars.get(word)!.hasBeenRead = true;
+      }
+    }
+    if (/[=!<>+]/.test(basePart)) {
+      currentType = 'boolean';
+    }
+  }
+
+  return currentType;
+}
+
+function markVariableUsage(
+  value: string,
+  activeVars: Map<string, ActiveVar>,
+): void {
+  const trimmed = value.trim();
+  if (!trimmed || lexical.isLiteral(trimmed)) {
+    return;
+  }
+
+  const baseVar = trimmed.split('.')[0]?.replace(/\[\s*.+\s*\]/g, '').trim();
+  if (baseVar && activeVars.has(baseVar)) {
+    activeVars.get(baseVar)!.hasBeenRead = true;
+  }
+}
+
+function markVariablesReadFromExpression(
+  expr: string,
+  activeVars: Map<string, ActiveVar>,
+  engine: Liquid,
+): void {
+  const parsed = parseOutputValue(engine, expr);
+  if (!parsed) {
+    return;
+  }
+
+  markVariableUsage(parsed.initial, activeVars);
+  for (const filter of parsed.filters) {
+    for (const arg of filter.args) {
+      markVariableUsage(arg, activeVars);
+    }
+  }
+}
+
+function processExpression(
+  expr: string,
+  token: Token,
+  doc: TextDocument,
+  diagnostics: Diagnostic[],
+  activeVars: Map<string, ActiveVar>,
+  engine: Liquid,
+): LiquidType {
+  validateFilterNameSyntax(expr, token, doc, diagnostics);
+  markVariablesReadFromExpression(expr, activeVars, engine);
+
+  const cleanExpr = expr
+    .replace(/"[^"]*"/g, '""')
+    .replace(/'[^']*'/g, "''");
+  const parts = cleanExpr.split('|');
+  const basePart = (parts[0] ?? '').trim();
+
+  let currentType = resolveBaseExpressionType(
+    basePart,
+    token,
+    doc,
+    diagnostics,
+    activeVars,
+  );
+
+  return applyFilterTypeWarnings(
+    expr,
+    token,
+    doc,
+    diagnostics,
+    activeVars,
+    currentType,
+  );
 }
 
 function checkUnusedVariables(

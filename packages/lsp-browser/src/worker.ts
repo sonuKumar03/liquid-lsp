@@ -1,7 +1,20 @@
 /**
- * Bundled worker entry (dist/worker.js). The host page posts JSON-RPC messages
- * to this worker; responses are posted back via BrowserMessageWriter.
+ * Bundled worker entry (dist/worker.js). Host uses `connectBrowserLspWorker` and
+ * transfers a MessagePort for framed JSON-RPC.
  */
 import { startWorkerServer } from './index.js';
+import {
+  WORKER_INIT_MESSAGE_TYPE,
+  WORKER_READY_SIGNAL,
+  type WorkerInitMessage,
+} from './worker-protocol.js';
 
-startWorkerServer(self as unknown as Worker);
+self.addEventListener('message', (event: MessageEvent) => {
+  const data = event.data as WorkerInitMessage;
+  if (data?.type !== WORKER_INIT_MESSAGE_TYPE || !data.port) {
+    return;
+  }
+
+  startWorkerServer(data.port);
+  self.postMessage(WORKER_READY_SIGNAL);
+});

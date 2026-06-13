@@ -3,7 +3,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(packageRoot, '../../');
 
 const nodeBuiltinStubs = {
   fs: `
@@ -48,32 +47,45 @@ const nodeBuiltinStubs = {
   `,
 };
 
-await esbuild.build({
-  entryPoints: [path.join(packageRoot, 'src/worker.ts')],
+const nodeBuiltinStubPlugin = {
+  name: 'node-builtin-stubs',
+  setup(build) {
+    for (const mod of Object.keys(nodeBuiltinStubs)) {
+      build.onResolve({ filter: new RegExp(`^${mod}$`) }, () => ({
+        path: mod,
+        namespace: 'node-stub',
+      }));
+    }
+    build.onLoad({ filter: /.*/, namespace: 'node-stub' }, (args) => ({
+      contents: nodeBuiltinStubs[args.path] ?? 'export default {};',
+      loader: 'js',
+    }));
+  },
+};
+
+const sharedBrowserBuild = {
   bundle: true,
   platform: 'browser',
   format: 'esm',
-  outfile: path.join(packageRoot, 'dist/worker.js'),
   target: 'es2022',
   sourcemap: true,
   conditions: ['browser', 'import', 'node'],
   mainFields: ['browser', 'module', 'main'],
-  plugins: [
-    {
-      name: 'node-builtin-stubs',
-      setup(build) {
-        for (const mod of Object.keys(nodeBuiltinStubs)) {
-          build.onResolve({ filter: new RegExp(`^${mod}$`) }, () => ({
-            path: mod,
-            namespace: 'node-stub',
-          }));
-        }
-        build.onLoad({ filter: /.*/, namespace: 'node-stub' }, (args) => ({
-          contents: nodeBuiltinStubs[args.path] ?? 'export default {};',
-          loader: 'js',
-        }));
-      },
-    },
-  ],
+  plugins: [nodeBuiltinStubPlugin],
   logLevel: 'info',
+};
+
+await esbuild.build({
+  ...sharedBrowserBuild,
+  entryPoints: [path.join(packageRoot, 'src/worker.ts')],
+  outfile: path.join(packageRoot, 'dist/worker.js'),
+  banner: {
+    js: 'const window = globalThis;',
+  },
+});
+
+await esbuild.build({
+  ...sharedBrowserBuild,
+  entryPoints: [path.join(packageRoot, 'src/browser-client.ts')],
+  outfile: path.join(packageRoot, 'dist/browser-client.js'),
 });

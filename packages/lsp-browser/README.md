@@ -1,11 +1,11 @@
 # lsp-browser
 
-Browser Web Worker entry for the Liquid LSP. Uses `vscode-languageserver/browser` transport instead of Node stdio.
+Browser Web Worker entry for the Liquid LSP. Uses `vscode-jsonrpc` MessagePort transport instead of Node stdio.
 
 ## When to use
 
-- **Monaco / browser editors** — run the LSP inside a Web Worker; post JSON-RPC messages via `postMessage`
-- **express-server demo** — served at `/lsp-worker.js` after build
+- **Monaco / browser editors** — run the LSP inside a Web Worker via `connectBrowserLspWorker`
+- **express-server demo** — served at `/lsp-worker.js` and `/lsp-browser-client.js` after build
 - **Not for** — VS Code desktop (use `lsp-node`)
 
 Workspace schema files (`.liquid-schema.json`) are not loaded in the browser unless you pass schema via `initializationOptions` or `workspace/updateSchema`.
@@ -14,49 +14,44 @@ Workspace schema files (`.liquid-schema.json`) are not loaded in the browser unl
 
 | Export | Purpose |
 |--------|---------|
-| `startWorkerServer(worker)` | Start LSP on a `Worker` global |
-| `getWorkerConnection(worker)` | Build a browser LSP `Connection` |
+| `connectBrowserLspWorker(url)` | Main-thread client (MessageChannel + framed JSON-RPC) |
+| `startWorkerServer(port)` | Start LSP on a `Worker` or `MessagePort` |
+| `getWorkerConnection(port)` | Build a browser LSP `Connection` |
 | `startServer` | Re-export from `lsp-common` |
 
-Bundled entry: `dist/worker.js` (esbuild, ~750KB) — includes `lsp-common`, `liquid-core`, and dependencies.
+Bundled artifacts (esbuild):
 
-## Dependencies
-
-- **Depends on:** `lsp-common`, `vscode-languageserver` (browser transport)
-- **Used by:** Browser clients, express-server static route
+- `dist/worker.js` (~750KB) — full LSP server (`lsp-common`, `liquid-core`, liquidjs)
+- `dist/browser-client.js` — thin host client (`vscode-jsonrpc` transport)
 
 ## Build & test
 
 ```bash
-npm run build --workspace=lsp-browser
-npm run test --workspace=lsp-browser
+rtk npm run build --workspace=lsp-browser
+rtk npm run test --workspace=lsp-browser
 ```
 
 ## Usage
 
-**Worker script** (`worker.ts` compiled to `dist/worker.js`):
+**Playground / Monaco (recommended):**
 
-```typescript
-import { startWorkerServer } from 'lsp-browser';
-startWorkerServer(self);
+```html
+<script type="module">
+  import { connectBrowserLspWorker } from '/lsp-browser-client.js';
+  const client = await connectBrowserLspWorker('/lsp-worker.js');
+  await client.sendRequest('initialize', {
+    capabilities: {},
+    initializationOptions: { schema: { /* ... */ } },
+  });
+  client.sendNotification('initialized', {});
+  client.onNotification((method, params) => {
+    if (method === 'textDocument/publishDiagnostics') {
+      // update editor markers
+    }
+  });
+</script>
 ```
 
-**Main thread** (Monaco language client pattern):
-
-```typescript
-const worker = new Worker('/lsp-worker.js', { type: 'module' });
-
-worker.postMessage(JSON.stringify({
-  jsonrpc: '2.0',
-  id: 1,
-  method: 'initialize',
-  params: { capabilities: {}, initializationOptions: { schema: { /* ... */ } } },
-}));
-
-worker.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  // route to Monaco language client
-};
-```
+The host transfers a `MessagePort` to the worker (`liquid-lsp-worker-init`); LSP JSON-RPC uses Content-Length framed `Uint8Array` on that port.
 
 See `angular_integration.md` for the WebSocket gateway alternative (Node spawn, no worker bundle).

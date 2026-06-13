@@ -11,6 +11,9 @@
     },
     "./worker": {
       "import": "./dist/worker.js"
+    },
+    "./browser-client": {
+      "import": "./dist/browser-client.js"
     }
   },
   "files": [

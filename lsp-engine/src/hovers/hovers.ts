@@ -12,6 +12,7 @@ import {
 } from '../shared/constants.js';
 import { getWordAtPosition } from '../shared/utils.js';
 import type { LiquidType } from '../shared/schema.js';
+import { extractLocalVariableTypes } from '../completions/completions.js';
 
 export function getVariablePathAtPosition(
   text: string,
@@ -95,10 +96,43 @@ export function formatLiquidType(type: LiquidType): string {
   return '`unknown`';
 }
 
+export function resolveValueForPath(path: string, contextData: any): any {
+  if (!contextData) return undefined;
+
+  // Normalize bracket access (e.g. items[0] or items['key']) to dot notation
+  const normalizedPath = path
+    .replace(/\[\s*['"]?([a-zA-Z0-9_-]+)['"]?\s*\]/g, '.$1')
+    .replace(/^\.+|\.+$/g, '');
+
+  const parts = normalizedPath.split('.');
+  let current = contextData;
+
+  for (const part of parts) {
+    if (current === null || current === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(current)) {
+      const idx = parseInt(part, 10);
+      if (!isNaN(idx)) {
+        current = current[idx];
+        continue;
+      }
+    }
+    if (typeof current === 'object') {
+      current = current[part];
+    } else {
+      return undefined;
+    }
+  }
+
+  return current;
+}
+
 export function handleHover(
   documents: TextDocuments<TextDocument>,
   params: TextDocumentPositionParams,
   schema?: Map<string, LiquidType>,
+  contextData?: any,
 ): Hover | null {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
@@ -154,12 +188,18 @@ export function handleHover(
   // 3. Check if we can resolve variable type from the schema
   const path = getVariablePathAtPosition(lineText, position.character);
   if (path && schema) {
-    const resolvedType = resolveTypeForPath(path, schema);
+    const mergedSchema = extractLocalVariableTypes(doc.getText(), schema);
+    const resolvedType = resolveTypeForPath(path, mergedSchema);
     if (resolvedType !== 'unknown') {
+      const val = resolveValueForPath(path, contextData);
+      const valStr =
+        val !== undefined
+          ? `\n\n**Value:** \`${typeof val === 'object' ? JSON.stringify(val) : val}\``
+          : '';
       return {
         contents: {
           kind: 'markdown',
-          value: `**Variable:** \`${path}\`\n\n**Type:** ${formatLiquidType(resolvedType)}`,
+          value: `**Variable:** \`${path}\`\n\n**Type:** ${formatLiquidType(resolvedType)}${valStr}`,
         },
       };
     }

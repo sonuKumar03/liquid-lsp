@@ -228,3 +228,214 @@ test('Liquid hover documentation for schema variables', () =>
       }),
     );
   }));
+
+test('Liquid hover documentation with variable values', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: [
+                  '{{ user.first_name }}',
+                  '{{ status }}',
+                ].join('\n'),
+              },
+            },
+          }),
+        );
+
+        // Update the schema and provide context data dynamically
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'workspace/updateSchema',
+            params: {
+              schema: {
+                status: {
+                  type: 'dropdown',
+                  options: ['Active', 'Inactive'],
+                },
+                user: {
+                  type: 'composite',
+                  fields: {
+                    first_name: 'string',
+                  },
+                },
+              },
+              contextData: {
+                status: 'Active',
+                user: {
+                  first_name: 'Sonu',
+                },
+              },
+            },
+          }),
+        );
+
+        // Request hover info on "user.first_name" (line 0, character 10)
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/hover',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 0, character: 10 },
+            },
+          }),
+        );
+
+        step = 1;
+      } else if (step === 1 && res.id === 2) {
+        expect(res.result).toBeDefined();
+        expect(res.result.contents).toBeDefined();
+        expect(res.result.contents.value).toContain(
+          '**Variable:** `user.first_name`',
+        );
+        expect(res.result.contents.value).toContain('**Type:** `string`');
+        expect(res.result.contents.value).toContain('**Value:** `Sonu`');
+
+        // Request hover info on "status" (line 1, character 5)
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 3,
+            method: 'textDocument/hover',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 1, character: 5 },
+            },
+          }),
+        );
+
+        step = 2;
+      } else if (step === 2 && res.id === 3) {
+        expect(res.result).toBeDefined();
+        expect(res.result.contents).toBeDefined();
+        expect(res.result.contents.value).toContain('**Variable:** `status`');
+        expect(res.result.contents.value).toContain('**Value:** `Active`');
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          capabilities: {},
+        },
+      }),
+    );
+  }));
+
+test('Liquid hover documentation for local variables', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: [
+                  '{% assignVar local_str = user.first_name %}',
+                  '{{ local_str }}',
+                ].join('\n'),
+              },
+            },
+          }),
+        );
+
+        // Update the schema
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'workspace/updateSchema',
+            params: {
+              schema: {
+                user: {
+                  type: 'composite',
+                  fields: {
+                    first_name: 'string',
+                  },
+                },
+              },
+            },
+          }),
+        );
+
+        // Request hover info on "local_str" (line 1, character 5)
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/hover',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 1, character: 5 },
+            },
+          }),
+        );
+
+        step = 1;
+      } else if (step === 1 && res.id === 2) {
+        expect(res.result).toBeDefined();
+        expect(res.result.contents).toBeDefined();
+        expect(res.result.contents.value).toContain('**Variable:** `local_str`');
+        expect(res.result.contents.value).toContain('**Type:** `string`');
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          capabilities: {},
+        },
+      }),
+    );
+  }));

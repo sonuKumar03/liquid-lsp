@@ -46,6 +46,7 @@ const pendingValidationTimers = new Map<string, NodeJS.Timeout>();
  * 2. Bind the corresponding event handler further down (e.g., connection.onRenameRequest).
  */
 let globalSchema = new Map<string, LiquidType>();
+let globalContextData: any = {};
 
 connection.onInitialize((params) => {
   connection.console.log('LSP server: onInitialize handshake started.');
@@ -131,7 +132,7 @@ documents.onDidChangeContent((change) => {
 
 // Hover tooltip provider (Triggered on hover over variables/tags/filters. Implemented in src/hovers/hovers.ts)
 connection.onHover((params) => {
-  return handleHover(documents, params, globalSchema);
+  return handleHover(documents, params, globalSchema, globalContextData);
 });
 
 // Autocomplete suggestions (Triggered on typing. Implemented in src/completions/completions.ts)
@@ -176,9 +177,12 @@ connection.onDocumentSymbol((params) => {
 
 connection.onNotification(
   'workspace/updateSchema',
-  (params: { schema: any }) => {
+  (params: { schema: any; contextData?: any }) => {
     if (params && params.schema) {
       globalSchema = parseSchema(params.schema);
+      if (params.contextData) {
+        globalContextData = params.contextData;
+      }
       connection.console.log(
         'LSP server: updated variable schema dynamically.',
       );

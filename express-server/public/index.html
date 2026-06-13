@@ -1260,7 +1260,7 @@
               Object.keys(contextData).forEach((key) => {
                 newSchema[key] = jsonToSchema(contextData[key]);
               });
-              sendNotification('workspace/updateSchema', { schema: newSchema });
+              sendNotification('workspace/updateSchema', { schema: newSchema, contextData });
             } catch (err) {
               contextInput.style.boxShadow = 'inset 0 0 0 1px #ef4444';
               renderedPane.innerHTML = `<div class="preview-error">Invalid Mock Context JSON:\n${err.message}</div>`;

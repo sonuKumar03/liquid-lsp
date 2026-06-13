@@ -177,6 +177,65 @@ export function handleCodeAction(
         codeActions.push(action);
       }
     }
+
+    // 5. Pattern to match: unknown tag with assignment like {% amount = 50 %}
+    const isUnknownTag =
+      diagnostic.code === DIAGNOSTIC_CODES.UNKNOWN_TAG ||
+      (typeof message === 'string' &&
+        /tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/.test(message));
+
+    if (isUnknownTag) {
+      const tagText = doc.getText(diagnostic.range);
+      let tagName = data?.tagName;
+      if (!tagName && typeof message === 'string') {
+        const match = message.match(/tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/);
+        if (match) {
+          tagName = match[1];
+        }
+      }
+
+      if (tagName && tagText.includes('=')) {
+        // Correct to assignVar
+        const newTextVar = tagText.replace(tagName, `assignVar ${tagName}`);
+        const editVar = {
+          changes: {
+            [params.textDocument.uri]: [
+              {
+                range: diagnostic.range,
+                newText: newTextVar,
+              },
+            ],
+          },
+        };
+        const actionVar = CodeAction.create(
+          `Use "assignVar" tag`,
+          editVar,
+          CodeActionKind.QuickFix,
+        );
+        actionVar.diagnostics = [diagnostic];
+        codeActions.push(actionVar);
+
+        // Correct to assign
+        const newTextAssign = tagText.replace(tagName, `assign ${tagName}`);
+        const editAssign = {
+          changes: {
+            [params.textDocument.uri]: [
+              {
+                range: diagnostic.range,
+                newText: newTextAssign,
+              },
+            ],
+          },
+        };
+        const actionAssign = CodeAction.create(
+          `Use "assign" tag`,
+          editAssign,
+          CodeActionKind.QuickFix,
+        );
+        actionAssign.diagnostics = [diagnostic];
+        codeActions.push(actionAssign);
+      }
+    }
   }
 
   return codeActions;

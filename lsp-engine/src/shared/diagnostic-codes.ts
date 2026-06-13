@@ -4,6 +4,7 @@ export const DIAGNOSTIC_CODES = {
   EXPECTED_FILTER_NAME: 'liquid.syntax.expected_filter_name',
   CONDITIONAL_ASSIGNMENT: 'liquid.syntax.conditional_assignment',
   INLINE_MATH: 'liquid.syntax.inline_math',
+  UNKNOWN_TAG: 'liquid.tag.unknown',
 } as const;
 
 export type DiagnosticCode =

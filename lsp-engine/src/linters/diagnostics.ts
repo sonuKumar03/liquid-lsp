@@ -154,7 +154,20 @@ function collectSyntaxDiagnostics(
           hasTokenErrors = true;
           const start = textDocument.positionAt(token.begin);
           const end = textDocument.positionAt(token.end);
-          diagnostics.push({
+
+          let code: string | undefined = undefined;
+          let data: any = undefined;
+          const message =
+            typeof tokenErr.message === 'string' ? tokenErr.message : '';
+          const tagMatch = message.match(
+            /tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/,
+          );
+          if (tagMatch && tagMatch[1]) {
+            code = DIAGNOSTIC_CODES.UNKNOWN_TAG;
+            data = { tagName: tagMatch[1] };
+          }
+
+          const diagnostic: Diagnostic = {
             severity: DiagnosticSeverity.Error,
             range: { start, end },
             message: getEnhancedErrorMessage(
@@ -162,7 +175,14 @@ function collectSyntaxDiagnostics(
               getLineText(textDocument, start.line),
             ),
             source: 'liquid-lsp',
-          });
+          };
+          if (code) {
+            diagnostic.code = code;
+          }
+          if (data) {
+            diagnostic.data = data;
+          }
+          diagnostics.push(diagnostic);
         }
       }
 
@@ -208,8 +228,10 @@ function emitMainCompilerDiagnostic(
   const notClosedMatch = message.match(
     /^(tag|output)\s+(.+?)\s+not closed(?:,|$)/,
   );
-  const code = notClosedMatch ? DIAGNOSTIC_CODES.UNCLOSED_DELIMITER : undefined;
-  const data =
+  let code: string | undefined = notClosedMatch
+    ? DIAGNOSTIC_CODES.UNCLOSED_DELIMITER
+    : undefined;
+  let data: any =
     notClosedMatch && notClosedMatch[1] === 'tag'
       ? {
           tagName:
@@ -217,6 +239,16 @@ function emitMainCompilerDiagnostic(
           rawTag: mainErr.token?.getText?.() ?? notClosedMatch[2],
         }
       : undefined;
+
+  if (!code) {
+    const tagMatch = message.match(
+      /tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/,
+    );
+    if (tagMatch && tagMatch[1]) {
+      code = DIAGNOSTIC_CODES.UNKNOWN_TAG;
+      data = { tagName: tagMatch[1] };
+    }
+  }
 
   const diagnostic: Diagnostic = {
     severity: DiagnosticSeverity.Error,

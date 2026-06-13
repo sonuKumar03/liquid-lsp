@@ -727,6 +727,7 @@
         let requestId = 0;
         const pendingRequests = new Map();
         let docVersion = 1;
+        let latestDiagnostics = [];
 
         function sendRequest(method, params) {
           return new Promise((resolve) => {
@@ -792,6 +793,7 @@
           // Handle publishDiagnostics notifications
           if (msg.method === 'textDocument/publishDiagnostics') {
             const diagnostics = msg.params.diagnostics;
+            latestDiagnostics = diagnostics;
             const markers = diagnostics.map((d) => ({
               severity:
                 d.severity === 1
@@ -972,8 +974,27 @@
             if (!context.markers || context.markers.length === 0)
               return { actions: [], dispose: () => {} };
 
-            // Map Monaco Markers to LSP Diagnostics
+            // Map Monaco Markers back to original LSP Diagnostics to preserve code, data, etc.
             const diagnostics = context.markers.map((marker) => {
+              const matchedLspDiag = latestDiagnostics.find((d) => {
+                const startLine = marker.startLineNumber - 1;
+                const startCol = marker.startColumn - 1;
+                const endLine = marker.endLineNumber - 1;
+                const endCol = marker.endColumn - 1;
+                return (
+                  d.range.start.line === startLine &&
+                  d.range.start.character === startCol &&
+                  d.range.end.line === endLine &&
+                  d.range.end.character === endCol &&
+                  d.message === marker.message
+                );
+              });
+
+              if (matchedLspDiag) {
+                return matchedLspDiag;
+              }
+
+              // Fallback if not found in latestDiagnostics
               let severity = 1;
               if (marker.severity === 4)
                 severity = 2; // Warning

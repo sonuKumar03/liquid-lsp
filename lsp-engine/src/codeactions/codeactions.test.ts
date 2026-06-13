@@ -342,3 +342,99 @@ test('Liquid single-equals conversion to double-equals code action', () =>
       }),
     );
   }));
+
+test('Liquid spelling correction for unknown tag assignment', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+    let diagnostic: any = null;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{% amount = 50 %}',
+              },
+            },
+          }),
+        );
+        step = 1;
+      } else if (
+        step === 1 &&
+        res.method === 'textDocument/publishDiagnostics'
+      ) {
+        expect(res.params.diagnostics.length).toBeGreaterThan(0);
+        // Find the diagnostic with unknown tag message
+        diagnostic = res.params.diagnostics.find(
+          (d: any) =>
+            d.message.includes('not found') || d.code === 'liquid.tag.unknown',
+        );
+        expect(diagnostic).toBeDefined();
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/codeAction',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              range: diagnostic.range,
+              context: { diagnostics: [diagnostic] },
+            },
+          }),
+        );
+        step = 2;
+      } else if (step === 2 && res.id === 2) {
+        const actions = res.result;
+        expect(actions.length).toBeGreaterThan(0);
+
+        const fixActionVar = actions.find(
+          (a: any) => a.title === 'Use "assignVar" tag',
+        );
+        expect(fixActionVar).toBeDefined();
+        expect(fixActionVar.kind).toBe('quickfix');
+        expect(fixActionVar.edit.changes['file:///t.liquid']).toBeDefined();
+
+        const editChangeVar = fixActionVar.edit.changes['file:///t.liquid'][0];
+        expect(editChangeVar.newText).toBe('{% assignVar amount = 50 %}');
+
+        const fixActionAssign = actions.find(
+          (a: any) => a.title === 'Use "assign" tag',
+        );
+        expect(fixActionAssign).toBeDefined();
+        expect(fixActionAssign.kind).toBe('quickfix');
+
+        const editChangeAssign =
+          fixActionAssign.edit.changes['file:///t.liquid'][0];
+        expect(editChangeAssign.newText).toBe('{% assign amount = 50 %}');
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { capabilities: {} },
+      }),
+    );
+  }));

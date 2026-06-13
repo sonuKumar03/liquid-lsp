@@ -9,11 +9,13 @@ We use `@monaco-editor/loader` because it works across all Angular versions with
 ## 1. Install Dependencies
 
 Install the lightweight Monaco loader package in your Angular project:
+
 ```bash
 npm install @monaco-editor/loader
 ```
 
 Ensure your `tsconfig.json` supports browser types for Monaco (optional, but prevents compile warnings if typing Monaco variables):
+
 ```bash
 npm install --save-dev @types/monaco-editor
 ```
@@ -27,7 +29,13 @@ Here is a complete, copy-pasteable Angular component that loads Monaco, register
 ### TypeScript File (`liquid-editor.component.ts`)
 
 ```typescript
-import { Component, ElementRef, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  OnInit,
+  OnDestroy,
+  ViewChild,
+} from '@angular/core';
 import loader from '@monaco-editor/loader';
 
 @Component({
@@ -44,42 +52,47 @@ import loader from '@monaco-editor/loader';
       <div #editorHost class="editor-host"></div>
     </div>
   `,
-  styles: [`
-    .editor-workspace {
-      display: flex;
-      flex-direction: column;
-      height: 600px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      overflow: hidden;
-      font-family: system-ui, -apple-system, sans-serif;
-    }
-    .editor-header {
-      height: 48px;
-      background: #f8fafc;
-      border-bottom: 1px solid #cbd5e1;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-    }
-    .title {
-      font-weight: 600;
-      color: #0f172a;
-    }
-    .status {
-      font-size: 0.75rem;
-      color: #ef4444;
-    }
-    .status.connected {
-      color: #10b981;
-    }
-    .editor-host {
-      flex: 1;
-      width: 100%;
-      height: 100%;
-    }
-  `]
+  styles: [
+    `
+      .editor-workspace {
+        display: flex;
+        flex-direction: column;
+        height: 600px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        overflow: hidden;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      .editor-header {
+        height: 48px;
+        background: #f8fafc;
+        border-bottom: 1px solid #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+      }
+      .title {
+        font-weight: 600;
+        color: #0f172a;
+      }
+      .status {
+        font-size: 0.75rem;
+        color: #ef4444;
+      }
+      .status.connected {
+        color: #10b981;
+      }
+      .editor-host {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+      }
+    `,
+  ],
 })
 export class LiquidEditorComponent implements OnInit, OnDestroy {
   @ViewChild('editorHost', { static: true }) editorHost!: ElementRef;
@@ -94,7 +107,7 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
   private schema = {
     status: {
       type: 'dropdown',
-      options: ['Active', 'Inactive']
+      options: ['Active', 'Inactive'],
     },
     price: 'currency',
     user: {
@@ -104,11 +117,11 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
         items: {
           type: 'composite',
           fields: {
-            title: 'string'
-          }
-        }
-      }
-    }
+            title: 'string',
+          },
+        },
+      },
+    },
   };
 
   private initialCode = [
@@ -119,7 +132,7 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
     '  <p>Your subscription is active.</p>',
     '{% else %}',
     '  <p>Your subscription status: {{ status | default: "Pending" }}</p>',
-    '{% endif %}'
+    '{% endif %}',
   ].join('\n');
 
   ngOnInit() {
@@ -171,9 +184,9 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
             [/{[{%].*?[}%]}/, 'keyword'],
             [/"[^"]*"/, 'string'],
             [/'[^']*'/, 'string'],
-            [/\b\d+\b/, 'number']
-          ]
-        }
+            [/\b\d+\b/, 'number'],
+          ],
+        },
       });
 
       monaco.editor.defineTheme('liquid-light', {
@@ -182,33 +195,36 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
         rules: [
           { token: 'keyword', foreground: '7c3aed', fontStyle: 'bold' },
           { token: 'string', foreground: '059669' },
-          { token: 'number', foreground: 'd97706' }
+          { token: 'number', foreground: 'd97706' },
         ],
         colors: {
           'editor.background': '#ffffff',
           'editor.lineHighlightBackground': '#f1f5f9',
           'editorLineNumber.foreground': '#94a3b8',
-          'editorLineNumber.activeForeground': '#7c3aed'
-        }
+          'editorLineNumber.activeForeground': '#7c3aed',
+        },
       });
 
       // 3. Create Monaco Instance
       const model = monaco.editor.createModel(
         this.initialCode,
         'liquid',
-        monaco.Uri.parse('inmemory://model/1')
+        monaco.Uri.parse('inmemory://model/1'),
       );
 
-      this.editorInstance = monaco.editor.create(this.editorHost.nativeElement, {
-        model: model,
-        theme: 'liquid-light',
-        automaticLayout: true,
-        fontSize: 14,
-        fontFamily: "'Fira Code', monospace",
-        minimap: { enabled: false },
-        scrollBeyondLastLine: false,
-        tabSize: 2
-      });
+      this.editorInstance = monaco.editor.create(
+        this.editorHost.nativeElement,
+        {
+          model: model,
+          theme: 'liquid-light',
+          automaticLayout: true,
+          fontSize: 14,
+          fontFamily: "'Fira Code', monospace",
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          tabSize: 2,
+        },
+      );
 
       // Send initial LSP handshake
       this.sendHandshake();
@@ -223,19 +239,22 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
         provideCompletionItems: async (docModel: any, position: any) => {
           const res = await this.sendRPCRequest('textDocument/completion', {
             textDocument: { uri: docModel.uri.toString() },
-            position: { line: position.lineNumber - 1, character: position.column - 1 }
+            position: {
+              line: position.lineNumber - 1,
+              character: position.column - 1,
+            },
           });
           if (!res) return { suggestions: [] };
-          
+
           const suggestions = (res.items || res).map((item: any) => ({
             label: item.label,
             kind: item.kind - 1, // Shift Monaco completion kind offset
             insertText: item.insertText || item.label,
             documentation: item.documentation,
-            detail: item.detail
+            detail: item.detail,
           }));
           return { suggestions };
-        }
+        },
       });
 
       // 5. Register Hover Info Providers
@@ -243,15 +262,18 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
         provideHover: async (docModel: any, position: any) => {
           const res = await this.sendRPCRequest('textDocument/hover', {
             textDocument: { uri: docModel.uri.toString() },
-            position: { line: position.lineNumber - 1, character: position.column - 1 }
+            position: {
+              line: position.lineNumber - 1,
+              character: position.column - 1,
+            },
           });
           if (!res || !res.contents) return null;
           return {
-            contents: Array.isArray(res.contents) 
+            contents: Array.isArray(res.contents)
               ? res.contents.map((c: any) => ({ value: c.value || c }))
-              : [{ value: res.contents.value || res.contents }]
+              : [{ value: res.contents.value || res.contents }],
           };
-        }
+        },
       });
 
       // 6. Register Strict Formatter Providers
@@ -259,7 +281,7 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
         provideDocumentFormattingEdits: async (docModel: any) => {
           const res = await this.sendRPCRequest('textDocument/formatting', {
             textDocument: { uri: docModel.uri.toString() },
-            options: { tabSize: 2, insertSpaces: true }
+            options: { tabSize: 2, insertSpaces: true },
           });
           if (!res || res.length === 0) return [];
           return res.map((edit: any) => ({
@@ -267,11 +289,11 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
               edit.range.start.line + 1,
               edit.range.start.character + 1,
               edit.range.end.line + 1,
-              edit.range.end.character + 1
+              edit.range.end.character + 1,
             ),
-            text: edit.newText
+            text: edit.newText,
           }));
-        }
+        },
       });
 
       // Trigger first diagnostics validation pass
@@ -282,7 +304,7 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
   // Send JSON-RPC Initializing Handshake containing settings and variable schema
   private sendHandshake() {
     this.sendRPCNotification('initialize', {
-      initializationOptions: { schema: this.schema }
+      initializationOptions: { schema: this.schema },
     });
   }
 
@@ -290,7 +312,7 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
   private sendDocumentContent(content: string) {
     this.sendRPCNotification('textDocument/didChange', {
       textDocument: { uri: 'inmemory://model/1', version: 1 },
-      contentChanges: [{ text: content }]
+      contentChanges: [{ text: content }],
     });
   }
 
@@ -302,7 +324,7 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
       this.pendingRequests.delete(payload.id);
       if (resolve) resolve(payload.result);
     }
-    
+
     // If it's a live Diagnostics linter push
     if (payload.method === 'textDocument/publishDiagnostics') {
       const diagnostics = payload.params.diagnostics || [];
@@ -312,7 +334,7 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
         startLineNumber: diag.range.start.line + 1,
         startColumn: diag.range.start.character + 1,
         endLineNumber: diag.range.end.line + 1,
-        endColumn: diag.range.end.character + 1
+        endColumn: diag.range.end.character + 1,
       }));
 
       // Bind diagnostic squiggles to our active Monaco Model
@@ -321,7 +343,7 @@ export class LiquidEditorComponent implements OnInit, OnDestroy {
         monacoInstance.editor.setModelMarkers(
           this.editorInstance.getModel(),
           'liquid',
-          markers
+          markers,
         );
       }
     }

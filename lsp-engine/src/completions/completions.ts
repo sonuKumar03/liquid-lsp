@@ -1,8 +1,16 @@
 import { CompletionItemKind } from 'vscode-languageserver/node';
-import type { CompletionItem, CompletionParams } from 'vscode-languageserver/node';
+import type {
+  CompletionItem,
+  CompletionParams,
+} from 'vscode-languageserver/node';
 import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { LIQUID_TAGS, LIQUID_FILTERS, getTagDocumentation, getFilterDocumentation } from '../shared/constants.js';
+import {
+  LIQUID_TAGS,
+  LIQUID_FILTERS,
+  getTagDocumentation,
+  getFilterDocumentation,
+} from '../shared/constants.js';
 
 export function extractDeclaredVariables(text: string): CompletionItem[] {
   const variables = new Set<string>();
@@ -32,18 +40,18 @@ export function extractDeclaredVariables(text: string): CompletionItem[] {
     }
   }
 
-  return Array.from(variables).map(name => ({
+  return Array.from(variables).map((name) => ({
     label: name,
     kind: CompletionItemKind.Variable,
     data: `var-${name}`,
     detail: 'Liquid Variable',
-    documentation: `User-defined Liquid variable extracted from the template.`
+    documentation: `User-defined Liquid variable extracted from the template.`,
   }));
 }
 
 /**
  * Handles completion requests (textDocument/completion) from the editor client.
- * 
+ *
  * TO ADD A NEW AUTOCOMPLETE TRIGGER OR CONTEXT:
  * 1. Inspect the cursor position and preceding line text (e.g. `lineText`).
  * 2. Define a trigger character (like '.' or '@') in main.ts connection initialize block.
@@ -51,7 +59,7 @@ export function extractDeclaredVariables(text: string): CompletionItem[] {
  */
 export function handleCompletion(
   documents: TextDocuments<TextDocument>,
-  params: CompletionParams
+  params: CompletionParams,
 ): CompletionItem[] {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
@@ -59,7 +67,7 @@ export function handleCompletion(
   const position = params.position;
   const lineText = doc.getText({
     start: { line: position.line, character: 0 },
-    end: position
+    end: position,
   });
 
   // Check if cursor is after a filter pipe '|' on the current line
@@ -67,7 +75,10 @@ export function handleCompletion(
   const lastTagOpen = lineText.lastIndexOf('{%');
   const lastOutputOpen = lineText.lastIndexOf('{{');
 
-  if (lastPipe !== -1 && (lastPipe > lastTagOpen || lastPipe > lastOutputOpen)) {
+  if (
+    lastPipe !== -1 &&
+    (lastPipe > lastTagOpen || lastPipe > lastOutputOpen)
+  ) {
     return LIQUID_FILTERS;
   }
 
@@ -103,21 +114,21 @@ export function handleCompletionResolve(item: CompletionItem): CompletionItem {
     item.detail = `Liquid Tag: {% ${tagName} %}`;
     item.documentation = {
       kind: 'markdown',
-      value: getTagDocumentation(tagName)
+      value: getTagDocumentation(tagName),
     };
   } else if (data.startsWith('filter-')) {
     const filterName = data.replace('filter-', '');
     item.detail = `Liquid Filter: | ${filterName}`;
     item.documentation = {
       kind: 'markdown',
-      value: getFilterDocumentation(filterName)
+      value: getFilterDocumentation(filterName),
     };
   } else if (data.startsWith('var-')) {
     const varName = data.replace('var-', '');
     item.detail = `Liquid Variable: ${varName}`;
     item.documentation = {
       kind: 'markdown',
-      value: `User-defined variable \`${varName}\` declared in this template.`
+      value: `User-defined variable \`${varName}\` declared in this template.`,
     };
   }
 

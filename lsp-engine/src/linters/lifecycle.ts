@@ -1,7 +1,8 @@
 import { DiagnosticSeverity, Range } from 'vscode-languageserver/node';
 import type { Diagnostic } from 'vscode-languageserver/node';
-import { Tokenizer, TokenKind, TagToken } from 'liquidjs';
-import type { Liquid, Token } from 'liquidjs';
+import type { Liquid, Token, TagToken } from 'liquidjs';
+import liquidjs from 'liquidjs';
+const { Tokenizer, TokenKind, TagToken: TagTokenClass } = liquidjs;
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { LIQUID_FILTERS } from '../shared/constants.js';
 import { isConditionalTagLine } from '../shared/liquid-syntax.js';
@@ -10,13 +11,18 @@ import type { LiquidType } from '../shared/schema.js';
 import { findVariableDeclarations } from '../definitions/definitions.js';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 
-type ActiveVar = { declRange: Range; line: number; hasBeenRead: boolean; type: LiquidType };
+type ActiveVar = {
+  declRange: Range;
+  line: number;
+  hasBeenRead: boolean;
+  type: LiquidType;
+};
 
 export function collectLifecycleDiagnostics(
   textDocument: TextDocument,
   diagnostics: Diagnostic[],
   liquidEngine: Liquid,
-  globalSchema?: Map<string, LiquidType>
+  globalSchema?: Map<string, LiquidType>,
 ): void {
   const text = textDocument.getText();
 
@@ -30,8 +36,14 @@ export function collectLifecycleDiagnostics(
     for (const token of tokens) {
       const line = textDocument.positionAt(token.begin).line;
 
-      if (token instanceof TagToken) {
-        collectTagDiagnostics(textDocument, diagnostics, token, activeVars, line);
+      if (token instanceof TagTokenClass) {
+        collectTagDiagnostics(
+          textDocument,
+          diagnostics,
+          token,
+          activeVars,
+          line,
+        );
       } else if (token.kind === TokenKind.Output) {
         const expr = token.getText().slice(2, -2).trim();
         processExpression(expr, token, textDocument, diagnostics, activeVars);
@@ -46,7 +58,7 @@ export function collectLifecycleDiagnostics(
 
 function populateSchemaVars(
   activeVars: Map<string, ActiveVar>,
-  globalSchema?: Map<string, LiquidType>
+  globalSchema?: Map<string, LiquidType>,
 ): void {
   if (!globalSchema) return;
 
@@ -55,7 +67,7 @@ function populateSchemaVars(
       declRange: Range.create(0, 0, 0, 0),
       line: -1,
       hasBeenRead: true,
-      type: v
+      type: v,
     });
   }
 }
@@ -65,7 +77,7 @@ function collectTagDiagnostics(
   diagnostics: Diagnostic[],
   token: TagToken,
   activeVars: Map<string, ActiveVar>,
-  line: number
+  line: number,
 ): void {
   const tokenText = token.getText();
   const name = token.name;
@@ -77,10 +89,27 @@ function collectTagDiagnostics(
       const expr = match[2] ?? '';
       const prev = activeVars.get(varName);
 
-      const inferredType = processExpression(expr, token, doc, diagnostics, activeVars);
+      const inferredType = processExpression(
+        expr,
+        token,
+        doc,
+        diagnostics,
+        activeVars,
+      );
       redefineIfNeeded(diagnostics, activeVars, varName);
-      activeVars.set(varName, createDecl(varName, line, tokenText, inferredType));
-      validateDropdownValue(doc, diagnostics, prev, varName, expr, token.begin, token.end);
+      activeVars.set(
+        varName,
+        createDecl(varName, line, tokenText, inferredType),
+      );
+      validateDropdownValue(
+        doc,
+        diagnostics,
+        prev,
+        varName,
+        expr,
+        token.begin,
+        token.end,
+      );
     }
   } else if (name === 'parseAssign') {
     const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)\s*=\s*(.+)/);
@@ -89,10 +118,27 @@ function collectTagDiagnostics(
       const expr = (match[2] ?? '').trim();
       const prev = activeVars.get(varName);
 
-      const inferredType = processParseAssignExpression(expr, token, doc, diagnostics, activeVars);
+      const inferredType = processParseAssignExpression(
+        expr,
+        token,
+        doc,
+        diagnostics,
+        activeVars,
+      );
       redefineIfNeeded(diagnostics, activeVars, varName);
-      activeVars.set(varName, createDecl(varName, line, tokenText, inferredType));
-      validateDropdownValue(doc, diagnostics, prev, varName, expr, token.begin, token.end);
+      activeVars.set(
+        varName,
+        createDecl(varName, line, tokenText, inferredType),
+      );
+      validateDropdownValue(
+        doc,
+        diagnostics,
+        prev,
+        varName,
+        expr,
+        token.begin,
+        token.end,
+      );
     }
   } else if (name === 'capture') {
     const match = token.args.match(/^\s*([a-zA-Z0-9_-]+)/);
@@ -118,7 +164,7 @@ function createDecl(
   varName: string,
   line: number,
   tokenText: string,
-  type: LiquidType
+  type: LiquidType,
 ): ActiveVar {
   const offset = tokenText.indexOf(varName);
   const start = { line, character: Math.max(0, offset) };
@@ -127,14 +173,14 @@ function createDecl(
     declRange: Range.create(start, end),
     line,
     hasBeenRead: false,
-    type
+    type,
   };
 }
 
 function redefineIfNeeded(
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
-  varName: string
+  varName: string,
 ): void {
   const prev = activeVars.get(varName);
   if (prev && !prev.hasBeenRead && prev.line !== -1) {
@@ -142,7 +188,7 @@ function redefineIfNeeded(
       severity: DiagnosticSeverity.Warning,
       range: prev.declRange,
       message: `Variable "${varName}" is overwritten here but its value was never read.`,
-      source: 'liquid-lsp-linter'
+      source: 'liquid-lsp-linter',
     });
   }
 }
@@ -154,9 +200,10 @@ function validateDropdownValue(
   varName: string,
   expr: string,
   tokenBegin: number,
-  tokenEnd: number
+  tokenEnd: number,
 ): void {
-  if (!prev || typeof prev.type !== 'object' || prev.type.kind !== 'dropdown') return;
+  if (!prev || typeof prev.type !== 'object' || prev.type.kind !== 'dropdown')
+    return;
 
   const cleanExpr = expr.trim();
   if (!/^"[^"]*"|'[^']*'$/.test(cleanExpr)) return;
@@ -167,8 +214,8 @@ function validateDropdownValue(
   diagnostics.push({
     severity: DiagnosticSeverity.Warning,
     range: Range.create(doc.positionAt(tokenBegin), doc.positionAt(tokenEnd)),
-    message: `Value "${strVal}" is not a valid option for dropdown variable "${varName}". Valid options are: ${prev.type.options.map(o => `"${o}"`).join(', ')}.`,
-    source: 'liquid-lsp-linter'
+    message: `Value "${strVal}" is not a valid option for dropdown variable "${varName}". Valid options are: ${prev.type.options.map((o) => `"${o}"`).join(', ')}.`,
+    source: 'liquid-lsp-linter',
   });
 }
 
@@ -177,7 +224,7 @@ function processParseAssignExpression(
   token: Token,
   doc: TextDocument,
   diagnostics: Diagnostic[],
-  activeVars: Map<string, ActiveVar>
+  activeVars: Map<string, ActiveVar>,
 ): LiquidType {
   const filterParts = expr.split('|');
   const pathPart = (filterParts[0] ?? '').trim();
@@ -208,14 +255,22 @@ function processParseAssignExpression(
     if (!fieldNameRaw) continue;
 
     const fieldName = fieldNameRaw.replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
-    const offsetInToken = token.getText().indexOf(fieldNameRaw, searchIndex - token.begin);
-    const offset = offsetInToken !== -1 ? offsetInToken : token.getText().indexOf(fieldNameRaw);
+    const offsetInToken = token
+      .getText()
+      .indexOf(fieldNameRaw, searchIndex - token.begin);
+    const offset =
+      offsetInToken !== -1
+        ? offsetInToken
+        : token.getText().indexOf(fieldNameRaw);
     if (offsetInToken !== -1) {
       searchIndex = token.begin + offsetInToken + fieldNameRaw.length;
     }
 
     const start = doc.positionAt(token.begin + (offset !== -1 ? offset : 0));
-    const end = doc.positionAt(token.begin + (offset !== -1 ? offset + fieldNameRaw.length : token.getText().length));
+    const end = doc.positionAt(
+      token.begin +
+        (offset !== -1 ? offset + fieldNameRaw.length : token.getText().length),
+    );
 
     if (typeof currentType === 'object') {
       if (currentType.kind === 'composite') {
@@ -227,7 +282,7 @@ function processParseAssignExpression(
             severity: DiagnosticSeverity.Error,
             range: { start, end },
             message: `Property "${fieldName}" does not exist on composite type.`,
-            source: 'liquid-lsp-linter'
+            source: 'liquid-lsp-linter',
           });
           currentType = 'unknown';
           break;
@@ -237,7 +292,7 @@ function processParseAssignExpression(
           severity: DiagnosticSeverity.Error,
           range: { start, end },
           message: `Cannot access property "${fieldName}" on non-composite type.`,
-          source: 'liquid-lsp-linter'
+          source: 'liquid-lsp-linter',
         });
         currentType = 'unknown';
         break;
@@ -252,7 +307,7 @@ function processParseAssignExpression(
           severity: DiagnosticSeverity.Error,
           range: { start, end },
           message: `Property "${fieldName}" does not exist on currency. Available fields are "amount" and "symbol".`,
-          source: 'liquid-lsp-linter'
+          source: 'liquid-lsp-linter',
         });
         currentType = 'unknown';
         break;
@@ -262,7 +317,7 @@ function processParseAssignExpression(
         severity: DiagnosticSeverity.Error,
         range: { start, end },
         message: `Cannot access property "${fieldName}" on primitive type "${currentType}".`,
-        source: 'liquid-lsp-linter'
+        source: 'liquid-lsp-linter',
       });
       currentType = 'unknown';
       break;
@@ -278,8 +333,32 @@ function processParseAssignExpression(
   }
 
   if (filterParts.length > 1) {
-    const MATH_FILTERS = new Set(['plus', 'minus', 'times', 'divided_by', 'modulo', 'round', 'ceil', 'floor', 'abs', 'size']);
-    const STRING_FILTERS = new Set(['upcase', 'downcase', 'capitalize', 'escape', 'replace', 'prepend', 'append', 'join', 'slice', 'truncate', 'split', 'strip']);
+    const MATH_FILTERS = new Set([
+      'plus',
+      'minus',
+      'times',
+      'divided_by',
+      'modulo',
+      'round',
+      'ceil',
+      'floor',
+      'abs',
+      'size',
+    ]);
+    const STRING_FILTERS = new Set([
+      'upcase',
+      'downcase',
+      'capitalize',
+      'escape',
+      'replace',
+      'prepend',
+      'append',
+      'join',
+      'slice',
+      'truncate',
+      'split',
+      'strip',
+    ]);
 
     for (let i = 1; i < filterParts.length; i++) {
       const filterPart = (filterParts[i] ?? '').trim();
@@ -295,13 +374,21 @@ function processParseAssignExpression(
         if (currentType === 'string') {
           const tokenText = token.getText();
           const filterOffsetInToken = tokenText.indexOf(filterName);
-          const start = doc.positionAt(token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken : 0));
-          const end = doc.positionAt(token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken + filterName.length : tokenText.length));
+          const start = doc.positionAt(
+            token.begin +
+              (filterOffsetInToken !== -1 ? filterOffsetInToken : 0),
+          );
+          const end = doc.positionAt(
+            token.begin +
+              (filterOffsetInToken !== -1
+                ? filterOffsetInToken + filterName.length
+                : tokenText.length),
+          );
           diagnostics.push({
             severity: DiagnosticSeverity.Warning,
             range: { start, end },
             message: `Type mismatch: Math filter "${filterName}" is applied to a string value.`,
-            source: 'liquid-lsp-linter'
+            source: 'liquid-lsp-linter',
           });
         }
         currentType = 'number';
@@ -319,10 +406,11 @@ function processExpression(
   token: Token,
   doc: TextDocument,
   diagnostics: Diagnostic[],
-  activeVars: Map<string, ActiveVar>
+  activeVars: Map<string, ActiveVar>,
 ): LiquidType {
-  const spacedExpr = expr.replace(/"[^"]*"/g, (m) => '"' + ' '.repeat(m.length - 2) + '"')
-                         .replace(/'[^']*'/g, (m) => "'" + ' '.repeat(m.length - 2) + "'");
+  const spacedExpr = expr
+    .replace(/"[^"]*"/g, (m) => '"' + ' '.repeat(m.length - 2) + '"')
+    .replace(/'[^']*'/g, (m) => "'" + ' '.repeat(m.length - 2) + "'");
 
   let pipeIdx = spacedExpr.indexOf('|');
   while (pipeIdx !== -1) {
@@ -331,11 +419,16 @@ function processExpression(
     const leadingWhitespaceLen = afterPipe.length - trimmedAfterPipe.length;
     const filterNameStart = pipeIdx + 1 + leadingWhitespaceLen;
 
-    const filterNameMatch = trimmedAfterPipe.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)/);
+    const filterNameMatch = trimmedAfterPipe.match(
+      /^([a-zA-Z_][a-zA-Z0-9_-]*)/,
+    );
     if (!filterNameMatch) {
       const tokenText = token.getText();
       const exprOffsetInToken = tokenText.indexOf(expr);
-      const errorStartOffset = token.begin + (exprOffsetInToken !== -1 ? exprOffsetInToken : 0) + filterNameStart;
+      const errorStartOffset =
+        token.begin +
+        (exprOffsetInToken !== -1 ? exprOffsetInToken : 0) +
+        filterNameStart;
       const matchWord = trimmedAfterPipe.match(/^[^\s|]*/);
       const highlightLen = Math.max(1, matchWord ? matchWord[0].length : 1);
       const start = doc.positionAt(errorStartOffset);
@@ -344,15 +437,18 @@ function processExpression(
         severity: DiagnosticSeverity.Error,
         range: { start, end },
         message: 'Expected filter name.',
-        source: 'liquid-lsp-linter'
+        source: 'liquid-lsp-linter',
       });
     } else {
       const filterName = filterNameMatch[1]!;
-      const isKnown = LIQUID_FILTERS.some(f => f.label === filterName);
+      const isKnown = LIQUID_FILTERS.some((f) => f.label === filterName);
       if (!isKnown) {
         const tokenText = token.getText();
         const exprOffsetInToken = tokenText.indexOf(expr);
-        const errorStartOffset = token.begin + (exprOffsetInToken !== -1 ? exprOffsetInToken : 0) + filterNameStart;
+        const errorStartOffset =
+          token.begin +
+          (exprOffsetInToken !== -1 ? exprOffsetInToken : 0) +
+          filterNameStart;
         const start = doc.positionAt(errorStartOffset);
         const end = doc.positionAt(errorStartOffset + filterName.length);
         const closestFilter = getClosestFilter(filterName);
@@ -365,7 +461,7 @@ function processExpression(
           message,
           code: DIAGNOSTIC_CODES.UNKNOWN_FILTER,
           data: { filterName, suggestedFilter: closestFilter },
-          source: 'liquid-lsp-linter'
+          source: 'liquid-lsp-linter',
         });
       }
     }
@@ -392,7 +488,16 @@ function processExpression(
     }
   } else {
     const words = basePart.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
-    const keywords = new Set(['true', 'false', 'nil', 'null', 'and', 'or', 'contains', 'in']);
+    const keywords = new Set([
+      'true',
+      'false',
+      'nil',
+      'null',
+      'and',
+      'or',
+      'contains',
+      'in',
+    ]);
     for (const word of words) {
       if (!keywords.has(word) && activeVars.has(word)) {
         activeVars.get(word)!.hasBeenRead = true;
@@ -401,7 +506,14 @@ function processExpression(
     if (/[=!<>+]/.test(basePart)) currentType = 'boolean';
   }
 
-  return applyFilterTypes(expr, token, doc, diagnostics, activeVars, currentType);
+  return applyFilterTypes(
+    expr,
+    token,
+    doc,
+    diagnostics,
+    activeVars,
+    currentType,
+  );
 }
 
 function applyFilterTypes(
@@ -410,11 +522,38 @@ function applyFilterTypes(
   doc: TextDocument,
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
-  currentType: LiquidType
+  currentType: LiquidType,
 ): LiquidType {
-  const MATH_FILTERS = new Set(['plus', 'minus', 'times', 'divided_by', 'modulo', 'round', 'ceil', 'floor', 'abs', 'size']);
-  const STRING_FILTERS = new Set(['upcase', 'downcase', 'capitalize', 'escape', 'replace', 'prepend', 'append', 'join', 'slice', 'truncate', 'split', 'strip']);
-  const parts = expr.replace(/"[^"]*"/g, '""').replace(/'[^']*'/g, "''").split('|');
+  const MATH_FILTERS = new Set([
+    'plus',
+    'minus',
+    'times',
+    'divided_by',
+    'modulo',
+    'round',
+    'ceil',
+    'floor',
+    'abs',
+    'size',
+  ]);
+  const STRING_FILTERS = new Set([
+    'upcase',
+    'downcase',
+    'capitalize',
+    'escape',
+    'replace',
+    'prepend',
+    'append',
+    'join',
+    'slice',
+    'truncate',
+    'split',
+    'strip',
+  ]);
+  const parts = expr
+    .replace(/"[^"]*"/g, '""')
+    .replace(/'[^']*'/g, "''")
+    .split('|');
 
   for (let i = 1; i < parts.length; i++) {
     const filterPart = (parts[i] ?? '').trim();
@@ -429,7 +568,16 @@ function applyFilterTypes(
     const argsText = filterPart.slice(filterName.length).trim();
     if (argsText) {
       const words = argsText.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
-      const keywords = new Set(['true', 'false', 'nil', 'null', 'and', 'or', 'contains', 'in']);
+      const keywords = new Set([
+        'true',
+        'false',
+        'nil',
+        'null',
+        'and',
+        'or',
+        'contains',
+        'in',
+      ]);
       for (const word of words) {
         if (!keywords.has(word) && activeVars.has(word)) {
           activeVars.get(word)!.hasBeenRead = true;
@@ -441,13 +589,20 @@ function applyFilterTypes(
       if (currentType === 'string') {
         const tokenText = token.getText();
         const filterOffsetInToken = tokenText.indexOf(filterName);
-        const start = doc.positionAt(token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken : 0));
-        const end = doc.positionAt(token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken + filterName.length : tokenText.length));
+        const start = doc.positionAt(
+          token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken : 0),
+        );
+        const end = doc.positionAt(
+          token.begin +
+            (filterOffsetInToken !== -1
+              ? filterOffsetInToken + filterName.length
+              : tokenText.length),
+        );
         diagnostics.push({
           severity: DiagnosticSeverity.Warning,
           range: { start, end },
           message: `Type mismatch: Math filter "${filterName}" is applied to a string value.`,
-          source: 'liquid-lsp-linter'
+          source: 'liquid-lsp-linter',
         });
       }
       return 'number';
@@ -461,13 +616,19 @@ function applyFilterTypes(
   return currentType;
 }
 
-function checkUnusedVariables(textDocument: TextDocument, diagnostics: Diagnostic[]): void {
+function checkUnusedVariables(
+  textDocument: TextDocument,
+  diagnostics: Diagnostic[],
+): void {
   const docText = textDocument.getText();
   const declarations = findVariableDeclarations(textDocument);
 
   if (declarations.length === 0) return;
 
-  let cleanText = docText.replace(/\{%\s*comment\s*%\}.*?\{%\s*endcomment\s*%\}/gs, '');
+  let cleanText = docText.replace(
+    /\{%\s*comment\s*%\}.*?\{%\s*endcomment\s*%\}/gs,
+    '',
+  );
   cleanText = cleanText.replace(/"[^"]*"/g, '');
   cleanText = cleanText.replace(/'[^']*'/g, '');
 
@@ -475,17 +636,27 @@ function checkUnusedVariables(textDocument: TextDocument, diagnostics: Diagnosti
     const name = decl.name;
     const occurrences = cleanText.match(new RegExp(`\\b${name}\\b`, 'g')) || [];
     const totalCount = occurrences.length;
-    const assignMatches = cleanText.match(new RegExp(`\\{%\\s*(assign|assignVar|parseAssign)\\s+${name}\\s*=`, 'g')) || [];
-    const captureMatches = cleanText.match(new RegExp(`\\{%\\s*capture\\s+${name}\\s*%\\}`, 'g')) || [];
-    const forMatches = cleanText.match(new RegExp(`\\{%\\s*for\\s+${name}\\s+in\\b`, 'g')) || [];
-    const declCount = assignMatches.length + captureMatches.length + forMatches.length;
+    const assignMatches =
+      cleanText.match(
+        new RegExp(
+          `\\{%\\s*(assign|assignVar|parseAssign)\\s+${name}\\s*=`,
+          'g',
+        ),
+      ) || [];
+    const captureMatches =
+      cleanText.match(new RegExp(`\\{%\\s*capture\\s+${name}\\s*%\\}`, 'g')) ||
+      [];
+    const forMatches =
+      cleanText.match(new RegExp(`\\{%\\s*for\\s+${name}\\s+in\\b`, 'g')) || [];
+    const declCount =
+      assignMatches.length + captureMatches.length + forMatches.length;
 
     if (totalCount === declCount) {
       diagnostics.push({
         severity: DiagnosticSeverity.Warning,
         range: decl.range,
         message: `Variable "${name}" is declared but its value is never read.`,
-        source: 'liquid-lsp-linter'
+        source: 'liquid-lsp-linter',
       });
     }
   }

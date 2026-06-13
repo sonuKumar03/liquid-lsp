@@ -1,1196 +1,1324 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Liquid Monaco Editor Playground</title>
-  <!-- Typography & Icons -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Monaco CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.min.css">
-  <!-- LiquidJS Browser Build -->
-  <script src="https://cdn.jsdelivr.net/npm/liquidjs@10.19.0/dist/liquid.browser.min.js"></script>
-  <style>
-    :root {
-      --bg-main: #0b0f19;
-      --bg-panel: #111827;
-      --bg-sidebar: #0f172a;
-      --border-color: #1f2937;
-      --accent-primary: #a855f7; /* Violet */
-      --accent-secondary: #00e5ff; /* Cyan */
-      --accent-success: #10b981; /* Emerald */
-      --accent-warning: #f59e0b; /* Amber */
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --font-outfit: 'Outfit', sans-serif;
-      --font-inter: 'Inter', sans-serif;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <title>Liquid Monaco Editor Playground</title>
+    <!-- Typography & Icons -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Monaco CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.min.css"
+    />
+    <!-- LiquidJS Browser Build -->
+    <script src="https://cdn.jsdelivr.net/npm/liquidjs@10.19.0/dist/liquid.browser.min.js"></script>
+    <style>
+      :root {
+        --bg-main: #0b0f19;
+        --bg-panel: #111827;
+        --bg-sidebar: #0f172a;
+        --border-color: #1f2937;
+        --accent-primary: #a855f7; /* Violet */
+        --accent-secondary: #00e5ff; /* Cyan */
+        --accent-success: #10b981; /* Emerald */
+        --accent-warning: #f59e0b; /* Amber */
+        --text-main: #f3f4f6;
+        --text-muted: #9ca3af;
+        --font-outfit: 'Outfit', sans-serif;
+        --font-inter: 'Inter', sans-serif;
+      }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-    body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      font-family: var(--font-inter);
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
+      body {
+        background-color: var(--bg-main);
+        color: var(--text-main);
+        font-family: var(--font-inter);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
 
-    /* Top Navbar styling */
-    .navbar {
-      height: 60px;
-      background-color: var(--bg-panel);
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 24px;
-      z-index: 10;
-    }
+      /* Top Navbar styling */
+      .navbar {
+        height: 60px;
+        background-color: var(--bg-panel);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        z-index: 10;
+      }
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
 
-    .brand-logo {
-      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      color: white;
-      font-family: var(--font-outfit);
-      box-shadow: 0 4px 10px rgba(168, 85, 247, 0.4);
-    }
+      .brand-logo {
+        background: linear-gradient(
+          135deg,
+          var(--accent-primary),
+          var(--accent-secondary)
+        );
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: white;
+        font-family: var(--font-outfit);
+        box-shadow: 0 4px 10px rgba(168, 85, 247, 0.4);
+      }
 
-    .brand-title {
-      font-family: var(--font-outfit);
-      font-size: 1.15rem;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      background: linear-gradient(to right, #ffffff, #d1d5db);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+      .brand-title {
+        font-family: var(--font-outfit);
+        font-size: 1.15rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        background: linear-gradient(to right, #ffffff, #d1d5db);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
 
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
 
-    .btn {
-      background-color: #1e293b;
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.2s ease;
-    }
+      .btn {
+        background-color: #1e293b;
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+      }
 
-    .btn:hover {
-      background-color: #334155;
-      border-color: #475569;
-    }
+      .btn:hover {
+        background-color: #334155;
+        border-color: #475569;
+      }
 
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent-primary), #7c3aed);
-      border: none;
-      color: white;
-      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
-    }
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent-primary), #7c3aed);
+        border: none;
+        color: white;
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+      }
 
-    .btn-primary:hover {
-      background: linear-gradient(135deg, #be185d, var(--accent-primary));
-      transform: translateY(-1px);
-    }
+      .btn-primary:hover {
+        background: linear-gradient(135deg, #be185d, var(--accent-primary));
+        transform: translateY(-1px);
+      }
 
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      background: #1e293b;
-      padding: 6px 12px;
-      border-radius: 20px;
-      border: 1px solid var(--border-color);
-    }
+      .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        background: #1e293b;
+        padding: 6px 12px;
+        border-radius: 20px;
+        border: 1px solid var(--border-color);
+      }
 
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: #ef4444; /* red by default */
-      box-shadow: 0 0 8px #ef4444;
-      transition: all 0.3s ease;
-    }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #ef4444; /* red by default */
+        box-shadow: 0 0 8px #ef4444;
+        transition: all 0.3s ease;
+      }
 
-    .status-dot.connected {
-      background-color: var(--accent-success);
-      box-shadow: 0 0 8px var(--accent-success);
-    }
+      .status-dot.connected {
+        background-color: var(--accent-success);
+        box-shadow: 0 0 8px var(--accent-success);
+      }
 
-    /* Main Dashboard Layout */
-    .dashboard {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
+      /* Main Dashboard Layout */
+      .dashboard {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+      }
 
+      /* Editor Container */
+      .editor-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--bg-main);
+        position: relative;
+      }
 
-    /* Editor Container */
-    .editor-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background-color: var(--bg-main);
-      position: relative;
-    }
+      #monaco-editor {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+      }
 
-    #monaco-editor {
-      flex: 1;
-      width: 100%;
-      height: 100%;
-    }
+      /* Bottom Shelf - Diagnostics & Errors */
+      .diagnostics-panel {
+        height: 160px;
+        background-color: var(--bg-panel);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: height 0.2s ease;
+      }
 
-    /* Bottom Shelf - Diagnostics & Errors */
-    .diagnostics-panel {
-      height: 160px;
-      background-color: var(--bg-panel);
-      border-top: 1px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      transition: height 0.2s ease;
-    }
+      .diagnostics-header {
+        height: 36px;
+        background-color: #1f2937;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        cursor: pointer;
+        user-select: none;
+      }
 
-    .diagnostics-header {
-      height: 36px;
-      background-color: #1f2937;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      cursor: pointer;
-      user-select: none;
-    }
+      .diagnostics-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-    .diagnostics-title {
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+      .diagnostics-count {
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+      }
 
-    .diagnostics-count {
-      background-color: rgba(255, 255, 255, 0.1);
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 0.7rem;
-    }
+      .diagnostics-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px 16px;
+        font-size: 0.8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
 
-    .diagnostics-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px 16px;
-      font-size: 0.8rem;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+      .diagnostic-entry {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        background-color: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
 
-    .diagnostic-entry {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 6px 12px;
-      border-radius: 6px;
-      background-color: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-    }
+      .diagnostic-entry.error {
+        border-left: 3px solid #ef4444;
+      }
+      .diagnostic-entry.warning {
+        border-left: 3px solid var(--accent-warning);
+      }
 
-    .diagnostic-entry.error {
-      border-left: 3px solid #ef4444;
-    }
-    .diagnostic-entry.warning {
-      border-left: 3px solid var(--accent-warning);
-    }
+      .diagnostic-icon {
+        margin-top: 2px;
+      }
+      .diagnostic-entry.error .diagnostic-icon {
+        color: #ef4444;
+      }
+      .diagnostic-entry.warning .diagnostic-icon {
+        color: var(--accent-warning);
+      }
 
-    .diagnostic-icon {
-      margin-top: 2px;
-    }
-    .diagnostic-entry.error .diagnostic-icon { color: #ef4444; }
-    .diagnostic-entry.warning .diagnostic-icon { color: var(--accent-warning); }
+      .diagnostic-message {
+        flex: 1;
+        color: var(--text-main);
+        line-height: 1.35;
+      }
 
-    .diagnostic-message {
-      flex: 1;
-      color: var(--text-main);
-      line-height: 1.35;
-    }
+      .diagnostic-loc {
+        font-family: var(--font-fira);
+        color: var(--text-muted);
+        font-size: 0.75rem;
+      }
 
-    .diagnostic-loc {
-      font-family: var(--font-fira);
-      color: var(--text-muted);
-      font-size: 0.75rem;
-    }
+      .diagnostic-empty {
+        color: var(--text-muted);
+        text-align: center;
+        padding: 24px;
+        font-style: italic;
+      }
 
-    .diagnostic-empty {
-      color: var(--text-muted);
-      text-align: center;
-      padding: 24px;
-      font-style: italic;
-    }
+      /* Light Theme Styling Overrides */
+      body.light-theme {
+        --bg-main: #f8fafc;
+        --bg-panel: #ffffff;
+        --border-color: #cbd5e1;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+      }
 
-    /* Light Theme Styling Overrides */
-    body.light-theme {
-      --bg-main: #f8fafc;
-      --bg-panel: #ffffff;
-      --border-color: #cbd5e1;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-    }
+      body.light-theme .brand-title {
+        background: linear-gradient(to right, #0f172a, #475569);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
 
-    body.light-theme .brand-title {
-      background: linear-gradient(to right, #0f172a, #475569);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+      body.light-theme .status-indicator {
+        background: #f1f5f9;
+      }
 
-    body.light-theme .status-indicator {
-      background: #f1f5f9;
-    }
+      body.light-theme .btn {
+        background-color: #f1f5f9;
+        color: #0f172a;
+        border-color: #cbd5e1;
+      }
 
-    body.light-theme .btn {
-      background-color: #f1f5f9;
-      color: #0f172a;
-      border-color: #cbd5e1;
-    }
+      body.light-theme .btn:hover {
+        background-color: #e2e8f0;
+        border-color: #94a3b8;
+      }
 
-    body.light-theme .btn:hover {
-      background-color: #e2e8f0;
-      border-color: #94a3b8;
-    }
+      body.light-theme .btn-primary {
+        background: linear-gradient(135deg, var(--accent-primary), #7c3aed);
+        border: none;
+        color: white;
+      }
 
-    body.light-theme .btn-primary {
-      background: linear-gradient(135deg, var(--accent-primary), #7c3aed);
-      border: none;
-      color: white;
-    }
+      body.light-theme .btn-primary:hover {
+        background: linear-gradient(135deg, #be185d, var(--accent-primary));
+      }
 
-    body.light-theme .btn-primary:hover {
-      background: linear-gradient(135deg, #be185d, var(--accent-primary));
-    }
+      body.light-theme .diagnostics-header {
+        background-color: #f1f5f9;
+        border-bottom: 1px solid #cbd5e1;
+      }
 
-    body.light-theme .diagnostics-header {
-      background-color: #f1f5f9;
-      border-bottom: 1px solid #cbd5e1;
-    }
+      body.light-theme .diagnostic-entry {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      }
 
-    body.light-theme .diagnostic-entry {
-      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    }
+      .editor-container {
+        flex: 1.2;
+      }
 
-    .editor-container {
-      flex: 1.2;
-    }
+      /* Preview container styling */
+      .preview-container {
+        flex: 0.8;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--bg-panel);
+        border-left: 1px solid var(--border-color);
+        overflow: hidden;
+      }
 
-    /* Preview container styling */
-    .preview-container {
-      flex: 0.8;
-      display: flex;
-      flex-direction: column;
-      background-color: var(--bg-panel);
-      border-left: 1px solid var(--border-color);
-      overflow: hidden;
-    }
+      .preview-header {
+        height: 36px;
+        background-color: #1f2937;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--border-color);
+      }
 
-    .preview-header {
-      height: 36px;
-      background-color: #1f2937;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      border-bottom: 1px solid var(--border-color);
-    }
+      .preview-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-main);
+      }
 
-    .preview-title {
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text-main);
-    }
+      .preview-tabs {
+        display: flex;
+        gap: 4px;
+      }
 
-    .preview-tabs {
-      display: flex;
-      gap: 4px;
-    }
+      .preview-tab-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+      }
 
-    .preview-tab-btn {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      padding: 4px 8px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: all 0.2s ease;
-    }
+      .preview-tab-btn:hover {
+        color: var(--text-main);
+        background-color: rgba(255, 255, 255, 0.05);
+      }
 
-    .preview-tab-btn:hover {
-      color: var(--text-main);
-      background-color: rgba(255, 255, 255, 0.05);
-    }
+      .preview-tab-btn.active {
+        color: white;
+        background-color: var(--accent-primary);
+      }
 
-    .preview-tab-btn.active {
-      color: white;
-      background-color: var(--accent-primary);
-    }
+      .preview-content {
+        flex: 1;
+        overflow: auto;
+        position: relative;
+      }
 
-    .preview-content {
-      flex: 1;
-      overflow: auto;
-      position: relative;
-    }
+      .preview-pane {
+        display: none;
+        width: 100%;
+        height: 100%;
+        padding: 20px;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        color: var(--text-main);
+        box-sizing: border-box;
+      }
 
-    .preview-pane {
-      display: none;
-      width: 100%;
-      height: 100%;
-      padding: 20px;
-      font-size: 0.9rem;
-      line-height: 1.5;
-      color: var(--text-main);
-      box-sizing: border-box;
-    }
+      .preview-pane.active {
+        display: block;
+      }
 
-    .preview-pane.active {
-      display: block;
-    }
+      /* Rendered HTML pane */
+      #preview-rendered {
+        background-color: var(--bg-panel);
+      }
 
-    /* Rendered HTML pane */
-    #preview-rendered {
-      background-color: var(--bg-panel);
-    }
+      /* Raw text pane */
+      #preview-raw {
+        font-family: var(--font-fira), 'Fira Code', monospace;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+        background-color: rgba(0, 0, 0, 0.1);
+        margin: 0;
+        border-radius: 0;
+        border: none;
+      }
 
-    /* Raw text pane */
-    #preview-raw {
-      font-family: var(--font-fira), 'Fira Code', monospace;
-      font-size: 0.85rem;
-      white-space: pre-wrap;
-      background-color: rgba(0, 0, 0, 0.1);
-      margin: 0;
-      border-radius: 0;
-      border: none;
-    }
+      /* Context JSON editor */
+      .context-textarea {
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.2);
+        border: none;
+        color: #00e5ff;
+        font-family: var(--font-fira), 'Fira Code', monospace;
+        font-size: 0.85rem;
+        padding: 16px;
+        resize: none;
+        outline: none;
+        box-sizing: border-box;
+      }
 
-    /* Context JSON editor */
-    .context-textarea {
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.2);
-      border: none;
-      color: #00e5ff;
-      font-family: var(--font-fira), 'Fira Code', monospace;
-      font-size: 0.85rem;
-      padding: 16px;
-      resize: none;
-      outline: none;
-      box-sizing: border-box;
-    }
+      .context-textarea:focus {
+        box-shadow: inset 0 0 0 1px var(--accent-primary);
+      }
 
-    .context-textarea:focus {
-      box-shadow: inset 0 0 0 1px var(--accent-primary);
-    }
+      /* Light Theme Overrides for Preview */
+      body.light-theme .preview-header {
+        background-color: #f1f5f9;
+        border-bottom: 1px solid #cbd5e1;
+      }
 
-    /* Light Theme Overrides for Preview */
-    body.light-theme .preview-header {
-      background-color: #f1f5f9;
-      border-bottom: 1px solid #cbd5e1;
-    }
+      body.light-theme .preview-tab-btn:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+      }
 
-    body.light-theme .preview-tab-btn:hover {
-      background-color: rgba(0, 0, 0, 0.05);
-    }
+      body.light-theme .preview-tab-btn.active {
+        color: white;
+        background-color: var(--accent-primary);
+      }
 
-    body.light-theme .preview-tab-btn.active {
-      color: white;
-      background-color: var(--accent-primary);
-    }
+      body.light-theme #preview-raw {
+        background-color: #f8fafc;
+        color: #0f172a;
+      }
 
-    body.light-theme #preview-raw {
-      background-color: #f8fafc;
-      color: #0f172a;
-    }
+      body.light-theme .context-textarea {
+        background-color: #f8fafc;
+        color: #0f172a;
+      }
 
-    body.light-theme .context-textarea {
-      background-color: #f8fafc;
-      color: #0f172a;
-    }
-
-    /* Overlay error box inside preview */
-    .preview-error {
-      background-color: rgba(239, 68, 68, 0.1);
-      border: 1px solid #ef4444;
-      color: #ef4444;
-      padding: 12px;
-      border-radius: 6px;
-      font-family: var(--font-fira), 'Fira Code', monospace;
-      font-size: 0.8rem;
-      margin: 16px;
-      white-space: pre-wrap;
-    }
-  </style>
-</head>
-<body class="light-theme">
-
-  <!-- Top Navigation Bar -->
-  <header class="navbar">
-    <div class="brand">
-      <div class="brand-logo">L</div>
-      <span class="brand-title">Liquid Workspace</span>
-    </div>
-    
-    <div class="controls">
-      <div class="status-indicator">
-        <div class="status-dot" id="status-dot"></div>
-        <span id="status-text">Connecting...</span>
+      /* Overlay error box inside preview */
+      .preview-error {
+        background-color: rgba(239, 68, 68, 0.1);
+        border: 1px solid #ef4444;
+        color: #ef4444;
+        padding: 12px;
+        border-radius: 6px;
+        font-family: var(--font-fira), 'Fira Code', monospace;
+        font-size: 0.8rem;
+        margin: 16px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body class="light-theme">
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-logo">L</div>
+        <span class="brand-title">Liquid Workspace</span>
       </div>
-      <button class="btn" id="btn-theme-toggle">
-        <i class="fa-solid fa-moon" id="theme-icon"></i> <span id="theme-text">Dark Mode</span>
-      </button>
-      <button class="btn btn-primary" id="btn-format">
-        <i class="fa-solid fa-wand-magic-sparkles"></i> Format Template
-      </button>
-    </div>
-  </header>
 
-  <!-- Main Dashboard -->
-  <main class="dashboard">
+      <div class="controls">
+        <div class="status-indicator">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-text">Connecting...</span>
+        </div>
+        <button class="btn" id="btn-theme-toggle">
+          <i class="fa-solid fa-moon" id="theme-icon"></i>
+          <span id="theme-text">Dark Mode</span>
+        </button>
+        <button class="btn btn-primary" id="btn-format">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Format Template
+        </button>
+      </div>
+    </header>
 
-    <!-- Editor and Panel Container -->
-    <section class="editor-container">
-      <div id="monaco-editor"></div>
+    <!-- Main Dashboard -->
+    <main class="dashboard">
+      <!-- Editor and Panel Container -->
+      <section class="editor-container">
+        <div id="monaco-editor"></div>
 
-      <!-- Diagnostics Collapsible Shelf -->
-      <footer class="diagnostics-panel" id="diagnostics-panel">
-        <div class="diagnostics-header" id="diagnostics-header">
-          <div class="diagnostics-title">
-            <i class="fa-solid fa-circle-exclamation" style="color: var(--accent-warning);"></i> Template Diagnostics
+        <!-- Diagnostics Collapsible Shelf -->
+        <footer class="diagnostics-panel" id="diagnostics-panel">
+          <div class="diagnostics-header" id="diagnostics-header">
+            <div class="diagnostics-title">
+              <i
+                class="fa-solid fa-circle-exclamation"
+                style="color: var(--accent-warning)"
+              ></i>
+              Template Diagnostics
+            </div>
+            <span class="diagnostics-count" id="diagnostics-count"
+              >0 Issues</span
+            >
           </div>
-          <span class="diagnostics-count" id="diagnostics-count">0 Issues</span>
-        </div>
-        <div class="diagnostics-list" id="diagnostics-list">
-          <div class="diagnostic-empty">No issues found. Your template is fully valid!</div>
-        </div>
-      </footer>
-    </section>
+          <div class="diagnostics-list" id="diagnostics-list">
+            <div class="diagnostic-empty">
+              No issues found. Your template is fully valid!
+            </div>
+          </div>
+        </footer>
+      </section>
 
-    <!-- Output Preview Panel -->
-    <section class="preview-container">
-      <header class="preview-header">
-        <div class="preview-title">
-          <i class="fa-solid fa-desktop" style="color: var(--accent-secondary);"></i> Live Output Preview
+      <!-- Output Preview Panel -->
+      <section class="preview-container">
+        <header class="preview-header">
+          <div class="preview-title">
+            <i
+              class="fa-solid fa-desktop"
+              style="color: var(--accent-secondary)"
+            ></i>
+            Live Output Preview
+          </div>
+          <div class="preview-tabs">
+            <button class="preview-tab-btn active" data-tab="rendered">
+              Rendered HTML
+            </button>
+            <button class="preview-tab-btn" data-tab="raw">Raw Text</button>
+            <button class="preview-tab-btn" data-tab="context">
+              Mock Context
+            </button>
+          </div>
+        </header>
+        <div class="preview-content">
+          <div id="preview-rendered" class="preview-pane active"></div>
+          <pre id="preview-raw" class="preview-pane"></pre>
+          <div
+            id="preview-context-pane"
+            class="preview-pane"
+            style="padding: 0"
+          >
+            <textarea
+              id="preview-context-input"
+              class="context-textarea"
+              spellcheck="false"
+            ></textarea>
+          </div>
         </div>
-        <div class="preview-tabs">
-          <button class="preview-tab-btn active" data-tab="rendered">Rendered HTML</button>
-          <button class="preview-tab-btn" data-tab="raw">Raw Text</button>
-          <button class="preview-tab-btn" data-tab="context">Mock Context</button>
-        </div>
-      </header>
-      <div class="preview-content">
-        <div id="preview-rendered" class="preview-pane active"></div>
-        <pre id="preview-raw" class="preview-pane"></pre>
-        <div id="preview-context-pane" class="preview-pane" style="padding: 0;">
-          <textarea id="preview-context-input" class="context-textarea" spellcheck="false"></textarea>
-        </div>
-      </div>
-    </section>
-  </main>
+      </section>
+    </main>
 
-  <!-- Monaco Editor Dependencies -->
-  <script>
-    var require = { paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs' } };
-  </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/loader.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.nls.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.js"></script>
+    <!-- Monaco Editor Dependencies -->
+    <script>
+      var require = {
+        paths: {
+          vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs',
+        },
+      };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/loader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.nls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/editor/editor.main.js"></script>
 
-  <!-- Client-side WebSocket & LSP Controller -->
-  <script>
-    require(['vs/editor/editor.main'], function() {
-      // 1. Predefined variables schema
-    const schema = {
-      status: {
-        type: 'dropdown',
-        options: ['Active', 'Inactive']
-      },
-      price: 'currency',
-      user: {
-        type: 'composite',
-        fields: {
-          first_name: 'string',
-          items: {
+    <!-- Client-side WebSocket & LSP Controller -->
+    <script>
+      require(['vs/editor/editor.main'], function () {
+        // 1. Predefined variables schema
+        const schema = {
+          status: {
+            type: 'dropdown',
+            options: ['Active', 'Inactive'],
+          },
+          price: 'currency',
+          user: {
             type: 'composite',
             fields: {
-              title: 'string'
-            }
-          }
+              first_name: 'string',
+              items: {
+                type: 'composite',
+                fields: {
+                  title: 'string',
+                },
+              },
+            },
+          },
+        };
+
+        // 2. Pre-populated sample LiquidJS code in the editor
+        const initialText = [
+          '{% comment %}',
+          '  Liquid Workspace Playground',
+          '  =====================================',
+          '  ',
+          '  Features to test in this editor:',
+          '  1. HOVERS: Hover over variables like "user", "status", or "price.amount" to see type info.',
+          '  2. AUTOCOMPLETE: Press Ctrl+Space or start typing nested properties like "user.first_name" or filters like "| toCurrency".',
+          '  3. QUICK-FIXES: Click/hover the warning squiggle on the "status = \'Active\'" line below and click the lightbulb to fix it to "=="!',
+          '  4. LIVE OUTPUT: Check the right pane to see live rendered HTML, raw text, and editable Mock JSON variables.',
+          '{% endcomment %}',
+          '',
+          '{% assignVar name = user.first_name %}',
+          '<h2>Welcome back, {{ name }}!</h2>',
+          '',
+          '{% comment %} 1. Conditional comparison & Dropdown Option Check {% endcomment %}',
+          '{% comment %} TRY: Change "Active" to "Pending" to trigger a dropdown validation squiggle! {% endcomment %}',
+          '{% if status = "Active" %}',
+          '  <p class="status-badge">Your account status is currently: <strong>{{ status }}</strong></p>',
+          '{% else %}',
+          '  <p class="status-badge">Your account status: {{ status | default: "Pending" }}</p>',
+          '{% endif %}',
+          '',
+          '{% comment %} 2. Currency Schema fields & Math Filter validation {% endcomment %}',
+          '<p>',
+          '  Base Price: {{ price.amount | toCurrency: "USD" }} <br>',
+          '  Adjusted Price (with tax): {{ price.amount | plus: 25 | toCurrency: "USD" }}',
+          '</p>',
+          '',
+          '{% comment %} 3. Custom tags (parseAssign) & filters (sumArray, toCurrency, toDuration) {% endcomment %}',
+          '{% parseAssign localItems = \'[{"title": "Premium Subscription", "cost": 450}, {"title": "Onboarding Pack", "cost": 50}]\' %}',
+          '',
+          '<ul>',
+          '  {% for item in localItems %}',
+          '    <li>{{ item.title }}: {{ item.cost | toCurrency: "USD" }}</li>',
+          '  {% endfor %}',
+          '</ul>',
+          '',
+          '<p>Total local items cost: {{ localItems | sumArray: "cost" | toCurrency: "USD" }}</p>',
+          '<p>Service duration: {{ 14 | toDuration: "DAYS" }}</p>',
+        ].join('\n');
+
+        // Initialize Monaco editor
+        monaco.languages.register({ id: 'liquid' });
+        const model = monaco.editor.createModel(
+          initialText,
+          'liquid',
+          monaco.Uri.parse('inmemory://model/1'),
+        );
+
+        // Load saved theme preference
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        if (savedTheme === 'dark') {
+          document.body.classList.remove('light-theme');
         }
-      }
-    };
 
-
-
-    // 2. Pre-populated sample LiquidJS code in the editor
-    const initialText = [
-      '{% comment %}',
-      '  Liquid Workspace Playground',
-      '  =====================================',
-      '  ',
-      '  Features to test in this editor:',
-      '  1. HOVERS: Hover over variables like "user", "status", or "price.amount" to see type info.',
-      '  2. AUTOCOMPLETE: Press Ctrl+Space or start typing nested properties like "user.first_name" or filters like "| toCurrency".',
-      '  3. QUICK-FIXES: Click/hover the warning squiggle on the "status = \'Active\'" line below and click the lightbulb to fix it to "=="!',
-      '  4. LIVE OUTPUT: Check the right pane to see live rendered HTML, raw text, and editable Mock JSON variables.',
-      '{% endcomment %}',
-      '',
-      '{% assignVar name = user.first_name %}',
-      '<h2>Welcome back, {{ name }}!</h2>',
-      '',
-      '{% comment %} 1. Conditional comparison & Dropdown Option Check {% endcomment %}',
-      '{% comment %} TRY: Change "Active" to "Pending" to trigger a dropdown validation squiggle! {% endcomment %}',
-      '{% if status = "Active" %}',
-      '  <p class="status-badge">Your account status is currently: <strong>{{ status }}</strong></p>',
-      '{% else %}',
-      '  <p class="status-badge">Your account status: {{ status | default: "Pending" }}</p>',
-      '{% endif %}',
-      '',
-      '{% comment %} 2. Currency Schema fields & Math Filter validation {% endcomment %}',
-      '<p>',
-      '  Base Price: {{ price.amount | toCurrency: "USD" }} <br>',
-      '  Adjusted Price (with tax): {{ price.amount | plus: 25 | toCurrency: "USD" }}',
-      '</p>',
-      '',
-      '{% comment %} 3. Custom tags (parseAssign) & filters (sumArray, toCurrency, toDuration) {% endcomment %}',
-      '{% parseAssign localItems = \'[{"title": "Premium Subscription", "cost": 450}, {"title": "Onboarding Pack", "cost": 50}]\' %}',
-      '',
-      '<ul>',
-      '  {% for item in localItems %}',
-      '    <li>{{ item.title }}: {{ item.cost | toCurrency: "USD" }}</li>',
-      '  {% endfor %}',
-      '</ul>',
-      '',
-      '<p>Total local items cost: {{ localItems | sumArray: "cost" | toCurrency: "USD" }}</p>',
-      '<p>Service duration: {{ 14 | toDuration: "DAYS" }}</p>'
-    ].join('\n');
-
-    // Initialize Monaco editor
-    monaco.languages.register({ id: 'liquid' });
-    const model = monaco.editor.createModel(initialText, 'liquid', monaco.Uri.parse('inmemory://model/1'));
-    
-    // Load saved theme preference
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    if (savedTheme === 'dark') {
-      document.body.classList.remove('light-theme');
-    }
-
-    // Custom dark theme definition
-    monaco.editor.defineTheme('liquid-dark', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'keyword', foreground: 'a855f7', fontStyle: 'bold' },
-        { token: 'string', foreground: '10b981' },
-        { token: 'number', foreground: 'f59e0b' }
-      ],
-      colors: {
-        'editor.background': '#0b0f19',
-        'editor.lineHighlightBackground': '#111827',
-        'editorLineNumber.foreground': '#4b5563',
-        'editorLineNumber.activeForeground': '#00e5ff'
-      }
-    });
-
-    // Custom light theme definition
-    monaco.editor.defineTheme('liquid-light', {
-      base: 'vs',
-      inherit: true,
-      rules: [
-        { token: 'keyword', foreground: '7c3aed', fontStyle: 'bold' },
-        { token: 'string', foreground: '059669' },
-        { token: 'number', foreground: 'd97706' }
-      ],
-      colors: {
-        'editor.background': '#ffffff',
-        'editor.lineHighlightBackground': '#f1f5f9',
-        'editorLineNumber.foreground': '#94a3b8',
-        'editorLineNumber.activeForeground': '#7c3aed'
-      }
-    });
-
-    const editor = monaco.editor.create(document.getElementById('monaco-editor'), {
-      model: model,
-      theme: savedTheme === 'light' ? 'liquid-light' : 'liquid-dark',
-      automaticLayout: true,
-      fontSize: 14,
-      fontFamily: "'Fira Code', monospace",
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      tabSize: 2
-    });
-
-    // 3. Connect to express LSP WebSocket Server
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/lsp`;
-    const ws = new WebSocket(wsUrl);
-
-    const statusDot = document.getElementById('status-dot');
-    const statusText = document.getElementById('status-text');
-
-    let isConnected = false;
-    let requestId = 0;
-    const pendingRequests = new Map();
-    let docVersion = 1;
-
-    function sendRequest(method, params) {
-      return new Promise((resolve) => {
-        if (!isConnected) {
-          resolve(null);
-          return;
-        }
-        const id = ++requestId;
-        pendingRequests.set(id, resolve);
-        ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
-      });
-    }
-
-    function sendNotification(method, params) {
-      if (isConnected) {
-        ws.send(JSON.stringify({ jsonrpc: '2.0', method, params }));
-      }
-    }
-
-    ws.onopen = () => {
-      isConnected = true;
-      statusDot.className = 'status-dot connected';
-      statusText.innerText = 'Connected';
-
-      // Handshake: Initialize LSP server and pass our variable schema
-      sendRequest('initialize', {
-        capabilities: {},
-        initializationOptions: { schema }
-      }).then(() => {
-        sendNotification('initialized', {});
-        // Announce current model buffer
-        sendNotification('textDocument/didOpen', {
-          textDocument: {
-            uri: 'inmemory://model/1',
-            languageId: 'liquid',
-            version: docVersion,
-            text: model.getValue()
-          }
+        // Custom dark theme definition
+        monaco.editor.defineTheme('liquid-dark', {
+          base: 'vs-dark',
+          inherit: true,
+          rules: [
+            { token: 'keyword', foreground: 'a855f7', fontStyle: 'bold' },
+            { token: 'string', foreground: '10b981' },
+            { token: 'number', foreground: 'f59e0b' },
+          ],
+          colors: {
+            'editor.background': '#0b0f19',
+            'editor.lineHighlightBackground': '#111827',
+            'editorLineNumber.foreground': '#4b5563',
+            'editorLineNumber.activeForeground': '#00e5ff',
+          },
         });
-      });
-    };
 
-    ws.onclose = () => {
-      isConnected = false;
-      statusDot.className = 'status-dot';
-      statusText.innerText = 'Disconnected';
-    };
+        // Custom light theme definition
+        monaco.editor.defineTheme('liquid-light', {
+          base: 'vs',
+          inherit: true,
+          rules: [
+            { token: 'keyword', foreground: '7c3aed', fontStyle: 'bold' },
+            { token: 'string', foreground: '059669' },
+            { token: 'number', foreground: 'd97706' },
+          ],
+          colors: {
+            'editor.background': '#ffffff',
+            'editor.lineHighlightBackground': '#f1f5f9',
+            'editorLineNumber.foreground': '#94a3b8',
+            'editorLineNumber.activeForeground': '#7c3aed',
+          },
+        });
 
-    // Diagnostics Panel updates
-    const diagnosticsList = document.getElementById('diagnostics-list');
-    const diagnosticsCount = document.getElementById('diagnostics-count');
+        const editor = monaco.editor.create(
+          document.getElementById('monaco-editor'),
+          {
+            model: model,
+            theme: savedTheme === 'light' ? 'liquid-light' : 'liquid-dark',
+            automaticLayout: true,
+            fontSize: 14,
+            fontFamily: "'Fira Code', monospace",
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            tabSize: 2,
+          },
+        );
 
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      
-      // Resolve pending JSON-RPC request-response cycles
-      if (msg.id !== undefined && pendingRequests.has(msg.id)) {
-        const resolve = pendingRequests.get(msg.id);
-        pendingRequests.delete(msg.id);
-        resolve(msg.result);
-      }
-      
-      // Handle publishDiagnostics notifications
-      if (msg.method === 'textDocument/publishDiagnostics') {
-        const diagnostics = msg.params.diagnostics;
-        const markers = diagnostics.map(d => ({
-          severity: d.severity === 1 ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
-          startLineNumber: d.range.start.line + 1,
-          startColumn: d.range.start.character + 1,
-          endLineNumber: d.range.end.line + 1,
-          endColumn: d.range.end.character + 1,
-          message: d.message
-        }));
+        // 3. Connect to express LSP WebSocket Server
+        const wsProtocol =
+          window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/lsp`;
+        const ws = new WebSocket(wsUrl);
 
-        // Set warnings inside the Monaco Editor text frame
-        monaco.editor.setModelMarkers(model, 'liquid', markers);
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
 
-        // Update Bottom diagnostics list shelf UI
-        if (markers.length === 0) {
-          diagnosticsList.innerHTML = `<div class="diagnostic-empty">No issues found. Your template is fully valid!</div>`;
-          diagnosticsCount.innerText = `0 Issues`;
-          diagnosticsCount.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-        } else {
-          diagnosticsCount.innerText = `${markers.length} Issue${markers.length > 1 ? 's' : ''}`;
-          diagnosticsCount.style.backgroundColor = markers.some(m => m.severity === monaco.MarkerSeverity.Error) ? '#ef4444' : 'var(--accent-warning)';
-          
-          diagnosticsList.innerHTML = markers.map(m => `
+        let isConnected = false;
+        let requestId = 0;
+        const pendingRequests = new Map();
+        let docVersion = 1;
+
+        function sendRequest(method, params) {
+          return new Promise((resolve) => {
+            if (!isConnected) {
+              resolve(null);
+              return;
+            }
+            const id = ++requestId;
+            pendingRequests.set(id, resolve);
+            ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
+          });
+        }
+
+        function sendNotification(method, params) {
+          if (isConnected) {
+            ws.send(JSON.stringify({ jsonrpc: '2.0', method, params }));
+          }
+        }
+
+        ws.onopen = () => {
+          isConnected = true;
+          statusDot.className = 'status-dot connected';
+          statusText.innerText = 'Connected';
+
+          // Handshake: Initialize LSP server and pass our variable schema
+          sendRequest('initialize', {
+            capabilities: {},
+            initializationOptions: { schema },
+          }).then(() => {
+            sendNotification('initialized', {});
+            // Announce current model buffer
+            sendNotification('textDocument/didOpen', {
+              textDocument: {
+                uri: 'inmemory://model/1',
+                languageId: 'liquid',
+                version: docVersion,
+                text: model.getValue(),
+              },
+            });
+          });
+        };
+
+        ws.onclose = () => {
+          isConnected = false;
+          statusDot.className = 'status-dot';
+          statusText.innerText = 'Disconnected';
+        };
+
+        // Diagnostics Panel updates
+        const diagnosticsList = document.getElementById('diagnostics-list');
+        const diagnosticsCount = document.getElementById('diagnostics-count');
+
+        ws.onmessage = (event) => {
+          const msg = JSON.parse(event.data);
+
+          // Resolve pending JSON-RPC request-response cycles
+          if (msg.id !== undefined && pendingRequests.has(msg.id)) {
+            const resolve = pendingRequests.get(msg.id);
+            pendingRequests.delete(msg.id);
+            resolve(msg.result);
+          }
+
+          // Handle publishDiagnostics notifications
+          if (msg.method === 'textDocument/publishDiagnostics') {
+            const diagnostics = msg.params.diagnostics;
+            const markers = diagnostics.map((d) => ({
+              severity:
+                d.severity === 1
+                  ? monaco.MarkerSeverity.Error
+                  : monaco.MarkerSeverity.Warning,
+              startLineNumber: d.range.start.line + 1,
+              startColumn: d.range.start.character + 1,
+              endLineNumber: d.range.end.line + 1,
+              endColumn: d.range.end.character + 1,
+              message: d.message,
+            }));
+
+            // Set warnings inside the Monaco Editor text frame
+            monaco.editor.setModelMarkers(model, 'liquid', markers);
+
+            // Update Bottom diagnostics list shelf UI
+            if (markers.length === 0) {
+              diagnosticsList.innerHTML = `<div class="diagnostic-empty">No issues found. Your template is fully valid!</div>`;
+              diagnosticsCount.innerText = `0 Issues`;
+              diagnosticsCount.style.backgroundColor =
+                'rgba(255, 255, 255, 0.1)';
+            } else {
+              diagnosticsCount.innerText = `${markers.length} Issue${markers.length > 1 ? 's' : ''}`;
+              diagnosticsCount.style.backgroundColor = markers.some(
+                (m) => m.severity === monaco.MarkerSeverity.Error,
+              )
+                ? '#ef4444'
+                : 'var(--accent-warning)';
+
+              diagnosticsList.innerHTML = markers
+                .map(
+                  (m) => `
             <div class="diagnostic-entry ${m.severity === monaco.MarkerSeverity.Error ? 'error' : 'warning'}">
               <i class="fa-solid ${m.severity === monaco.MarkerSeverity.Error ? 'fa-circle-xmark' : 'fa-triangle-exclamation'} diagnostic-icon"></i>
               <div class="diagnostic-message">${m.message}</div>
               <div class="diagnostic-loc">Line ${m.startLineNumber}, Col ${m.startColumn}</div>
             </div>
-          `).join('');
-        }
-      }
-    };
-
-    // Forward buffer content changes to server linter
-    model.onDidChangeContent(() => {
-      sendNotification('textDocument/didChange', {
-        textDocument: { uri: 'inmemory://model/1', version: ++docVersion },
-        contentChanges: [{ text: model.getValue() }]
-      });
-    });
-
-    // 4. Register LSP Language providers inside Monaco
-    
-    // Hover Provider
-    monaco.languages.registerHoverProvider('liquid', {
-      provideHover: async function(model, position) {
-        const res = await sendRequest('textDocument/hover', {
-          textDocument: { uri: 'inmemory://model/1' },
-          position: { line: position.lineNumber - 1, character: position.column - 1 }
-        });
-        if (!res || !res.contents) return null;
-        return {
-          range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
-          contents: [{ value: res.contents.value }]
-        };
-      }
-    });
-
-    // Completions Provider
-    monaco.languages.registerCompletionItemProvider('liquid', {
-      triggerCharacters: [' ', '|'],
-      provideCompletionItems: async function(model, position) {
-        const res = await sendRequest('textDocument/completion', {
-          textDocument: { uri: 'inmemory://model/1' },
-          position: { line: position.lineNumber - 1, character: position.column - 1 }
-        });
-        if (!res) return { suggestions: [] };
-        
-        const items = Array.isArray(res) ? res : res.items;
-        const suggestions = items.map(item => ({
-          label: item.label,
-          kind: item.kind === 14 ? monaco.languages.CompletionItemKind.Keyword : monaco.languages.CompletionItemKind.Function,
-          insertText: item.insertText || item.label,
-          insertTextRules: item.insertTextFormat === 2 ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet : undefined,
-          documentation: item.documentation,
-          detail: item.detail,
-          range: {
-            startLineNumber: position.lineNumber,
-            startColumn: position.column - (item.label.startsWith('|') ? 1 : 0),
-            endLineNumber: position.lineNumber,
-            endColumn: position.column
+          `,
+                )
+                .join('');
+            }
           }
-        }));
-        return { suggestions };
-      }
-    });
+        };
 
-    // Formatting Provider
-    monaco.languages.registerDocumentFormattingEditProvider('liquid', {
-      provideDocumentFormattingEdits: async function(model, options) {
-        const res = await sendRequest('textDocument/formatting', {
-          textDocument: { uri: 'inmemory://model/1' },
-          options: { tabSize: options.tabSize, insertSpaces: options.insertSpaces }
-        });
-        if (!res || res.length === 0) return [];
-        return res.map(edit => ({
-          range: new monaco.Range(
-            edit.range.start.line + 1,
-            edit.range.start.character + 1,
-            edit.range.end.line + 1,
-            edit.range.end.character + 1
-          ),
-          text: edit.newText
-        }));
-      }
-    });
-
-    // On Type Formatting Provider (auto-closes end blocks!)
-    monaco.languages.registerOnTypeFormattingEditProvider('liquid', {
-      autoFormatTriggerCharacters: ['}', '%'],
-      provideOnTypeFormattingEdits: async function(model, position, ch, options) {
-        const res = await sendRequest('textDocument/onTypeFormatting', {
-          textDocument: { uri: 'inmemory://model/1' },
-          position: { line: position.lineNumber - 1, character: position.column - 1 },
-          ch,
-          options: { tabSize: options.tabSize, insertSpaces: options.insertSpaces }
-        });
-        if (!res || res.length === 0) return [];
-        return res.map(edit => ({
-          range: new monaco.Range(
-            edit.range.start.line + 1,
-            edit.range.start.character + 1,
-            edit.range.end.line + 1,
-            edit.range.end.character + 1
-          ),
-          text: edit.newText
-        }));
-      }
-    });
-
-    // Quick-Fix (Code Actions) Provider
-    monaco.languages.registerCodeActionProvider('liquid', {
-      provideCodeActions: async function(model, range, context) {
-        if (!context.markers || context.markers.length === 0) return { actions: [], dispose: () => {} };
-
-        // Map Monaco Markers to LSP Diagnostics
-        const diagnostics = context.markers.map(marker => {
-          let severity = 1;
-          if (marker.severity === 4) severity = 2; // Warning
-          else if (marker.severity === 2) severity = 3; // Info
-          else if (marker.severity === 1) severity = 4; // Hint
-
-          return {
-            severity,
-            message: marker.message,
-            range: {
-              start: { line: marker.startLineNumber - 1, character: marker.startColumn - 1 },
-              end: { line: marker.endLineNumber - 1, character: marker.endColumn - 1 }
-            },
-            source: marker.source
-          };
+        // Forward buffer content changes to server linter
+        model.onDidChangeContent(() => {
+          sendNotification('textDocument/didChange', {
+            textDocument: { uri: 'inmemory://model/1', version: ++docVersion },
+            contentChanges: [{ text: model.getValue() }],
+          });
         });
 
-        // Request code actions from standard LSP WebSocket gateway
-        const res = await sendRequest('textDocument/codeAction', {
-          textDocument: { uri: 'inmemory://model/1' },
-          range: {
-            start: { line: range.startLineNumber - 1, character: range.startColumn - 1 },
-            end: { line: range.endLineNumber - 1, character: range.endColumn - 1 }
+        // 4. Register LSP Language providers inside Monaco
+
+        // Hover Provider
+        monaco.languages.registerHoverProvider('liquid', {
+          provideHover: async function (model, position) {
+            const res = await sendRequest('textDocument/hover', {
+              textDocument: { uri: 'inmemory://model/1' },
+              position: {
+                line: position.lineNumber - 1,
+                character: position.column - 1,
+              },
+            });
+            if (!res || !res.contents) return null;
+            return {
+              range: new monaco.Range(
+                position.lineNumber,
+                position.column,
+                position.lineNumber,
+                position.column,
+              ),
+              contents: [{ value: res.contents.value }],
+            };
           },
-          context: { diagnostics }
         });
 
-        if (!res || res.length === 0) return { actions: [], dispose: () => {} };
+        // Completions Provider
+        monaco.languages.registerCompletionItemProvider('liquid', {
+          triggerCharacters: [' ', '|'],
+          provideCompletionItems: async function (model, position) {
+            const res = await sendRequest('textDocument/completion', {
+              textDocument: { uri: 'inmemory://model/1' },
+              position: {
+                line: position.lineNumber - 1,
+                character: position.column - 1,
+              },
+            });
+            if (!res) return { suggestions: [] };
 
-        // Map LSP CodeActions to Monaco Actions
-        const actions = res.map(action => {
-          let edits = [];
-          if (action.edit && action.edit.changes) {
-            for (const [uri, changeList] of Object.entries(action.edit.changes)) {
-              for (const edit of changeList) {
-                edits.push({
-                  resource: monaco.Uri.parse(uri),
-                  textEdit: {
-                    range: new monaco.Range(
-                      edit.range.start.line + 1,
-                      edit.range.start.character + 1,
-                      edit.range.end.line + 1,
-                      edit.range.end.character + 1
-                    ),
-                    text: edit.newText
+            const items = Array.isArray(res) ? res : res.items;
+            const suggestions = items.map((item) => ({
+              label: item.label,
+              kind:
+                item.kind === 14
+                  ? monaco.languages.CompletionItemKind.Keyword
+                  : monaco.languages.CompletionItemKind.Function,
+              insertText: item.insertText || item.label,
+              insertTextRules:
+                item.insertTextFormat === 2
+                  ? monaco.languages.CompletionItemInsertTextRule
+                      .InsertAsSnippet
+                  : undefined,
+              documentation: item.documentation,
+              detail: item.detail,
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn:
+                  position.column - (item.label.startsWith('|') ? 1 : 0),
+                endLineNumber: position.lineNumber,
+                endColumn: position.column,
+              },
+            }));
+            return { suggestions };
+          },
+        });
+
+        // Formatting Provider
+        monaco.languages.registerDocumentFormattingEditProvider('liquid', {
+          provideDocumentFormattingEdits: async function (model, options) {
+            const res = await sendRequest('textDocument/formatting', {
+              textDocument: { uri: 'inmemory://model/1' },
+              options: {
+                tabSize: options.tabSize,
+                insertSpaces: options.insertSpaces,
+              },
+            });
+            if (!res || res.length === 0) return [];
+            return res.map((edit) => ({
+              range: new monaco.Range(
+                edit.range.start.line + 1,
+                edit.range.start.character + 1,
+                edit.range.end.line + 1,
+                edit.range.end.character + 1,
+              ),
+              text: edit.newText,
+            }));
+          },
+        });
+
+        // On Type Formatting Provider (auto-closes end blocks!)
+        monaco.languages.registerOnTypeFormattingEditProvider('liquid', {
+          autoFormatTriggerCharacters: ['}', '%'],
+          provideOnTypeFormattingEdits: async function (
+            model,
+            position,
+            ch,
+            options,
+          ) {
+            const res = await sendRequest('textDocument/onTypeFormatting', {
+              textDocument: { uri: 'inmemory://model/1' },
+              position: {
+                line: position.lineNumber - 1,
+                character: position.column - 1,
+              },
+              ch,
+              options: {
+                tabSize: options.tabSize,
+                insertSpaces: options.insertSpaces,
+              },
+            });
+            if (!res || res.length === 0) return [];
+            return res.map((edit) => ({
+              range: new monaco.Range(
+                edit.range.start.line + 1,
+                edit.range.start.character + 1,
+                edit.range.end.line + 1,
+                edit.range.end.character + 1,
+              ),
+              text: edit.newText,
+            }));
+          },
+        });
+
+        // Quick-Fix (Code Actions) Provider
+        monaco.languages.registerCodeActionProvider('liquid', {
+          provideCodeActions: async function (model, range, context) {
+            if (!context.markers || context.markers.length === 0)
+              return { actions: [], dispose: () => {} };
+
+            // Map Monaco Markers to LSP Diagnostics
+            const diagnostics = context.markers.map((marker) => {
+              let severity = 1;
+              if (marker.severity === 4)
+                severity = 2; // Warning
+              else if (marker.severity === 2)
+                severity = 3; // Info
+              else if (marker.severity === 1) severity = 4; // Hint
+
+              return {
+                severity,
+                message: marker.message,
+                range: {
+                  start: {
+                    line: marker.startLineNumber - 1,
+                    character: marker.startColumn - 1,
+                  },
+                  end: {
+                    line: marker.endLineNumber - 1,
+                    character: marker.endColumn - 1,
+                  },
+                },
+                source: marker.source,
+              };
+            });
+
+            // Request code actions from standard LSP WebSocket gateway
+            const res = await sendRequest('textDocument/codeAction', {
+              textDocument: { uri: 'inmemory://model/1' },
+              range: {
+                start: {
+                  line: range.startLineNumber - 1,
+                  character: range.startColumn - 1,
+                },
+                end: {
+                  line: range.endLineNumber - 1,
+                  character: range.endColumn - 1,
+                },
+              },
+              context: { diagnostics },
+            });
+
+            if (!res || res.length === 0)
+              return { actions: [], dispose: () => {} };
+
+            // Map LSP CodeActions to Monaco Actions
+            const actions = res.map((action) => {
+              let edits = [];
+              if (action.edit && action.edit.changes) {
+                for (const [uri, changeList] of Object.entries(
+                  action.edit.changes,
+                )) {
+                  for (const edit of changeList) {
+                    edits.push({
+                      resource: monaco.Uri.parse(uri),
+                      textEdit: {
+                        range: new monaco.Range(
+                          edit.range.start.line + 1,
+                          edit.range.start.character + 1,
+                          edit.range.end.line + 1,
+                          edit.range.end.character + 1,
+                        ),
+                        text: edit.newText,
+                      },
+                    });
                   }
-                });
+                }
               }
-            }
-          }
 
-          return {
-            title: action.title,
-            diagnostics: context.markers,
-            kind: 'quickfix',
-            edit: { edits },
-            isPreferred: true
-          };
+              return {
+                title: action.title,
+                diagnostics: context.markers,
+                kind: 'quickfix',
+                edit: { edits },
+                isPreferred: true,
+              };
+            });
+
+            return {
+              actions,
+              dispose: () => {},
+            };
+          },
         });
 
-        return {
-          actions,
-          dispose: () => {}
-        };
-      }
-    });
+        // Handle manual format button click
+        document.getElementById('btn-format').addEventListener('click', () => {
+          editor.getAction('editor.action.formatDocument').run();
+        });
 
-    // Handle manual format button click
-    document.getElementById('btn-format').addEventListener('click', () => {
-      editor.getAction('editor.action.formatDocument').run();
-    });
+        // Theme toggling event listener
+        const btnThemeToggle = document.getElementById('btn-theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const themeText = document.getElementById('theme-text');
 
-    // Theme toggling event listener
-    const btnThemeToggle = document.getElementById('btn-theme-toggle');
-    const themeIcon = document.getElementById('theme-icon');
-    const themeText = document.getElementById('theme-text');
+        if (savedTheme === 'dark') {
+          themeIcon.className = 'fa-solid fa-sun';
+          themeText.textContent = 'Light Mode';
+        }
 
-    if (savedTheme === 'dark') {
-      themeIcon.className = 'fa-solid fa-sun';
-      themeText.textContent = 'Light Mode';
-    }
-
-    btnThemeToggle.addEventListener('click', () => {
-      const isLight = document.body.classList.toggle('light-theme');
-      if (isLight) {
-        themeIcon.className = 'fa-solid fa-moon';
-        themeText.textContent = 'Dark Mode';
-        monaco.editor.setTheme('liquid-light');
-        localStorage.setItem('theme', 'light');
-      } else {
-        themeIcon.className = 'fa-solid fa-sun';
-        themeText.textContent = 'Light Mode';
-        monaco.editor.setTheme('liquid-dark');
-        localStorage.setItem('theme', 'dark');
-      }
-    });
-
-    // Collapsible diagnostics shelf toggle
-    let isCollapsed = false;
-    const panel = document.getElementById('diagnostics-panel');
-    document.getElementById('diagnostics-header').addEventListener('click', () => {
-      isCollapsed = !isCollapsed;
-      panel.style.height = isCollapsed ? '36px' : '160px';
-    });
-
-    // Tab switching logic for Output Preview
-    const tabBtns = document.querySelectorAll('.preview-tab-btn');
-    const panes = {
-      rendered: document.getElementById('preview-rendered'),
-      raw: document.getElementById('preview-raw'),
-      context: document.getElementById('preview-context-pane')
-    };
-
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        tabBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        
-        const targetTab = btn.getAttribute('data-tab');
-        Object.keys(panes).forEach(tab => {
-          if (tab === targetTab) {
-            panes[tab].classList.add('active');
+        btnThemeToggle.addEventListener('click', () => {
+          const isLight = document.body.classList.toggle('light-theme');
+          if (isLight) {
+            themeIcon.className = 'fa-solid fa-moon';
+            themeText.textContent = 'Dark Mode';
+            monaco.editor.setTheme('liquid-light');
+            localStorage.setItem('theme', 'light');
           } else {
-            panes[tab].classList.remove('active');
+            themeIcon.className = 'fa-solid fa-sun';
+            themeText.textContent = 'Light Mode';
+            monaco.editor.setTheme('liquid-dark');
+            localStorage.setItem('theme', 'dark');
           }
         });
-      });
-    });
 
-    // Client-side LiquidJS Engine Setup
-    const liquid = new liquidjs.Liquid();
-
-    // Register Custom Tags matching LSP Environment
-    liquid.registerTag('assignVar', {
-      parse(tagToken) {
-        const match = tagToken.args.match(/([a-zA-Z0-9_-]+)\s*=\s*(.*)/);
-        if (match) {
-          this.key = match[1];
-          this.valExpr = match[2];
-        }
-      },
-      async render(context) {
-        if (!this.key) return;
-        const val = await this.liquid.evalValue(this.valExpr, context);
-        if (context.scopes && context.scopes.length > 0) {
-          context.scopes[context.scopes.length - 1][this.key] = val;
-        } else {
-          context[this.key] = val;
-        }
-      }
-    });
-
-    liquid.registerTag('parseAssign', {
-      parse(tagToken) {
-        const match = tagToken.args.match(/([a-zA-Z0-9_-]+)\s*=\s*(.*)/);
-        if (match) {
-          this.key = match[1];
-          this.valExpr = match[2];
-        }
-      },
-      async render(context) {
-        if (!this.key) return;
-        const valStr = await this.liquid.evalValue(this.valExpr, context);
-        let parsed = null;
-        try {
-          parsed = JSON.parse(valStr);
-        } catch (e) {
-          console.error("parseAssign JSON parsing error", e);
-        }
-        if (context.scopes && context.scopes.length > 0) {
-          context.scopes[context.scopes.length - 1][this.key] = parsed;
-        } else {
-          context[this.key] = parsed;
-        }
-      }
-    });
-
-    liquid.registerTag('computeColumn', {
-      parse() {},
-      render() {}
-    });
-
-    // Register Custom Filters matching LSP Environment
-    liquid.registerFilter('sumArray', (arr, key) => {
-      if (!Array.isArray(arr)) return 0;
-      return arr.reduce((sum, item) => {
-        const val = Number(item && key ? item[key] : item);
-        return sum + (isNaN(val) ? 0 : val);
-      }, 0);
-    });
-
-    liquid.registerFilter('toCurrency', (val, currency = 'USD') => {
-      const num = Number(val);
-      if (isNaN(num)) return val;
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(num);
-    });
-
-    liquid.registerFilter('toDuration', (val, unit = 'DAYS') => {
-      const num = Number(val);
-      if (isNaN(num)) return val;
-      const unitStr = unit.toLowerCase();
-      return `${num} ${num === 1 ? unitStr.replace(/s$/, '') : unitStr}`;
-    });
-
-    liquid.registerFilter('updateAttribute', (obj, attr, val) => {
-      if (obj && typeof obj === 'object') {
-        const copy = { ...obj };
-        copy[attr] = val;
-        return copy;
-      }
-      return obj;
-    });
-
-    liquid.registerFilter('updateTypeAttribute', (val) => val);
-
-    // Default JSON Mock Context
-    const defaultContext = {
-      status: "Active",
-      price: 150.00,
-      user: {
-        first_name: "Alex",
-        items: [
-          { title: "Item A", amount: 100 },
-          { title: "Item B", amount: 200 }
-        ]
-      }
-    };
-
-    const contextInput = document.getElementById('preview-context-input');
-    contextInput.value = JSON.stringify(defaultContext, null, 2);
-
-    // Helper to extract LSP schema format from JSON context dynamically
-    function jsonToSchema(val) {
-      if (val === null || val === undefined) return 'string';
-      if (typeof val === 'string') return 'string';
-      if (typeof val === 'number') return 'number';
-      if (typeof val === 'boolean') return 'boolean';
-      if (Array.isArray(val)) {
-        if (val.length > 0 && typeof val[0] === 'object' && val[0] !== null) {
-          const mergedFields = {};
-          val.forEach(item => {
-            if (item && typeof item === 'object') {
-              Object.keys(item).forEach(k => {
-                mergedFields[k] = jsonToSchema(item[k]);
-              });
-            }
+        // Collapsible diagnostics shelf toggle
+        let isCollapsed = false;
+        const panel = document.getElementById('diagnostics-panel');
+        document
+          .getElementById('diagnostics-header')
+          .addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            panel.style.height = isCollapsed ? '36px' : '160px';
           });
-          return { type: 'composite', fields: mergedFields };
-        }
-        return 'string';
-      }
-      if (typeof val === 'object') {
-        const fields = {};
-        Object.keys(val).forEach(k => {
-          fields[k] = jsonToSchema(val[k]);
+
+        // Tab switching logic for Output Preview
+        const tabBtns = document.querySelectorAll('.preview-tab-btn');
+        const panes = {
+          rendered: document.getElementById('preview-rendered'),
+          raw: document.getElementById('preview-raw'),
+          context: document.getElementById('preview-context-pane'),
+        };
+
+        tabBtns.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            tabBtns.forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const targetTab = btn.getAttribute('data-tab');
+            Object.keys(panes).forEach((tab) => {
+              if (tab === targetTab) {
+                panes[tab].classList.add('active');
+              } else {
+                panes[tab].classList.remove('active');
+              }
+            });
+          });
         });
-        return { type: 'composite', fields };
-      }
-      return 'string';
-    }
 
-    // Debounced Live Preview Update Loop
-    let previewDebounceTimer = null;
-    function updatePreview() {
-      if (previewDebounceTimer) {
-        clearTimeout(previewDebounceTimer);
-      }
-      previewDebounceTimer = setTimeout(async () => {
-        const renderedPane = document.getElementById('preview-rendered');
-        const rawPane = document.getElementById('preview-raw');
-        
-        let contextData = {};
-        try {
-          contextData = JSON.parse(contextInput.value);
-          contextInput.style.boxShadow = ''; // Reset border outline
+        // Client-side LiquidJS Engine Setup
+        const liquid = new liquidjs.Liquid();
 
-          // Infer schema from contextData and notify LSP server
-          const newSchema = {};
-          Object.keys(contextData).forEach(key => {
-            newSchema[key] = jsonToSchema(contextData[key]);
-          });
-          sendNotification('workspace/updateSchema', { schema: newSchema });
-        } catch (err) {
-          contextInput.style.boxShadow = 'inset 0 0 0 1px #ef4444';
-          renderedPane.innerHTML = `<div class="preview-error">Invalid Mock Context JSON:\n${err.message}</div>`;
-          rawPane.textContent = `Error: Invalid Mock Context JSON\n${err.message}`;
-          return;
+        // Register Custom Tags matching LSP Environment
+        liquid.registerTag('assignVar', {
+          parse(tagToken) {
+            const match = tagToken.args.match(/([a-zA-Z0-9_-]+)\s*=\s*(.*)/);
+            if (match) {
+              this.key = match[1];
+              this.valExpr = match[2];
+            }
+          },
+          async render(context) {
+            if (!this.key) return;
+            const val = await this.liquid.evalValue(this.valExpr, context);
+            if (typeof context.set === 'function') {
+              context.set(this.key, val);
+            } else if (context.scopes && context.scopes.length > 0) {
+              context.scopes[context.scopes.length - 1][this.key] = val;
+            } else {
+              context[this.key] = val;
+            }
+          },
+        });
+
+        liquid.registerTag('parseAssign', {
+          parse(tagToken) {
+            const match = tagToken.args.match(/([a-zA-Z0-9_-]+)\s*=\s*(.*)/);
+            if (match) {
+              this.key = match[1];
+              this.valExpr = match[2];
+            }
+          },
+          async render(context) {
+            if (!this.key) return;
+            const valStr = await this.liquid.evalValue(this.valExpr, context);
+            let parsed = null;
+            try {
+              parsed = JSON.parse(valStr);
+            } catch (e) {
+              console.error('parseAssign JSON parsing error', e);
+            }
+            if (typeof context.set === 'function') {
+              context.set(this.key, parsed);
+            } else if (context.scopes && context.scopes.length > 0) {
+              context.scopes[context.scopes.length - 1][this.key] = parsed;
+            } else {
+              context[this.key] = parsed;
+            }
+          },
+        });
+
+        liquid.registerTag('computeColumn', {
+          parse() {},
+          render() {},
+        });
+
+        // Register Custom Filters matching LSP Environment
+        liquid.registerFilter('sumArray', (arr, key) => {
+          if (!Array.isArray(arr)) return 0;
+          return arr.reduce((sum, item) => {
+            const val = Number(item && key ? item[key] : item);
+            return sum + (isNaN(val) ? 0 : val);
+          }, 0);
+        });
+
+        liquid.registerFilter('toCurrency', (val, currency = 'USD') => {
+          const num = Number(val);
+          if (isNaN(num)) return val;
+          return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency,
+          }).format(num);
+        });
+
+        liquid.registerFilter('toDuration', (val, unit = 'DAYS') => {
+          const num = Number(val);
+          if (isNaN(num)) return val;
+          const unitStr = unit.toLowerCase();
+          return `${num} ${num === 1 ? unitStr.replace(/s$/, '') : unitStr}`;
+        });
+
+        liquid.registerFilter('updateAttribute', (obj, attr, val) => {
+          if (obj && typeof obj === 'object') {
+            const copy = { ...obj };
+            copy[attr] = val;
+            return copy;
+          }
+          return obj;
+        });
+
+        liquid.registerFilter('updateTypeAttribute', (val) => val);
+
+        // Default JSON Mock Context
+        const defaultContext = {
+          status: 'Active',
+          price: 150.0,
+          user: {
+            first_name: 'Alex',
+            items: [
+              { title: 'Item A', amount: 100 },
+              { title: 'Item B', amount: 200 },
+            ],
+          },
+        };
+
+        const contextInput = document.getElementById('preview-context-input');
+        contextInput.value = JSON.stringify(defaultContext, null, 2);
+
+        // Helper to extract LSP schema format from JSON context dynamically
+        function jsonToSchema(val) {
+          if (val === null || val === undefined) return 'string';
+          if (typeof val === 'string') return 'string';
+          if (typeof val === 'number') return 'number';
+          if (typeof val === 'boolean') return 'boolean';
+          if (Array.isArray(val)) {
+            if (
+              val.length > 0 &&
+              typeof val[0] === 'object' &&
+              val[0] !== null
+            ) {
+              const mergedFields = {};
+              val.forEach((item) => {
+                if (item && typeof item === 'object') {
+                  Object.keys(item).forEach((k) => {
+                    mergedFields[k] = jsonToSchema(item[k]);
+                  });
+                }
+              });
+              return { type: 'composite', fields: mergedFields };
+            }
+            return 'string';
+          }
+          if (typeof val === 'object') {
+            const fields = {};
+            Object.keys(val).forEach((k) => {
+              fields[k] = jsonToSchema(val[k]);
+            });
+            return { type: 'composite', fields };
+          }
+          return 'string';
         }
 
-        try {
-          const templateText = model.getValue();
-          const html = await liquid.parseAndRender(templateText, contextData);
-          renderedPane.innerHTML = html;
-          rawPane.textContent = html;
-        } catch (err) {
-          renderedPane.innerHTML = `<div class="preview-error">Liquid Render Error:\n${err.message}</div>`;
-          rawPane.textContent = `Error: Liquid Render Error\n${err.message}`;
+        // Debounced Live Preview Update Loop
+        let previewDebounceTimer = null;
+        function updatePreview() {
+          if (previewDebounceTimer) {
+            clearTimeout(previewDebounceTimer);
+          }
+          previewDebounceTimer = setTimeout(async () => {
+            const renderedPane = document.getElementById('preview-rendered');
+            const rawPane = document.getElementById('preview-raw');
+
+            let contextData = {};
+            try {
+              contextData = JSON.parse(contextInput.value);
+              contextInput.style.boxShadow = ''; // Reset border outline
+
+              // Infer schema from contextData and notify LSP server
+              const newSchema = {};
+              Object.keys(contextData).forEach((key) => {
+                newSchema[key] = jsonToSchema(contextData[key]);
+              });
+              sendNotification('workspace/updateSchema', { schema: newSchema });
+            } catch (err) {
+              contextInput.style.boxShadow = 'inset 0 0 0 1px #ef4444';
+              renderedPane.innerHTML = `<div class="preview-error">Invalid Mock Context JSON:\n${err.message}</div>`;
+              rawPane.textContent = `Error: Invalid Mock Context JSON\n${err.message}`;
+              return;
+            }
+
+            try {
+              const templateText = model.getValue();
+              const html = await liquid.parseAndRender(
+                templateText,
+                contextData,
+              );
+              renderedPane.innerHTML = html;
+              rawPane.textContent = html;
+            } catch (err) {
+              renderedPane.innerHTML = `<div class="preview-error">Liquid Render Error:\n${err.message}</div>`;
+              rawPane.textContent = `Error: Liquid Render Error\n${err.message}`;
+            }
+          }, 100);
         }
-      }, 100);
-    }
 
-    // Bind event listeners
-    model.onDidChangeContent(() => {
-      updatePreview();
-    });
+        // Bind event listeners
+        model.onDidChangeContent(() => {
+          updatePreview();
+        });
 
-    contextInput.addEventListener('input', () => {
-      updatePreview();
-    });
+        contextInput.addEventListener('input', () => {
+          updatePreview();
+        });
 
-    // Run preview once on initial load
-    setTimeout(updatePreview, 300);
-    });
-  </script>
-</body>
+        // Run preview once on initial load
+        setTimeout(updatePreview, 300);
+      });
+    </script>
+  </body>
 </html>

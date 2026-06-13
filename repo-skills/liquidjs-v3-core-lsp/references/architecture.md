@@ -36,4 +36,3 @@ When adding parser-facing logic, ask:
 3. Is this a future compatibility seam?
 
 If it is a future compatibility seam, isolate it without changing current v3 behavior.
-

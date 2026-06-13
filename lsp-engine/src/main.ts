@@ -2,15 +2,21 @@ import {
   createConnection,
   TextDocuments,
   ProposedFeatures,
-  TextDocumentSyncKind
+  TextDocumentSyncKind,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import liquidjs from 'liquidjs';
 const { Liquid } = liquidjs;
 import { validateTextDocument } from './linters/diagnostics.js';
 import { handleHover } from './hovers/hovers.js';
-import { handleCompletion, handleCompletionResolve } from './completions/completions.js';
-import { handleOnTypeFormatting, handleDocumentFormatting } from './formatters/formatting.js';
+import {
+  handleCompletion,
+  handleCompletionResolve,
+} from './completions/completions.js';
+import {
+  handleOnTypeFormatting,
+  handleDocumentFormatting,
+} from './formatters/formatting.js';
 import { handleDefinition } from './definitions/definitions.js';
 import { handleCodeAction } from './codeactions/codeactions.js';
 import { handleDocumentSymbol } from './symbols/symbols.js';
@@ -28,21 +34,25 @@ const documents = new TextDocuments(TextDocument);
 
 // Initialize Liquid parsing engine used to validate syntax blocks
 const liquidEngine = new Liquid();
-liquidEngine.registerTag('parseAssign', {
-  parse() {},
-  render() {}
-});
-liquidEngine.registerTag('assignVar', {
-  parse() {},
-  render() {}
-});
+const isV10 =
+  (liquidjs as any).version && (liquidjs as any).version.startsWith('10.');
+if (isV10) {
+  liquidEngine.registerTag('parseAssign', {
+    parse() {},
+    render() {},
+  });
+  liquidEngine.registerTag('assignVar', {
+    parse() {},
+    render() {},
+  });
+}
 
 // Debounce map for diagnostic pushes to prevent validation thrashing on rapid keystrokes
 const pendingValidationTimers = new Map<string, NodeJS.Timeout>();
 
 /**
  * Handle LSP server handshake.
- * 
+ *
  * TO EXTEND LSP CAPABILITIES:
  * 1. Add/modify fields inside the `capabilities` object below to announce support to the client (e.g., renameProvider: true).
  * 2. Bind the corresponding event handler further down (e.g., connection.onRenameRequest).
@@ -54,7 +64,9 @@ connection.onInitialize((params) => {
 
   // 1. Load schema from initializationOptions
   if (params.initializationOptions) {
-    const rawVars = params.initializationOptions.variables || params.initializationOptions.schema;
+    const rawVars =
+      params.initializationOptions.variables ||
+      params.initializationOptions.schema;
     if (rawVars) {
       globalSchema = parseSchema(rawVars);
     }
@@ -73,9 +85,13 @@ connection.onInitialize((params) => {
         for (const [k, v] of fileSchema.entries()) {
           globalSchema.set(k, v);
         }
-        connection.console.log(`LSP server: Loaded local schema from ${configPath}`);
+        connection.console.log(
+          `LSP server: Loaded local schema from ${configPath}`,
+        );
       } catch (err: any) {
-        connection.console.log(`LSP server: Error parsing ${configPath}: ${err.message}`);
+        connection.console.log(
+          `LSP server: Error parsing ${configPath}: ${err.message}`,
+        );
       }
     }
   }
@@ -85,26 +101,26 @@ connection.onInitialize((params) => {
       textDocumentSync: TextDocumentSyncKind.Incremental,
       completionProvider: {
         resolveProvider: true,
-        triggerCharacters: [' ', '|']
+        triggerCharacters: [' ', '|'],
       },
       hoverProvider: true,
       documentOnTypeFormattingProvider: {
         firstTriggerCharacter: '}',
-        moreTriggerCharacter: ['%']
+        moreTriggerCharacter: ['%'],
       },
       signatureHelpProvider: {
-        triggerCharacters: [':', ',']
+        triggerCharacters: [':', ','],
       },
       documentFormattingProvider: true,
       definitionProvider: true,
       codeActionProvider: true,
-      documentSymbolProvider: true
-    }
+      documentSymbolProvider: true,
+    },
   };
 });
 
 // Real-time parsed diagnostics with a 150ms debounce window
-documents.onDidChangeContent(change => {
+documents.onDidChangeContent((change) => {
   const uri = change.document.uri;
 
   const existingTimer = pendingValidationTimers.get(uri);
@@ -113,7 +129,12 @@ documents.onDidChangeContent(change => {
   }
 
   const newTimer = setTimeout(() => {
-    validateTextDocument(connection, change.document, liquidEngine, globalSchema);
+    validateTextDocument(
+      connection,
+      change.document,
+      liquidEngine,
+      globalSchema,
+    );
     pendingValidationTimers.delete(uri);
   }, 150);
 
@@ -121,63 +142,70 @@ documents.onDidChangeContent(change => {
 });
 
 // Hover tooltip provider (Triggered on hover over variables/tags/filters. Implemented in src/hovers/hovers.ts)
-connection.onHover(params => {
+connection.onHover((params) => {
   return handleHover(documents, params, globalSchema);
 });
 
 // Autocomplete suggestions (Triggered on typing. Implemented in src/completions/completions.ts)
-connection.onCompletion(params => {
+connection.onCompletion((params) => {
   return handleCompletion(documents, params);
 });
 
 // Resolve lazy documentation for completions (Loads filter/tag docs dynamically. Implemented in src/completions/completions.ts)
-connection.onCompletionResolve(item => {
+connection.onCompletionResolve((item) => {
   return handleCompletionResolve(item);
 });
 
 // On-type formatting (Triggered when typing block tag boundaries like '}' or '%'. Implemented in src/formatters/formatting.ts)
-connection.onDocumentOnTypeFormatting(params => {
+connection.onDocumentOnTypeFormatting((params) => {
   return handleOnTypeFormatting(documents, params);
 });
 
 // Signature Help (Triggered on typing parameters like ':' or ','. Implemented in src/signatures/signatures.ts)
-connection.onSignatureHelp(params => {
+connection.onSignatureHelp((params) => {
   return handleSignatureHelp(documents, params);
 });
 
 // Document Formatting (Triggered manually or on save. Implemented in src/formatters/formatting.ts)
-connection.onDocumentFormatting(params => {
+connection.onDocumentFormatting((params) => {
   return handleDocumentFormatting(documents, params);
 });
 
 // Go to Definition (Triggered on variable reference cmd-click. Implemented in src/definitions/definitions.ts)
-connection.onDefinition(params => {
+connection.onDefinition((params) => {
   return handleDefinition(documents, params);
 });
 
 // Code Actions / Quick Fixes (Triggered when editor squiggles offer fixes. Implemented in src/codeactions/codeactions.ts)
-connection.onCodeAction(params => {
+connection.onCodeAction((params) => {
   return handleCodeAction(documents, params);
 });
 
 // Document Outline / Symbols (Triggered to populate editor's sidebar outline. Implemented in src/symbols/symbols.ts)
-connection.onDocumentSymbol(params => {
+connection.onDocumentSymbol((params) => {
   return handleDocumentSymbol(documents, params);
 });
 
-connection.onNotification('workspace/updateSchema', (params: { schema: any }) => {
-  if (params && params.schema) {
-    globalSchema = parseSchema(params.schema);
-    connection.console.log('LSP server: updated variable schema dynamically.');
-    // Trigger validation for all open documents to apply the new schema immediately
-    documents.all().forEach(doc => {
-      validateTextDocument(connection, doc, liquidEngine, globalSchema);
-    });
-  }
-});
+connection.onNotification(
+  'workspace/updateSchema',
+  (params: { schema: any }) => {
+    if (params && params.schema) {
+      globalSchema = parseSchema(params.schema);
+      connection.console.log(
+        'LSP server: updated variable schema dynamically.',
+      );
+      // Trigger validation for all open documents to apply the new schema immediately
+      documents.all().forEach((doc) => {
+        validateTextDocument(connection, doc, liquidEngine, globalSchema);
+      });
+    }
+  },
+);
 
 connection.onInitialized(() => {
-  connection.console.log('LSP server: client connection initialized successfully.');
+  connection.console.log(
+    'LSP server: client connection initialized successfully.',
+  );
 });
 
 // Bind document events

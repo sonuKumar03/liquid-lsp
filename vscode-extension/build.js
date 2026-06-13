@@ -17,7 +17,10 @@ function copyRecursiveSync(src, dest) {
       fs.mkdirSync(dest, { recursive: true });
     }
     fs.readdirSync(src).forEach((childItemName) => {
-      copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName));
+      copyRecursiveSync(
+        path.join(src, childItemName),
+        path.join(dest, childItemName),
+      );
     });
   } else {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -30,6 +33,8 @@ if (fs.existsSync(srcDir)) {
   copyRecursiveSync(srcDir, destDir);
   console.log('Server files copied successfully.');
 } else {
-  console.error(`Error: Source directory ${srcDir} does not exist. Make sure lsp-engine is built first.`);
+  console.error(
+    `Error: Source directory ${srcDir} does not exist. Make sure lsp-engine is built first.`,
+  );
   process.exit(1);
 }

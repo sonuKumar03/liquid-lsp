@@ -9,13 +9,15 @@ test('collectLifecycleDiagnostics reports overwritten variables', () => {
     'file:///t.liquid',
     'liquid',
     1,
-    '{% assign x = "hello" %}\n{% assign x = 20 %}'
+    '{% assign x = "hello" %}\n{% assign x = 20 %}',
   );
 
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  expect(diagnostics.some((d: any) => d.message.includes('overwritten'))).toBe(true);
+  expect(diagnostics.some((d: any) => d.message.includes('overwritten'))).toBe(
+    true,
+  );
 });
 
 test('collectLifecycleDiagnostics reports math filter type mismatches', () => {
@@ -24,11 +26,13 @@ test('collectLifecycleDiagnostics reports math filter type mismatches', () => {
     'file:///t.liquid',
     'liquid',
     1,
-    '{% assign x = "hello" %}\n{% assign y = x | plus: 5 %}'
+    '{% assign x = "hello" %}\n{% assign y = x | plus: 5 %}',
   );
 
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  expect(diagnostics.some((d: any) => d.message.includes('Type mismatch'))).toBe(true);
+  expect(
+    diagnostics.some((d: any) => d.message.includes('Type mismatch')),
+  ).toBe(true);
 });

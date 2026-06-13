@@ -6,7 +6,7 @@ import {
   INLINE_MATH_OPERATOR_MESSAGE,
   hasInlineMathOperators,
   hasSingleEqualsAssignment,
-  isConditionalTagLine
+  isConditionalTagLine,
 } from './liquid-syntax.js';
 
 /**
@@ -76,7 +76,7 @@ export function getEnhancedErrorMessage(msg: string, lineText: string): string {
  * Returns the match if the edit distance is 3 or less; otherwise null.
  */
 export function getClosestFilter(name: string): string | null {
-  const list = LIQUID_FILTERS.map(f => f.label);
+  const list = LIQUID_FILTERS.map((f) => f.label);
   const match = closest(name, list);
   if (match && distance(name, match) <= 3) {
     return match;
@@ -89,21 +89,34 @@ export function getClosestFilter(name: string): string | null {
  * E.g. "a + 5" becomes "a | plus: 5", "x - y" becomes "x | minus: y".
  */
 export function convertToLiquidMath(lineText: string): string | null {
-  const mathRegex = /([a-zA-Z0-9_-]+|\d+(?:\.\d+)?)\s*([-+*/])\s*([a-zA-Z0-9_-]+|\d+(?:\.\d+)?)/g;
+  const mathRegex =
+    /([a-zA-Z0-9_-]+|\d+(?:\.\d+)?)\s*([-+*/])\s*([a-zA-Z0-9_-]+|\d+(?:\.\d+)?)/g;
 
   let hasMath = false;
   const newText = lineText.replace(mathRegex, (match, op1, operator, op2) => {
     // If it's a hyphenated variable name, like my-var, ignore!
-    if (operator === '-' && !lineText.includes(` ${match} `) && !/\s-\s/.test(match)) {
+    if (
+      operator === '-' &&
+      !lineText.includes(` ${match} `) &&
+      !/\s-\s/.test(match)
+    ) {
       return match;
     }
     hasMath = true;
     let filter = '';
     switch (operator) {
-      case '+': filter = `| plus: ${op2}`; break;
-      case '-': filter = `| minus: ${op2}`; break;
-      case '*': filter = `| times: ${op2}`; break;
-      case '/': filter = `| divided_by: ${op2}`; break;
+      case '+':
+        filter = `| plus: ${op2}`;
+        break;
+      case '-':
+        filter = `| minus: ${op2}`;
+        break;
+      case '*':
+        filter = `| times: ${op2}`;
+        break;
+      case '/':
+        filter = `| divided_by: ${op2}`;
+        break;
     }
     return `${op1} ${filter}`;
   });

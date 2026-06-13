@@ -1,18 +1,22 @@
-import { CodeAction, CodeActionKind, Command } from 'vscode-languageserver/node';
+import {
+  CodeAction,
+  CodeActionKind,
+  Command,
+} from 'vscode-languageserver/node';
 import type { CodeActionParams } from 'vscode-languageserver/node';
 import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   CONDITIONAL_ASSIGNMENT_MESSAGE,
   INLINE_MATH_OPERATOR_MESSAGE,
-  SINGLE_EQUALS_ASSIGNMENT_REGEX
+  SINGLE_EQUALS_ASSIGNMENT_REGEX,
 } from '../shared/liquid-syntax.js';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 import { convertToLiquidMath } from '../shared/utils.js';
 
 export function handleCodeAction(
   documents: TextDocuments<TextDocument>,
-  params: CodeActionParams
+  params: CodeActionParams,
 ): (Command | CodeAction)[] {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
@@ -21,7 +25,7 @@ export function handleCodeAction(
 
   /**
    * Iterate over the diagnostics reported at the current cursor position.
-   * 
+   *
    * TO ADD A NEW QUICK-FIX:
    * 1. Inspect the diagnostic message/severity or check its unique code.
    * 2. Construct a CodeAction object with `kind: CodeActionKind.QuickFix`.
@@ -40,9 +44,10 @@ export function handleCodeAction(
     if (diagnostic.code === DIAGNOSTIC_CODES.UNCLOSED_DELIMITER) {
       const lineText = doc.getText({
         start: { line: diagnostic.range.start.line, character: 0 },
-        end: { line: diagnostic.range.start.line + 1, character: 0 }
+        end: { line: diagnostic.range.start.line + 1, character: 0 },
       });
-      const tagName = lineText.match(/\{%\s*(\w+)/)?.[1] ?? data?.tagName ?? null;
+      const tagName =
+        lineText.match(/\{%\s*(\w+)/)?.[1] ?? data?.tagName ?? null;
       if (!tagName) continue;
       const endTagName = `end${tagName}`;
 
@@ -50,7 +55,7 @@ export function handleCodeAction(
       const lastLine = doc.lineCount - 1;
       const lastLineText = doc.getText({
         start: { line: lastLine, character: 0 },
-        end: { line: lastLine + 1, character: 0 }
+        end: { line: lastLine + 1, character: 0 },
       });
       const endPosition = { line: lastLine, character: lastLineText.length };
 
@@ -59,16 +64,16 @@ export function handleCodeAction(
           [params.textDocument.uri]: [
             {
               range: { start: endPosition, end: endPosition },
-              newText: `\n{% ${endTagName} %}`
-            }
-          ]
-        }
+              newText: `\n{% ${endTagName} %}`,
+            },
+          ],
+        },
       };
 
       const action = CodeAction.create(
         `Insert missing {% ${endTagName} %}`,
         edit,
-        CodeActionKind.QuickFix
+        CodeActionKind.QuickFix,
       );
       action.diagnostics = [diagnostic];
       codeActions.push(action);
@@ -83,16 +88,16 @@ export function handleCodeAction(
             [params.textDocument.uri]: [
               {
                 range: diagnostic.range,
-                newText: suggestedFilter
-              }
-            ]
-          }
+                newText: suggestedFilter,
+              },
+            ],
+          },
         };
 
         const action = CodeAction.create(
           `Change to "${suggestedFilter}"`,
           edit,
-          CodeActionKind.QuickFix
+          CodeActionKind.QuickFix,
         );
         action.diagnostics = [diagnostic];
         codeActions.push(action);
@@ -100,11 +105,14 @@ export function handleCodeAction(
     }
 
     // 3. Pattern to match: "Liquid does not support inline mathematical operators"
-    if (diagnostic.code === DIAGNOSTIC_CODES.INLINE_MATH || message.includes(INLINE_MATH_OPERATOR_MESSAGE)) {
+    if (
+      diagnostic.code === DIAGNOSTIC_CODES.INLINE_MATH ||
+      message.includes(INLINE_MATH_OPERATOR_MESSAGE)
+    ) {
       const startLine = diagnostic.range.start.line;
       const lineText = doc.getText({
         start: { line: startLine, character: 0 },
-        end: { line: startLine + 1, character: 0 }
+        end: { line: startLine + 1, character: 0 },
       });
 
       const convertedText = convertToLiquidMath(lineText);
@@ -115,18 +123,18 @@ export function handleCodeAction(
               {
                 range: {
                   start: { line: startLine, character: 0 },
-                  end: { line: startLine, character: lineText.length }
+                  end: { line: startLine, character: lineText.length },
                 },
-                newText: convertedText.replace(/\r?\n/g, '')
-              }
-            ]
-          }
+                newText: convertedText.replace(/\r?\n/g, ''),
+              },
+            ],
+          },
         };
 
         const action = CodeAction.create(
           `Convert inline math to Liquid filter`,
           edit,
-          CodeActionKind.QuickFix
+          CodeActionKind.QuickFix,
         );
         action.diagnostics = [diagnostic];
         codeActions.push(action);
@@ -134,11 +142,14 @@ export function handleCodeAction(
     }
 
     // 4. Pattern to match: "Assignments are not allowed inside conditional statements"
-    if (diagnostic.code === DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT || message.includes(CONDITIONAL_ASSIGNMENT_MESSAGE)) {
+    if (
+      diagnostic.code === DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT ||
+      message.includes(CONDITIONAL_ASSIGNMENT_MESSAGE)
+    ) {
       const startLine = diagnostic.range.start.line;
       const lineText = doc.getText({
         start: { line: startLine, character: 0 },
-        end: { line: startLine + 1, character: 0 }
+        end: { line: startLine + 1, character: 0 },
       });
 
       const matchIndex = lineText.search(SINGLE_EQUALS_ASSIGNMENT_REGEX);
@@ -149,18 +160,18 @@ export function handleCodeAction(
               {
                 range: {
                   start: { line: startLine, character: matchIndex },
-                  end: { line: startLine, character: matchIndex + 1 }
+                  end: { line: startLine, character: matchIndex + 1 },
                 },
-                newText: '=='
-              }
-            ]
-          }
+                newText: '==',
+              },
+            ],
+          },
         };
 
         const action = CodeAction.create(
           `Change '=' to '=='`,
           edit,
-          CodeActionKind.QuickFix
+          CodeActionKind.QuickFix,
         );
         action.diagnostics = [diagnostic];
         codeActions.push(action);

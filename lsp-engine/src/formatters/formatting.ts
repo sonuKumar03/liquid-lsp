@@ -1,16 +1,20 @@
-import type { DocumentOnTypeFormattingParams, DocumentFormattingParams, TextEdit } from 'vscode-languageserver/node';
+import type {
+  DocumentOnTypeFormattingParams,
+  DocumentFormattingParams,
+  TextEdit,
+} from 'vscode-languageserver/node';
 import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   AUTO_CLOSE_BLOCK_TAG_NAMES,
   BLOCK_CLOSE_TAG_NAMES,
   BLOCK_MIDDLE_TAG_NAMES,
-  BLOCK_OPEN_TAG_NAMES
+  BLOCK_OPEN_TAG_NAMES,
 } from '../shared/liquid-syntax.js';
 
 export function handleOnTypeFormatting(
   documents: TextDocuments<TextDocument>,
-  params: DocumentOnTypeFormattingParams
+  params: DocumentOnTypeFormattingParams,
 ): TextEdit[] | null {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
@@ -18,7 +22,7 @@ export function handleOnTypeFormatting(
   const position = params.position;
   const lineText = doc.getText({
     start: { line: position.line, character: 0 },
-    end: position
+    end: position,
   });
 
   // Check if they completed typing a tag closing delimiter "%}"
@@ -30,17 +34,21 @@ export function handleOnTypeFormatting(
     const firstWord = tagContent.split(/\s+/)[0];
     if (!firstWord) return null;
 
-    if (AUTO_CLOSE_BLOCK_TAG_NAMES.includes(firstWord as typeof AUTO_CLOSE_BLOCK_TAG_NAMES[number])) {
+    if (
+      AUTO_CLOSE_BLOCK_TAG_NAMES.includes(
+        firstWord as (typeof AUTO_CLOSE_BLOCK_TAG_NAMES)[number],
+      )
+    ) {
       const endTag = `end${firstWord}`;
-      
+
       // Auto-insert a double newline and the closing tag
       const textToInsert = `\n\n{% ${endTag} %}`;
-      
+
       return [
         {
           range: { start: position, end: position },
-          newText: textToInsert
-        }
+          newText: textToInsert,
+        },
       ];
     }
   }
@@ -50,7 +58,7 @@ export function handleOnTypeFormatting(
 
 export function handleDocumentFormatting(
   documents: TextDocuments<TextDocument>,
-  params: DocumentFormattingParams
+  params: DocumentFormattingParams,
 ): TextEdit[] | null {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
@@ -67,8 +75,8 @@ export function handleDocumentFormatting(
   return [
     {
       range: { start, end },
-      newText: formattedText
-    }
+      newText: formattedText,
+    },
   ];
 }
 
@@ -101,18 +109,24 @@ export function formatLiquid(text: string): string {
 
     // 2. Format expressions inside tags/outputs on the line and normalize spaces
     let formattedLineText = trimmedLine;
-    
+
     // Format {% ... %} tags
-    formattedLineText = formattedLineText.replace(/\{%(-?)([\s\S]*?)(-?)%\}/g, (match, dash1, content, dash2) => {
-      const cleanContent = formatExpression(content.trim()).trim();
-      return `{%${dash1} ${cleanContent} ${dash2}%}`;
-    });
+    formattedLineText = formattedLineText.replace(
+      /\{%(-?)([\s\S]*?)(-?)%\}/g,
+      (match, dash1, content, dash2) => {
+        const cleanContent = formatExpression(content.trim()).trim();
+        return `{%${dash1} ${cleanContent} ${dash2}%}`;
+      },
+    );
 
     // Format {{ ... }} outputs
-    formattedLineText = formattedLineText.replace(/\{\{(-?)([\s\S]*?)(-?)\}\}/g, (match, dash1, content, dash2) => {
-      const cleanContent = formatExpression(content.trim()).trim();
-      return `{{${dash1} ${cleanContent} ${dash2}}}`;
-    });
+    formattedLineText = formattedLineText.replace(
+      /\{\{(-?)([\s\S]*?)(-?)\}\}/g,
+      (match, dash1, content, dash2) => {
+        const cleanContent = formatExpression(content.trim()).trim();
+        return `{{${dash1} ${cleanContent} ${dash2}}}`;
+      },
+    );
 
     // 3. Apply indentation
     const currentIndent = isMiddle ? Math.max(0, indentLevel - 1) : indentLevel;
@@ -137,7 +151,7 @@ function formatExpression(expr: string): string {
   for (let i = 0; i < parts.length; i += 2) {
     let code = parts[i] ?? '';
     code = code.replace(/[ \t]+/g, ' ');
-    
+
     code = code.replace(/\s*==\s*/g, ' == ');
     code = code.replace(/\s*!=\s*/g, ' != ');
     code = code.replace(/\s*>=\s*/g, ' >= ');
@@ -145,16 +159,16 @@ function formatExpression(expr: string): string {
     code = code.replace(/(?<![!<>=])=(?![=])/g, ' = ');
     code = code.replace(/(?<![!<>=])>(?![=])/g, ' > ');
     code = code.replace(/(?<![!<>=])<(?![=])/g, ' < ');
-    
+
     code = code.replace(/\s*\|\s*/g, ' | ');
     code = code.replace(/\s*:\s*/g, ': ');
     code = code.replace(/\s*,\s*/g, ', ');
-    
+
     code = code.replace(/ +/g, ' ');
-    
+
     parts[i] = code;
   }
-  
+
   // Normalize single quotes to double quotes for string literals (odd indices)
   // unless the literal contains a nested double quote (to avoid escaping complexity).
   for (let i = 1; i < parts.length; i += 2) {

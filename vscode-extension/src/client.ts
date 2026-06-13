@@ -3,7 +3,10 @@ import * as net from 'net';
 import type { ExtensionContext } from 'vscode';
 import { workspace } from 'vscode';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
-import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node';
+import type {
+  LanguageClientOptions,
+  ServerOptions,
+} from 'vscode-languageclient/node';
 
 const DEFAULT_REMOTE_LSP_PORT = 6009;
 const DEFAULT_LSP_INSPECT_PORT = 6009;
@@ -19,7 +22,9 @@ export function activate(context: ExtensionContext) {
   const port = config.get<number>('server.port') || DEFAULT_REMOTE_LSP_PORT;
 
   // Path to the compiled server file
-  const serverModule = context.asAbsolutePath(path.join('dist', 'server', 'main.js'));
+  const serverModule = context.asAbsolutePath(
+    path.join('dist', 'server', 'main.js'),
+  );
 
   let serverOptions: ServerOptions;
 
@@ -29,18 +34,22 @@ export function activate(context: ExtensionContext) {
       const socket = net.connect({ host, port });
       return Promise.resolve({
         writer: socket,
-        reader: socket
+        reader: socket,
       });
     };
   } else {
-    console.log('Spawning LSP server process: node ' + serverModule + ' --stdio');
+    console.log(
+      'Spawning LSP server process: node ' + serverModule + ' --stdio',
+    );
     serverOptions = {
       run: { module: serverModule, transport: TransportKind.stdio },
       debug: {
         module: serverModule,
         transport: TransportKind.stdio,
-        options: { execArgv: [`--nolazy`, `--inspect=${DEFAULT_LSP_INSPECT_PORT}`] }
-      }
+        options: {
+          execArgv: [`--nolazy`, `--inspect=${DEFAULT_LSP_INSPECT_PORT}`],
+        },
+      },
     };
   }
 
@@ -48,15 +57,20 @@ export function activate(context: ExtensionContext) {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'liquid' }],
     synchronize: {
-      fileEvents: workspace.createFileSystemWatcher('**/*.liquid')
+      fileEvents: workspace.createFileSystemWatcher('**/*.liquid'),
     },
     initializationOptions: {
-      schema: config.get('schema') || {}
-    }
+      schema: config.get('schema') || {},
+    },
   };
 
   // Instantiate and launch the client
-  client = new LanguageClient('liquidLsp', 'Liquid Language Server', serverOptions, clientOptions);
+  client = new LanguageClient(
+    'liquidLsp',
+    'Liquid Language Server',
+    serverOptions,
+    clientOptions,
+  );
   client.start();
 
   console.log('Liquid LSP extension activated successfully.');

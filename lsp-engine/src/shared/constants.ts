@@ -3,11 +3,31 @@ import type { CompletionItem } from 'vscode-languageserver/node';
 
 export const LIQUID_TAGS: CompletionItem[] = [
   { label: 'assign', kind: CompletionItemKind.Keyword, data: 'tag-assign' },
-  { label: 'assignVar', kind: CompletionItemKind.Keyword, data: 'tag-assignVar' },
-  { label: 'computeColumn', kind: CompletionItemKind.Keyword, data: 'tag-computeColumn' },
-  { label: 'parseAssign', kind: CompletionItemKind.Keyword, data: 'tag-parseAssign' },
-  { label: 'increment', kind: CompletionItemKind.Keyword, data: 'tag-increment' },
-  { label: 'decrement', kind: CompletionItemKind.Keyword, data: 'tag-decrement' },
+  {
+    label: 'assignVar',
+    kind: CompletionItemKind.Keyword,
+    data: 'tag-assignVar',
+  },
+  {
+    label: 'computeColumn',
+    kind: CompletionItemKind.Keyword,
+    data: 'tag-computeColumn',
+  },
+  {
+    label: 'parseAssign',
+    kind: CompletionItemKind.Keyword,
+    data: 'tag-parseAssign',
+  },
+  {
+    label: 'increment',
+    kind: CompletionItemKind.Keyword,
+    data: 'tag-increment',
+  },
+  {
+    label: 'decrement',
+    kind: CompletionItemKind.Keyword,
+    data: 'tag-decrement',
+  },
   { label: 'capture', kind: CompletionItemKind.Keyword, data: 'tag-capture' },
   { label: 'case', kind: CompletionItemKind.Keyword, data: 'tag-case' },
   { label: 'comment', kind: CompletionItemKind.Keyword, data: 'tag-comment' },
@@ -20,45 +40,181 @@ export const LIQUID_TAGS: CompletionItem[] = [
   { label: 'layout', kind: CompletionItemKind.Keyword, data: 'tag-layout' },
   { label: 'render', kind: CompletionItemKind.Keyword, data: 'tag-render' },
   { label: 'raw', kind: CompletionItemKind.Keyword, data: 'tag-raw' },
-  { label: 'tablerow', kind: CompletionItemKind.Keyword, data: 'tag-tablerow' }
+  { label: 'tablerow', kind: CompletionItemKind.Keyword, data: 'tag-tablerow' },
 ];
 
 export const LIQUID_FILTERS: CompletionItem[] = [
   { label: 'abs', kind: CompletionItemKind.Function, data: 'filter-abs' },
-  { label: 'append', kind: CompletionItemKind.Function, data: 'filter-append', insertText: 'append: "${1:value}"', insertTextFormat: 2 },
-  { label: 'capitalize', kind: CompletionItemKind.Function, data: 'filter-capitalize' },
+  {
+    label: 'append',
+    kind: CompletionItemKind.Function,
+    data: 'filter-append',
+    insertText: 'append: "${1:value}"',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'capitalize',
+    kind: CompletionItemKind.Function,
+    data: 'filter-capitalize',
+  },
   { label: 'ceil', kind: CompletionItemKind.Function, data: 'filter-ceil' },
-  { label: 'concat', kind: CompletionItemKind.Function, data: 'filter-concat', insertText: 'concat: ${1:array}', insertTextFormat: 2 },
-  { label: 'date', kind: CompletionItemKind.Function, data: 'filter-date', insertText: 'date: "${1:%Y-%m-%d}"', insertTextFormat: 2 },
-  { label: 'default', kind: CompletionItemKind.Function, data: 'filter-default', insertText: 'default: ${1:fallback}', insertTextFormat: 2 },
-  { label: 'divided_by', kind: CompletionItemKind.Function, data: 'filter-divided_by', insertText: 'divided_by: ${1:divisor}', insertTextFormat: 2 },
-  { label: 'downcase', kind: CompletionItemKind.Function, data: 'filter-downcase' },
+  {
+    label: 'concat',
+    kind: CompletionItemKind.Function,
+    data: 'filter-concat',
+    insertText: 'concat: ${1:array}',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'date',
+    kind: CompletionItemKind.Function,
+    data: 'filter-date',
+    insertText: 'date: "${1:%Y-%m-%d}"',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'default',
+    kind: CompletionItemKind.Function,
+    data: 'filter-default',
+    insertText: 'default: ${1:fallback}',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'divided_by',
+    kind: CompletionItemKind.Function,
+    data: 'filter-divided_by',
+    insertText: 'divided_by: ${1:divisor}',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'downcase',
+    kind: CompletionItemKind.Function,
+    data: 'filter-downcase',
+  },
   { label: 'escape', kind: CompletionItemKind.Function, data: 'filter-escape' },
   { label: 'first', kind: CompletionItemKind.Function, data: 'filter-first' },
   { label: 'floor', kind: CompletionItemKind.Function, data: 'filter-floor' },
-  { label: 'join', kind: CompletionItemKind.Function, data: 'filter-join', insertText: 'join: "${1:, }"', insertTextFormat: 2 },
+  {
+    label: 'join',
+    kind: CompletionItemKind.Function,
+    data: 'filter-join',
+    insertText: 'join: "${1:, }"',
+    insertTextFormat: 2,
+  },
   { label: 'last', kind: CompletionItemKind.Function, data: 'filter-last' },
-  { label: 'minus', kind: CompletionItemKind.Function, data: 'filter-minus', insertText: 'minus: ${1:value}', insertTextFormat: 2 },
-  { label: 'modulo', kind: CompletionItemKind.Function, data: 'filter-modulo', insertText: 'modulo: ${1:value}', insertTextFormat: 2 },
-  { label: 'plus', kind: CompletionItemKind.Function, data: 'filter-plus', insertText: 'plus: ${1:value}', insertTextFormat: 2 },
-  { label: 'prepend', kind: CompletionItemKind.Function, data: 'filter-prepend', insertText: 'prepend: "${1:value}"', insertTextFormat: 2 },
-  { label: 'replace', kind: CompletionItemKind.Function, data: 'filter-replace', insertText: 'replace: "${1:search}", "${2:replace}"', insertTextFormat: 2 },
-  { label: 'reverse', kind: CompletionItemKind.Function, data: 'filter-reverse' },
-  { label: 'round', kind: CompletionItemKind.Function, data: 'filter-round', insertText: 'round: ${1:decimal_places}', insertTextFormat: 2 },
+  {
+    label: 'minus',
+    kind: CompletionItemKind.Function,
+    data: 'filter-minus',
+    insertText: 'minus: ${1:value}',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'modulo',
+    kind: CompletionItemKind.Function,
+    data: 'filter-modulo',
+    insertText: 'modulo: ${1:value}',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'plus',
+    kind: CompletionItemKind.Function,
+    data: 'filter-plus',
+    insertText: 'plus: ${1:value}',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'prepend',
+    kind: CompletionItemKind.Function,
+    data: 'filter-prepend',
+    insertText: 'prepend: "${1:value}"',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'replace',
+    kind: CompletionItemKind.Function,
+    data: 'filter-replace',
+    insertText: 'replace: "${1:search}", "${2:replace}"',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'reverse',
+    kind: CompletionItemKind.Function,
+    data: 'filter-reverse',
+  },
+  {
+    label: 'round',
+    kind: CompletionItemKind.Function,
+    data: 'filter-round',
+    insertText: 'round: ${1:decimal_places}',
+    insertTextFormat: 2,
+  },
   { label: 'size', kind: CompletionItemKind.Function, data: 'filter-size' },
-  { label: 'slice', kind: CompletionItemKind.Function, data: 'filter-slice', insertText: 'slice: ${1:start}, ${2:length}', insertTextFormat: 2 },
+  {
+    label: 'slice',
+    kind: CompletionItemKind.Function,
+    data: 'filter-slice',
+    insertText: 'slice: ${1:start}, ${2:length}',
+    insertTextFormat: 2,
+  },
   { label: 'sort', kind: CompletionItemKind.Function, data: 'filter-sort' },
-  { label: 'split', kind: CompletionItemKind.Function, data: 'filter-split', insertText: 'split: "${1:,}"', insertTextFormat: 2 },
+  {
+    label: 'split',
+    kind: CompletionItemKind.Function,
+    data: 'filter-split',
+    insertText: 'split: "${1:,}"',
+    insertTextFormat: 2,
+  },
   { label: 'strip', kind: CompletionItemKind.Function, data: 'filter-strip' },
-  { label: 'times', kind: CompletionItemKind.Function, data: 'filter-times', insertText: 'times: ${1:factor}', insertTextFormat: 2 },
-  { label: 'truncate', kind: CompletionItemKind.Function, data: 'filter-truncate', insertText: 'truncate: ${1:100}', insertTextFormat: 2 },
+  {
+    label: 'times',
+    kind: CompletionItemKind.Function,
+    data: 'filter-times',
+    insertText: 'times: ${1:factor}',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'truncate',
+    kind: CompletionItemKind.Function,
+    data: 'filter-truncate',
+    insertText: 'truncate: ${1:100}',
+    insertTextFormat: 2,
+  },
   { label: 'uniq', kind: CompletionItemKind.Function, data: 'filter-uniq' },
   { label: 'upcase', kind: CompletionItemKind.Function, data: 'filter-upcase' },
-  { label: 'sumArray', kind: CompletionItemKind.Function, data: 'filter-sumArray', insertText: 'sumArray: "${1:key}"', insertTextFormat: 2 },
-  { label: 'toCurrency', kind: CompletionItemKind.Function, data: 'filter-toCurrency', insertText: 'toCurrency: "${1:USD}"', insertTextFormat: 2 },
-  { label: 'toDuration', kind: CompletionItemKind.Function, data: 'filter-toDuration', insertText: 'toDuration: "${1:DAYS}"', insertTextFormat: 2 },
-  { label: 'updateAttribute', kind: CompletionItemKind.Function, data: 'filter-updateAttribute', insertText: 'updateAttribute: "${1:attr}", ${2:val}', insertTextFormat: 2 },
-  { label: 'updateTypeAttribute', kind: CompletionItemKind.Function, data: 'filter-updateTypeAttribute' }
+  {
+    label: 'sumArray',
+    kind: CompletionItemKind.Function,
+    data: 'filter-sumArray',
+    insertText: 'sumArray: "${1:key}"',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'toCurrency',
+    kind: CompletionItemKind.Function,
+    data: 'filter-toCurrency',
+    insertText: 'toCurrency: "${1:USD}"',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'toDuration',
+    kind: CompletionItemKind.Function,
+    data: 'filter-toDuration',
+    insertText: 'toDuration: "${1:DAYS}"',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'updateAttribute',
+    kind: CompletionItemKind.Function,
+    data: 'filter-updateAttribute',
+    insertText: 'updateAttribute: "${1:attr}", ${2:val}',
+    insertTextFormat: 2,
+  },
+  {
+    label: 'updateTypeAttribute',
+    kind: CompletionItemKind.Function,
+    data: 'filter-updateTypeAttribute',
+  },
 ];
 
 export function getTagDocumentation(tag: string): string {
@@ -72,7 +228,7 @@ export function getTagDocumentation(tag: string): string {
     case 'capture':
       return 'Captures the string output inside the block into a variable.\n\n```liquid\n{% capture my_variable %}\n  Hello {{ name }}\n{% endcapture %}\n```';
     case 'comment':
-      return 'Allows you to leave un-rendered comments in your template.\n\n```liquid\n{% comment %}\n  This won\'t be rendered.\n{% endcomment %}\n```';
+      return "Allows you to leave un-rendered comments in your template.\n\n```liquid\n{% comment %}\n  This won't be rendered.\n{% endcomment %}\n```";
     case 'render':
       return 'Renders a partial template file.\n\n```liquid\n{% render "snippet-name" %}\n```';
     default:

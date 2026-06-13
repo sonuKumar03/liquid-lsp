@@ -23,7 +23,7 @@ export function findVariableDeclarations(doc: TextDocument): VarDeclaration[] {
       const nameEnd = nameStart + name.length;
       declarations.push({
         name,
-        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd))
+        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd)),
       });
     }
   }
@@ -37,7 +37,7 @@ export function findVariableDeclarations(doc: TextDocument): VarDeclaration[] {
       const nameEnd = nameStart + name.length;
       declarations.push({
         name,
-        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd))
+        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd)),
       });
     }
   }
@@ -51,7 +51,7 @@ export function findVariableDeclarations(doc: TextDocument): VarDeclaration[] {
       const nameEnd = nameStart + name.length;
       declarations.push({
         name,
-        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd))
+        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd)),
       });
     }
   }
@@ -65,7 +65,7 @@ export function findVariableDeclarations(doc: TextDocument): VarDeclaration[] {
       const nameEnd = nameStart + name.length;
       declarations.push({
         name,
-        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd))
+        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd)),
       });
     }
   }
@@ -75,7 +75,7 @@ export function findVariableDeclarations(doc: TextDocument): VarDeclaration[] {
 
 export function handleDefinition(
   documents: TextDocuments<TextDocument>,
-  params: DefinitionParams
+  params: DefinitionParams,
 ): Location | null {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
@@ -83,7 +83,7 @@ export function handleDefinition(
   const position = params.position;
   const lineText = doc.getText({
     start: { line: position.line, character: 0 },
-    end: { line: position.line + 1, character: 0 }
+    end: { line: position.line + 1, character: 0 },
   });
 
   const word = getWordAtPosition(lineText, position.character);
@@ -96,7 +96,8 @@ export function handleDefinition(
   const lastOutputClose = lineText.lastIndexOf('}}', position.character);
 
   const isInsideTag = lastTagOpen !== -1 && lastTagOpen > lastTagClose;
-  const isInsideOutput = lastOutputOpen !== -1 && lastOutputOpen > lastOutputClose;
+  const isInsideOutput =
+    lastOutputOpen !== -1 && lastOutputOpen > lastOutputClose;
 
   if (!isInsideTag && !isInsideOutput) {
     return null;
@@ -104,7 +105,7 @@ export function handleDefinition(
 
   // Find where this variable is declared in the document
   const declarations = findVariableDeclarations(doc);
-  const matched = declarations.find(d => d.name === word);
+  const matched = declarations.find((d) => d.name === word);
   if (matched) {
     return Location.create(doc.uri, matched.range);
   }

@@ -1,6 +1,6 @@
 {
   "comments": {
-    "blockComment": [ "{% comment %}", "{% endcomment %}" ]
+    "blockComment": ["{% comment %}", "{% endcomment %}"]
   },
   "brackets": [
     ["{", "}"],

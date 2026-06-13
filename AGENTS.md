@@ -1,6 +1,7 @@
 # AGENTS.md - Project Context & Developer Guide
 
 ## Project Overview
+
 This repository contains a specialized Language Server Protocol (LSP) implementation for LiquidJS computational worksheets. The project is organized as a monorepo using **npm workspaces**:
 
 1. **`lsp-engine`**: The core language server protocol logic, AST tokenization, diagnostic linters, and integration tests.
@@ -12,13 +13,13 @@ This repository contains a specialized Language Server Protocol (LSP) implementa
 
 All workspace commands should be run from the repository root:
 
-*   **Build Project**: `npm run build`
-    *   Compiles `lsp-engine` TS files to `lsp-engine/dist/`.
-    *   Compiles `vscode-extension` TS files to `vscode-extension/dist/client.js`.
-    *   Copies server files from `lsp-engine/dist/` to `vscode-extension/dist/server/` using `build.js`.
-*   **Run Linter**: `npm run lint` (runs ESLint recursively, ignoring `**/dist/` and `**/node_modules/`).
-*   **Format Code**: `npm run format` (runs Prettier).
-*   **Run Test Suite**: `npm run test` (runs Vitest test runner inside `lsp-engine`).
+- **Build Project**: `npm run build`
+  - Compiles `lsp-engine` TS files to `lsp-engine/dist/`.
+  - Compiles `vscode-extension` TS files to `vscode-extension/dist/client.js`.
+  - Copies server files from `lsp-engine/dist/` to `vscode-extension/dist/server/` using `build.js`.
+- **Run Linter**: `npm run lint` (runs ESLint recursively, ignoring `**/dist/` and `**/node_modules/`).
+- **Format Code**: `npm run format` (runs Prettier).
+- **Run Test Suite**: `npm run test` (runs Vitest test runner inside `lsp-engine`).
 
 ---
 
@@ -52,13 +53,13 @@ All workspace commands should be run from the repository root:
 ## Code Style & Development Guidelines
 
 1. **Imports & Modules**:
-   * Uses ES Modules (`type: module`).
-   * Relative imports of local files must include the `.js` extension (e.g., `import { utils } from '../shared/utils.js';`).
+   - Uses ES Modules (`type: module`).
+   - Relative imports of local files must include the `.js` extension (e.g., `import { utils } from '../shared/utils.js';`).
 2. **TypeScript Constraints**:
-   * `exactOptionalPropertyTypes` is enabled. You cannot assign `undefined` to optional properties. Instead, check for existence before assigning or use optional chaining.
+   - `exactOptionalPropertyTypes` is enabled. You cannot assign `undefined` to optional properties. Instead, check for existence before assigning or use optional chaining.
 3. **ESLint / Type Safety**:
-   * ESLint ignores compiled `dist/` directories.
-   * `@typescript-eslint/no-explicit-any` is disabled to allow easy assertion of dynamic JSON-RPC payloads in test files.
+   - ESLint ignores compiled `dist/` directories.
+   - `@typescript-eslint/no-explicit-any` is disabled to allow easy assertion of dynamic JSON-RPC payloads in test files.
 4. **Agent Constraints**:
-   * **Do NOT commit changes to git** without explicitly prompting the user first.
-   * Use **`rtk`** (Rust Token Killer) commands directly (e.g., `rtk git status`, `rtk git add .`) to reduce token overhead.
+   - **Do NOT commit changes to git** without explicitly prompting the user first.
+   - Use **`rtk`** (Rust Token Killer) commands directly (e.g., `rtk git status`, `rtk git add .`) to reduce token overhead.

@@ -1,5 +1,8 @@
 import { SymbolKind, DocumentSymbol, Range } from 'vscode-languageserver/node';
-import type { DocumentSymbolParams, TextDocuments } from 'vscode-languageserver/node';
+import type {
+  DocumentSymbolParams,
+  TextDocuments,
+} from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Token } from 'liquidjs';
 import liquidjs from 'liquidjs';
@@ -7,7 +10,7 @@ const { Tokenizer, TagToken: TagTokenClass } = liquidjs;
 
 export function handleDocumentSymbol(
   documents: TextDocuments<TextDocument>,
-  params: DocumentSymbolParams
+  params: DocumentSymbolParams,
 ): DocumentSymbol[] {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
@@ -42,11 +45,11 @@ export function handleDocumentSymbol(
           SymbolKind.Namespace,
           range,
           range,
-          []
+          [],
         );
-        
+
         const endTag = `end${name}`;
-        
+
         const parent = stack[stack.length - 1];
         if (parent) {
           parent.symbol.children!.push(symbol);
@@ -75,7 +78,7 @@ export function handleDocumentSymbol(
             'Variable',
             SymbolKind.Variable,
             range,
-            range
+            range,
           );
           const parent = stack[stack.length - 1];
           if (parent) {

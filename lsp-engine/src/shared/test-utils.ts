@@ -16,7 +16,7 @@ export class LSPMessageReader {
 
   constructor(
     private stdout: NodeJS.ReadableStream,
-    private onMessage: (msg: any) => void
+    private onMessage: (msg: any) => void,
   ) {
     this.stdout.on('data', (data) => {
       this.buffer += data.toString();
@@ -40,7 +40,9 @@ export class LSPMessageReader {
       const contentLength = parseInt(contentLengthMatch[1], 10);
       const bodyStart = delimiterIndex + 4;
 
-      if (Buffer.byteLength(this.buffer.slice(bodyStart), 'utf8') < contentLength) {
+      if (
+        Buffer.byteLength(this.buffer.slice(bodyStart), 'utf8') < contentLength
+      ) {
         break;
       }
 
@@ -59,7 +61,9 @@ export class LSPMessageReader {
 
 export function startLspServer(): ChildProcess {
   const serverPath = path.resolve(__dirname, '../../dist/main.js');
-  const child = fork(serverPath, ['--stdio'], { stdio: ['pipe', 'pipe', 'pipe', 'ipc'] });
+  const child = fork(serverPath, ['--stdio'], {
+    stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+  });
   child.stderr!.on('data', (data) => {
     console.error('SERVER STDERR:', data.toString());
   });

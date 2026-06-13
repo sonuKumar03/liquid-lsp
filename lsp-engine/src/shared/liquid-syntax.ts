@@ -1,11 +1,20 @@
 export const CONDITIONAL_TAG_NAMES = ['if', 'unless', 'elsif', 'when'] as const;
-export const INLINE_MATH_OPERATOR_REGEX = /\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//;
+export const INLINE_MATH_OPERATOR_REGEX =
+  /\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//;
 export const SINGLE_EQUALS_ASSIGNMENT_REGEX = /(?<![=!<>])=(?![=<>])/;
 
-export const AUTO_CLOSE_BLOCK_TAG_NAMES = ['if', 'for', 'unless', 'capture', 'tablerow', 'case', 'comment'] as const;
+export const AUTO_CLOSE_BLOCK_TAG_NAMES = [
+  'if',
+  'for',
+  'unless',
+  'capture',
+  'tablerow',
+  'case',
+  'comment',
+] as const;
 export const BLOCK_OPEN_TAG_NAMES = new Set([
   ...AUTO_CLOSE_BLOCK_TAG_NAMES,
-  'computeColumn'
+  'computeColumn',
 ]);
 export const BLOCK_CLOSE_TAG_NAMES = new Set([
   'endif',
@@ -15,7 +24,7 @@ export const BLOCK_CLOSE_TAG_NAMES = new Set([
   'endcase',
   'endcomment',
   'endcapture',
-  'endcomputeColumn'
+  'endcomputeColumn',
 ]);
 export const BLOCK_MIDDLE_TAG_NAMES = new Set(['else', 'elsif', 'when']);
 
@@ -34,5 +43,7 @@ export function hasInlineMathOperators(text: string): boolean {
 }
 
 export function isConditionalTagLine(text: string): boolean {
-  return CONDITIONAL_TAG_NAMES.some(tag => new RegExp(`\\b${tag}\\b`).test(text));
+  return CONDITIONAL_TAG_NAMES.some((tag) =>
+    new RegExp(`\\b${tag}\\b`).test(text),
+  );
 }

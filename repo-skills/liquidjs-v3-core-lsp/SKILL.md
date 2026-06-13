@@ -32,4 +32,3 @@ Read [references/architecture.md](references/architecture.md) before changing pa
 - Keep local TypeScript imports on `.js` extensions.
 - Respect `exactOptionalPropertyTypes`.
 - Add focused tests beside the feature you changed.
-

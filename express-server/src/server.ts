@@ -17,7 +17,7 @@ const wss = new WebSocketServer({ noServer: true });
 
 /**
  * LSP stream parser to extract JSON payloads from Content-Length stream.
- * 
+ *
  * To ensure safe processing of binary streams (like UTF-8 chunk streams),
  * this parser keeps raw bytes inside a Buffer instead of parsing strings.
  */
@@ -37,7 +37,9 @@ class LSPStreamParser {
       const delimiterIndex = this.buffer.indexOf('\r\n\r\n');
       if (delimiterIndex === -1) break;
 
-      const headerPart = this.buffer.subarray(0, delimiterIndex).toString('utf8');
+      const headerPart = this.buffer
+        .subarray(0, delimiterIndex)
+        .toString('utf8');
       const contentLengthMatch = headerPart.match(/Content-Length:\s*(\d+)/i);
 
       if (!contentLengthMatch || !contentLengthMatch[1]) {
@@ -55,7 +57,10 @@ class LSPStreamParser {
       }
 
       // Extract the body buffer and convert to string
-      const bodyBuffer = this.buffer.subarray(bodyStart, bodyStart + contentLength);
+      const bodyBuffer = this.buffer.subarray(
+        bodyStart,
+        bodyStart + contentLength,
+      );
       const bodyPart = bodyBuffer.toString('utf8');
 
       // Update the remaining buffer
@@ -84,10 +89,10 @@ wss.on('connection', (ws) => {
 
   // Path to compiled lsp-engine dist/main.js
   const serverPath = path.resolve(__dirname, '../../lsp-engine/dist/main.js');
-  
+
   // Spawn the LSP engine in stdio mode
   const lspProcess = spawn('node', [serverPath, '--stdio'], {
-    stdio: ['pipe', 'pipe', 'pipe']
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
 
   console.log(`Spawned LSP engine child process PID: ${lspProcess.pid}`);
@@ -136,8 +141,10 @@ wss.on('connection', (ws) => {
 
 // Bridge HTTP upgrade request to WebSocket handler on path "/lsp"
 server.on('upgrade', (request, socket, head) => {
-  const pathname = request.url ? new URL(request.url, `http://${request.headers.host}`).pathname : '';
-  
+  const pathname = request.url
+    ? new URL(request.url, `http://${request.headers.host}`).pathname
+    : '';
+
   if (pathname === '/lsp') {
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request);

@@ -665,6 +665,79 @@
       }
     });
 
+    // Quick-Fix (Code Actions) Provider
+    monaco.languages.registerCodeActionProvider('liquid', {
+      provideCodeActions: async function(model, range, context) {
+        if (!context.markers || context.markers.length === 0) return { actions: [], dispose: () => {} };
+
+        // Map Monaco Markers to LSP Diagnostics
+        const diagnostics = context.markers.map(marker => {
+          let severity = 1;
+          if (marker.severity === 4) severity = 2; // Warning
+          else if (marker.severity === 2) severity = 3; // Info
+          else if (marker.severity === 1) severity = 4; // Hint
+
+          return {
+            severity,
+            message: marker.message,
+            range: {
+              start: { line: marker.startLineNumber - 1, character: marker.startColumn - 1 },
+              end: { line: marker.endLineNumber - 1, character: marker.endColumn - 1 }
+            },
+            source: marker.source
+          };
+        });
+
+        // Request code actions from standard LSP WebSocket gateway
+        const res = await sendRequest('textDocument/codeAction', {
+          textDocument: { uri: 'inmemory://model/1' },
+          range: {
+            start: { line: range.startLineNumber - 1, character: range.startColumn - 1 },
+            end: { line: range.endLineNumber - 1, character: range.endColumn - 1 }
+          },
+          context: { diagnostics }
+        });
+
+        if (!res || res.length === 0) return { actions: [], dispose: () => {} };
+
+        // Map LSP CodeActions to Monaco Actions
+        const actions = res.map(action => {
+          let edits = [];
+          if (action.edit && action.edit.changes) {
+            for (const [uri, changeList] of Object.entries(action.edit.changes)) {
+              for (const edit of changeList) {
+                edits.push({
+                  resource: monaco.Uri.parse(uri),
+                  textEdit: {
+                    range: new monaco.Range(
+                      edit.range.start.line + 1,
+                      edit.range.start.character + 1,
+                      edit.range.end.line + 1,
+                      edit.range.end.character + 1
+                    ),
+                    text: edit.newText
+                  }
+                });
+              }
+            }
+          }
+
+          return {
+            title: action.title,
+            diagnostics: context.markers,
+            kind: 'quickfix',
+            edit: { edits },
+            isPreferred: true
+          };
+        });
+
+        return {
+          actions,
+          dispose: () => {}
+        };
+      }
+    });
+
     // Handle manual format button click
     document.getElementById('btn-format').addEventListener('click', () => {
       editor.getAction('editor.action.formatDocument').run();

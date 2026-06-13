@@ -1,9 +1,8 @@
 import { DiagnosticSeverity, Range } from 'vscode-languageserver/node';
 import type { Diagnostic, Connection } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import type { Liquid, Token, TagToken } from 'liquidjs';
-import liquidjs from 'liquidjs';
-const { Tokenizer, TokenKind, TagToken: TagTokenClass } = liquidjs;
+import { Tokenizer, TokenKind, TagToken, Liquid } from 'liquidjs';
+import type { Token } from 'liquidjs';
 import { getEnhancedErrorMessage, cleanErrorMessage, getClosestFilter } from '../shared/utils.js';
 import { LIQUID_FILTERS } from '../shared/constants.js';
 import { findVariableDeclarations } from '../definitions/definitions.js';
@@ -38,7 +37,7 @@ export async function validateTextDocument(
           const remainTokensCopy = [...remainTokens];
 
           const blockTags = ['if', 'for', 'unless', 'capture', 'tablerow', 'case', 'comment'];
-          if (token instanceof TagTokenClass) {
+          if (token instanceof TagToken) {
             const tagName = token.name;
             if (blockTags.includes(tagName)) {
               const dummyTokenizer = new Tokenizer(`{% end${tagName} %}`, liquidEngine.options as any);
@@ -52,7 +51,7 @@ export async function validateTextDocument(
           const textWithoutQuotes = tokenText.replace(/'[^']*'|"[^"]*"/g, '');
           let isManualError = false;
 
-          if (token instanceof TagTokenClass) {
+          if (token instanceof TagToken) {
             if (['if', 'unless', 'elsif', 'when'].includes(token.name)) {
               if (/(?<![=!<>])=(?![=<>])/.test(textWithoutQuotes)) {
                 isManualError = true;
@@ -503,7 +502,7 @@ function checkVariableLifecycles(
     const tokenText = token.getText();
     const textWithoutQuotes = tokenText.replace(/'[^']*'|"[^"]*"/g, '');
 
-    if (token instanceof TagTokenClass) {
+    if (token instanceof TagToken) {
       const name = token.name;
 
       // 1. Check single equals assignment inside conditionals (if, unless, elsif, when)
@@ -548,7 +547,7 @@ function checkVariableLifecycles(
       }
     }
 
-    if (token instanceof TagTokenClass) {
+    if (token instanceof TagToken) {
       const name = token.name;
 
       if (name === 'assign' || name === 'assignVar') {

@@ -9,9 +9,8 @@
     "test:watch": "vitest src"
   },
   "dependencies": {
-    "fastest-levenshtein": "^1.0.16",
     "key-pointer-schema": "1.0.0",
-    "liquidjs": "github:sonuKumar03/liquidjs",
+    "liquid-core": "1.0.0",
     "vscode-languageserver": "^10.0.0",
     "vscode-languageserver-textdocument": "^1.0.12"
   },

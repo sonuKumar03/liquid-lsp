@@ -10,7 +10,7 @@ import {
   BLOCK_CLOSE_TAG_NAMES,
   BLOCK_MIDDLE_TAG_NAMES,
   BLOCK_OPEN_TAG_NAMES,
-} from '../shared/liquid-syntax.js';
+} from 'liquid-core';
 
 export function handleOnTypeFormatting(
   documents: TextDocuments<TextDocument>,

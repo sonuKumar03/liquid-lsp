@@ -7,10 +7,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const srcDir = path.resolve(__dirname, '../lsp-engine/dist');
 const destDir = path.resolve(__dirname, 'dist/server');
-const keyPointerSchemaPkgDir = path.resolve(
-  __dirname,
-  '../packages/key-pointer-schema',
-);
 
 function copyRecursiveSync(src, dest) {
   const exists = fs.existsSync(src);
@@ -32,31 +28,36 @@ function copyRecursiveSync(src, dest) {
   }
 }
 
+function bundleWorkspacePackage(packageName, packageDir) {
+  const bundledDest = path.join(destDir, 'node_modules', packageName);
+  const packageDist = path.join(packageDir, 'dist');
+  const packageJson = path.join(packageDir, 'package.json');
+
+  if (!fs.existsSync(packageDist) || !fs.existsSync(packageJson)) {
+    console.warn(
+      `Warning: ${packageName} is not built; server may fail to resolve it.`,
+    );
+    return;
+  }
+
+  console.log(`Bundling ${packageName} into server output...`);
+  fs.mkdirSync(bundledDest, { recursive: true });
+  fs.copyFileSync(packageJson, path.join(bundledDest, 'package.json'));
+  copyRecursiveSync(packageDist, path.join(bundledDest, 'dist'));
+}
+
 console.log(`Copying server files from ${srcDir} to ${destDir}...`);
 if (fs.existsSync(srcDir)) {
   copyRecursiveSync(srcDir, destDir);
 
-  const bundledSchemaDest = path.join(
-    destDir,
-    'node_modules',
+  bundleWorkspacePackage(
     'key-pointer-schema',
+    path.resolve(__dirname, '../packages/key-pointer-schema'),
   );
-  const schemaDist = path.join(keyPointerSchemaPkgDir, 'dist');
-  const schemaPkgJson = path.join(keyPointerSchemaPkgDir, 'package.json');
-
-  if (fs.existsSync(schemaDist) && fs.existsSync(schemaPkgJson)) {
-    console.log('Bundling key-pointer-schema into server output...');
-    fs.mkdirSync(bundledSchemaDest, { recursive: true });
-    fs.copyFileSync(
-      schemaPkgJson,
-      path.join(bundledSchemaDest, 'package.json'),
-    );
-    copyRecursiveSync(schemaDist, path.join(bundledSchemaDest, 'dist'));
-  } else {
-    console.warn(
-      'Warning: key-pointer-schema is not built; server may fail to resolve schema package.',
-    );
-  }
+  bundleWorkspacePackage(
+    'liquid-core',
+    path.resolve(__dirname, '../packages/liquid-core'),
+  );
 
   console.log('Server files copied successfully.');
 } else {

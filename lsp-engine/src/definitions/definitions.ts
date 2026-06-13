@@ -2,7 +2,7 @@ import { Location, Range } from 'vscode-languageserver/node';
 import type { DefinitionParams } from 'vscode-languageserver/node';
 import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getWordAtPosition } from '../shared/utils.js';
+import { getWordAtPosition } from 'liquid-core';
 import { getVariablePathAtPosition } from '../hovers/hovers.js';
 import * as fs from 'fs';
 import * as path from 'path';

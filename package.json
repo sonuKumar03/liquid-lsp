@@ -4,6 +4,7 @@
   "type": "module",
   "workspaces": [
     "packages/key-pointer-schema",
+    "packages/liquid-core",
     "lsp-engine",
     "vscode-extension",
     "express-server"

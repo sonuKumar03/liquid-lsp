@@ -1,10 +1,17 @@
 import { DiagnosticSeverity } from 'vscode-languageserver/node';
 import type { Diagnostic, Connection } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import type { Liquid, Token } from 'liquidjs';
-import liquidjs from 'liquidjs';
-const { Tokenizer, TokenKind, TagToken: TagTokenClass } = liquidjs;
-import { cleanErrorMessage, getEnhancedErrorMessage } from '../shared/utils.js';
+import {
+  createLiquidEngine,
+  type Liquid,
+  type Token,
+  TokenKind,
+  TagTokenClass,
+  tokenizeTopLevel,
+  cleanErrorMessage,
+  getEnhancedErrorMessage,
+  Tokenizer,
+} from 'liquid-core';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 import type { LiquidType } from '../shared/schema.js';
 import type { SchemaLoadError } from 'key-pointer-schema';
@@ -47,11 +54,7 @@ function collectSyntaxDiagnostics(
 ): void {
   let tokens: Token[] = [];
   try {
-    const tokenizer = new Tokenizer(
-      textDocument.getText(),
-      liquidEngine.options as any,
-    );
-    tokens = tokenizer.readTopLevelTokens();
+    tokens = tokenizeTopLevel(textDocument.getText(), liquidEngine);
   } catch {
     // Ignore tokenization errors and proceed with empty token array
   }

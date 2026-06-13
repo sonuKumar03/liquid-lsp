@@ -1,5 +1,8 @@
 import { closest, distance } from 'fastest-levenshtein';
-import { LIQUID_FILTERS } from './constants.js';
+import {
+  LIQUID_FILTER_NAMES,
+  isKnownLiquidFilter,
+} from './metadata.js';
 import {
   CONDITIONAL_ASSIGNMENT_MESSAGE,
   EXPECTED_FILTER_NAME_MESSAGE,
@@ -15,21 +18,16 @@ import {
 export function cleanErrorMessage(msg: string): string {
   if (!msg) return 'Liquid syntax error';
 
-  // Match the 'unexpected "..."' pattern and clean it up
   const match = msg.match(/unexpected "([\s\S]+?)"/);
   if (match && match[1]) {
     let rawContent = match[1];
-    // Replace newlines and excessive whitespace with a single space
     rawContent = rawContent.replace(/\s+/g, ' ').trim();
-    // Truncate if it's too long
     if (rawContent.length > 30) {
       rawContent = rawContent.slice(0, 30) + '...';
     }
-    // Re-insert it
     msg = msg.replace(/unexpected "[\s\S]+?"/, `unexpected "${rawContent}"`);
   }
 
-  // Replace any remaining newlines with spaces in the whole message
   return msg.replace(/\r?\n/g, ' ');
 }
 
@@ -72,12 +70,11 @@ export function getEnhancedErrorMessage(msg: string, lineText: string): string {
 }
 
 /**
- * Finds the closest matching Liquid filter name from our static list.
+ * Finds the closest matching Liquid filter name from the static list.
  * Returns the match if the edit distance is 3 or less; otherwise null.
  */
 export function getClosestFilter(name: string): string | null {
-  const list = LIQUID_FILTERS.map((f) => f.label);
-  const match = closest(name, list);
+  const match = closest(name, LIQUID_FILTER_NAMES);
   if (match && distance(name, match) <= 3) {
     return match;
   }
@@ -86,7 +83,6 @@ export function getClosestFilter(name: string): string | null {
 
 /**
  * Automatically converts inline mathematical operations (+, -, *, /) into Liquid filters.
- * E.g. "a + 5" becomes "a | plus: 5", "x - y" becomes "x | minus: y".
  */
 export function convertToLiquidMath(lineText: string): string | null {
   const mathRegex =
@@ -94,7 +90,6 @@ export function convertToLiquidMath(lineText: string): string | null {
 
   let hasMath = false;
   const newText = lineText.replace(mathRegex, (match, op1, operator, op2) => {
-    // If it's a hyphenated variable name, like my-var, ignore!
     if (
       operator === '-' &&
       !lineText.includes(` ${match} `) &&
@@ -123,3 +118,5 @@ export function convertToLiquidMath(lineText: string): string | null {
 
   return hasMath ? newText : null;
 }
+
+export { isKnownLiquidFilter };

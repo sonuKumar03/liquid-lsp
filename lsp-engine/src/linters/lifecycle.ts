@@ -1,12 +1,16 @@
 import { DiagnosticSeverity, Range } from 'vscode-languageserver/node';
 import type { Diagnostic } from 'vscode-languageserver/node';
-import type { Liquid, Token, TagToken } from 'liquidjs';
-import liquidjs from 'liquidjs';
-const { Tokenizer, TokenKind, TagToken: TagTokenClass } = liquidjs;
+import type { Liquid, Token, TagToken } from 'liquid-core';
+import {
+  Tokenizer,
+  TokenKind,
+  TagTokenClass,
+  tokenizeTopLevel,
+  isKnownLiquidFilter,
+  isConditionalTagLine,
+  getClosestFilter,
+} from 'liquid-core';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { LIQUID_FILTERS } from '../shared/constants.js';
-import { isConditionalTagLine } from '../shared/liquid-syntax.js';
-import { getClosestFilter } from '../shared/utils.js';
 import type { LiquidType } from '../shared/schema.js';
 import { findVariableDeclarations } from '../definitions/definitions.js';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
@@ -27,8 +31,7 @@ export function collectLifecycleDiagnostics(
   const text = textDocument.getText();
 
   try {
-    const tokenizer = new Tokenizer(text, liquidEngine.options as any);
-    const tokens = tokenizer.readTopLevelTokens();
+    const tokens = tokenizeTopLevel(text, liquidEngine);
 
     const activeVars = new Map<string, ActiveVar>();
     populateSchemaVars(activeVars, globalSchema);
@@ -451,7 +454,7 @@ function processExpression(
       });
     } else {
       const filterName = filterNameMatch[1]!;
-      const isKnown = LIQUID_FILTERS.some((f) => f.label === filterName);
+      const isKnown = isKnownLiquidFilter(filterName);
       if (!isKnown) {
         const tokenText = token.getText();
         const exprOffsetInToken = tokenText.indexOf(expr);

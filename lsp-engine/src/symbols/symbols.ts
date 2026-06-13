@@ -4,9 +4,10 @@ import type {
   TextDocuments,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import type { Token } from 'liquidjs';
-import liquidjs from 'liquidjs';
-const { Tokenizer, TagToken: TagTokenClass } = liquidjs;
+import {
+  TagTokenClass,
+  tokenizeTopLevelSafe,
+} from 'liquid-core';
 
 export function handleDocumentSymbol(
   documents: TextDocuments<TextDocument>,
@@ -16,13 +17,7 @@ export function handleDocumentSymbol(
   if (!doc) return [];
 
   const text = doc.getText();
-  const tokenizer = new Tokenizer(text);
-  let tokens: Token[];
-  try {
-    tokens = tokenizer.readTopLevelTokens();
-  } catch {
-    return [];
-  }
+  const tokens = tokenizeTopLevelSafe(text);
 
   const rootSymbols: DocumentSymbol[] = [];
   const stack: { symbol: DocumentSymbol; endTag: string }[] = [];

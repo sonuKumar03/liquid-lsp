@@ -6,11 +6,10 @@ import { TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   LIQUID_TAGS,
-  LIQUID_FILTERS,
   getTagDocumentation,
   getFilterDocumentation,
 } from '../shared/constants.js';
-import { getWordAtPosition } from '../shared/utils.js';
+import { getWordAtPosition, isKnownLiquidFilter } from 'liquid-core';
 import type { LiquidType } from '../shared/schema.js';
 import { extractLocalVariableTypes } from '../completions/completions.js';
 
@@ -178,7 +177,7 @@ export function handleHover(
 
   // 2. Check if the hovered word is a recognized filter
   const filterDoc = getFilterDocumentation(word);
-  const isKnownFilter = LIQUID_FILTERS.some((f) => f.label === word);
+  const isKnownFilter = isKnownLiquidFilter(word);
   if (isKnownFilter) {
     return {
       contents: {

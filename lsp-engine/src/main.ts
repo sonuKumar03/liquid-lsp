@@ -5,8 +5,7 @@ import {
   TextDocuments,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import liquidjs from 'liquidjs';
-const { Liquid } = liquidjs;
+import { createLiquidEngine } from 'liquid-core';
 import { validateTextDocument } from './linters/diagnostics.js';
 import { handleHover } from './hovers/hovers.js';
 import {
@@ -37,7 +36,7 @@ const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 
 // Initialize Liquid parsing engine used to validate syntax blocks
-const liquidEngine = new Liquid();
+const liquidEngine = createLiquidEngine();
 
 // Debounce map for diagnostic pushes to prevent validation thrashing on rapid keystrokes
 const pendingValidationTimers = new Map<string, NodeJS.Timeout>();

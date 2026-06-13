@@ -10,9 +10,9 @@ import {
   CONDITIONAL_ASSIGNMENT_MESSAGE,
   INLINE_MATH_OPERATOR_MESSAGE,
   SINGLE_EQUALS_ASSIGNMENT_REGEX,
-} from '../shared/liquid-syntax.js';
+  convertToLiquidMath,
+} from 'liquid-core';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
-import { convertToLiquidMath } from '../shared/utils.js';
 
 export function handleCodeAction(
   documents: TextDocuments<TextDocument>,

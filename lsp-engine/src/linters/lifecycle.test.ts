@@ -1,10 +1,10 @@
 import { test, expect } from 'vitest';
-import { Liquid } from 'liquidjs';
+import { createLiquidEngine } from 'liquid-core';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { collectLifecycleDiagnostics } from './lifecycle.js';
 
 test('collectLifecycleDiagnostics reports overwritten variables', () => {
-  const engine = new Liquid();
+  const engine = createLiquidEngine();
   const doc = TextDocument.create(
     'file:///t.liquid',
     'liquid',
@@ -21,7 +21,7 @@ test('collectLifecycleDiagnostics reports overwritten variables', () => {
 });
 
 test('collectLifecycleDiagnostics reports math filter type mismatches', () => {
-  const engine = new Liquid();
+  const engine = createLiquidEngine();
   const doc = TextDocument.create(
     'file:///t.liquid',
     'liquid',
@@ -38,7 +38,7 @@ test('collectLifecycleDiagnostics reports math filter type mismatches', () => {
 });
 
 test('collectLifecycleDiagnostics reports optional property path warnings', () => {
-  const engine = new Liquid();
+  const engine = createLiquidEngine();
   const doc = TextDocument.create(
     'file:///t.liquid',
     'liquid',

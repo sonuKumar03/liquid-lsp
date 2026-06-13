@@ -885,6 +885,21 @@
             if (!res) return { suggestions: [] };
 
             const items = Array.isArray(res) ? res : res.items;
+            const word = model.getWordAtPosition(position);
+            const range = word
+              ? new monaco.Range(
+                  position.lineNumber,
+                  word.startColumn,
+                  position.lineNumber,
+                  word.endColumn,
+                )
+              : new monaco.Range(
+                  position.lineNumber,
+                  position.column,
+                  position.lineNumber,
+                  position.column,
+                );
+
             const suggestions = items.map((item) => ({
               label: item.label,
               kind:
@@ -899,13 +914,7 @@
                   : undefined,
               documentation: item.documentation,
               detail: item.detail,
-              range: {
-                startLineNumber: position.lineNumber,
-                startColumn:
-                  position.column - (item.label.startsWith('|') ? 1 : 0),
-                endLineNumber: position.lineNumber,
-                endColumn: position.column,
-              },
+              range: range,
             }));
             return { suggestions };
           },

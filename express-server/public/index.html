@@ -991,10 +991,14 @@
           this.valExpr = match[2];
         }
       },
-      async render(scope) {
+      async render(context) {
         if (!this.key) return;
-        const val = await this.liquid.evalValue(this.valExpr, scope);
-        scope.set(this.key, val);
+        const val = await this.liquid.evalValue(this.valExpr, context);
+        if (context.scopes && context.scopes.length > 0) {
+          context.scopes[context.scopes.length - 1][this.key] = val;
+        } else {
+          context[this.key] = val;
+        }
       }
     });
 
@@ -1006,15 +1010,19 @@
           this.valExpr = match[2];
         }
       },
-      async render(scope) {
+      async render(context) {
         if (!this.key) return;
-        const valStr = await this.liquid.evalValue(this.valExpr, scope);
+        const valStr = await this.liquid.evalValue(this.valExpr, context);
+        let parsed = null;
         try {
-          const parsed = JSON.parse(valStr);
-          scope.set(this.key, parsed);
+          parsed = JSON.parse(valStr);
         } catch (e) {
           console.error("parseAssign JSON parsing error", e);
-          scope.set(this.key, null);
+        }
+        if (context.scopes && context.scopes.length > 0) {
+          context.scopes[context.scopes.length - 1][this.key] = parsed;
+        } else {
+          context[this.key] = parsed;
         }
       }
     });

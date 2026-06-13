@@ -12,11 +12,11 @@ import {
 import { resolveTypeForPath } from '../hovers/hovers.js';
 import type { LiquidType } from '../shared/schema.js';
 import { collectVariableNamesFromTokens } from '../shared/token-variables.js';
+import { extractLocalVariableTypes } from '../shared/local-variable-types.js';
 import type { DocumentManager } from '../server/document-manager.js';
 import type { Liquid, Token } from 'liquid-core';
 
 export function extractDeclaredVariables(
-  text: string,
   globalSchema?: Map<string, LiquidType>,
   tokens?: Token[],
 ): CompletionItem[] {
@@ -28,31 +28,6 @@ export function extractDeclaredVariables(
     }
   }
 
-  // 1. {% assign var = ... %}
-  const assignPattern = /\{%\s*assign\s+([a-zA-Z0-9_-]+)\s*=/g;
-  let match: RegExpExecArray | null;
-  while ((match = assignPattern.exec(text))) {
-    if (match[1]) {
-      variables.add(match[1]);
-    }
-  }
-
-  // 2. {% capture var %}
-  const capturePattern = /\{%\s*capture\s+([a-zA-Z0-9_-]+)\s*%\}/g;
-  while ((match = capturePattern.exec(text))) {
-    if (match[1]) {
-      variables.add(match[1]);
-    }
-  }
-
-  // 3. {% for var in ... %}
-  const forPattern = /\{%\s*for\s+([a-zA-Z0-9_-]+)\s+in\s+/g;
-  while ((match = forPattern.exec(text))) {
-    if (match[1]) {
-      variables.add(match[1]);
-    }
-  }
-
   const items = Array.from(variables).map((name) => ({
     label: name,
     kind: CompletionItemKind.Variable,
@@ -61,7 +36,6 @@ export function extractDeclaredVariables(
     documentation: `User-defined Liquid variable extracted from the template.`,
   }));
 
-  // Append top-level schema variables
   if (globalSchema) {
     for (const [varName, varType] of globalSchema.entries()) {
       let detail = 'Schema Variable';
@@ -91,133 +65,6 @@ export function extractDeclaredVariables(
 }
 
 /**
- * Extract variable types from the document (including schema and local assignments)
- */
-export function extractLocalVariableTypes(
-  text: string,
-  globalSchema?: Map<string, LiquidType>,
-  tokens?: Token[],
-): Map<string, LiquidType> {
-  const localTypes = new Map<string, LiquidType>();
-
-  if (globalSchema) {
-    for (const [k, v] of globalSchema.entries()) {
-      localTypes.set(k, v);
-    }
-  }
-
-  if (tokens) {
-    for (const name of collectVariableNamesFromTokens(tokens)) {
-      if (!localTypes.has(name)) {
-        localTypes.set(name, 'unknown');
-      }
-    }
-  }
-
-  // Parse assign, assignVar, and parseAssign
-  const assignPattern =
-    /\{%\s*(assign|assignVar|parseAssign)\s+([a-zA-Z0-9_-]+)\s*=\s*([^%]+)/g;
-  let match: RegExpExecArray | null;
-  while ((match = assignPattern.exec(text))) {
-    const tag = match[1];
-    const varName = match[2];
-    const valExprRaw = match[3];
-    if (varName && valExprRaw) {
-      const valExpr = valExprRaw.replace(/%\}.*$/, '').trim();
-      const filterParts = valExpr.split('|');
-      const basePart = filterParts[0] ? filterParts[0].trim() : '';
-
-      let resolvedType: LiquidType;
-      if (/^["'].*["']$/.test(basePart)) {
-        resolvedType = 'string';
-      } else if (/^\d+(\.\d+)?$/.test(basePart)) {
-        resolvedType = 'number';
-      } else if (/^(true|false)$/.test(basePart)) {
-        resolvedType = 'boolean';
-      } else {
-        resolvedType = resolveTypeForPath(basePart, localTypes);
-      }
-
-      if (filterParts.length > 1) {
-        for (let i = 1; i < filterParts.length; i++) {
-          const filterName = (filterParts[i] ?? '')
-            .trim()
-            .split(':')[0]
-            ?.trim();
-          if (filterName === 'toCurrency') {
-            resolvedType = 'currency';
-          } else if (
-            [
-              'upcase',
-              'downcase',
-              'append',
-              'prepend',
-              'replace',
-              'slice',
-              'strip',
-              'truncate',
-            ].includes(filterName || '')
-          ) {
-            resolvedType = 'string';
-          } else if (
-            [
-              'abs',
-              'ceil',
-              'floor',
-              'round',
-              'plus',
-              'minus',
-              'times',
-              'divided_by',
-              'modulo',
-              'size',
-              'sumArray',
-            ].includes(filterName || '')
-          ) {
-            resolvedType = 'number';
-          }
-        }
-      }
-
-      if (
-        tag === 'parseAssign' &&
-        filterParts.length === 1 &&
-        !basePart.includes('[')
-      ) {
-        if (
-          typeof resolvedType === 'object' &&
-          resolvedType.kind === 'composite'
-        ) {
-          resolvedType = 'string';
-        } else if (resolvedType === 'currency') {
-          resolvedType = 'number';
-        }
-      }
-
-      localTypes.set(varName, resolvedType);
-    }
-  }
-
-  // Parse capture
-  const capturePattern = /\{%\s*capture\s+([a-zA-Z0-9_-]+)\s*%\}/g;
-  while ((match = capturePattern.exec(text))) {
-    if (match[1]) {
-      localTypes.set(match[1], 'string');
-    }
-  }
-
-  // Parse for loop
-  const forPattern = /\{%\s*for\s+([a-zA-Z0-9_-]+)\s+in\s+/g;
-  while ((match = forPattern.exec(text))) {
-    if (match[1]) {
-      localTypes.set(match[1], 'unknown');
-    }
-  }
-
-  return localTypes;
-}
-
-/**
  * Handles completion requests (textDocument/completion) from the editor client.
  */
 export function handleCompletion(
@@ -241,9 +88,9 @@ export function handleCompletion(
   });
 
   const localSchema = extractLocalVariableTypes(
-    doc.getText(),
     globalSchema,
     tokens,
+    liquidEngine,
   );
 
   // Check if cursor is after a dot for nested property completion (e.g., "user.")
@@ -326,12 +173,9 @@ export function handleCompletion(
       rawExpr = exprBeforePipe.substring(openBound + 2);
     }
     const cleanExpr = rawExpr.trim();
-    // Split by other pipes if there are multiple filters chained
     const parts = cleanExpr.split('|');
     const baseVarExpr = parts[0] ? parts[0].trim() : '';
 
-    // Extract the variable/property path. E.g., if it is "user.first_name", extract that.
-    // If it has spaces (like "if status"), take the last word/identifier.
     let start = baseVarExpr.length;
     while (
       start > 0 &&
@@ -353,7 +197,6 @@ export function handleCompletion(
       }
     }
 
-    // Filter categorization based on type
     const stringFilters = [
       'append',
       'capitalize',
@@ -406,25 +249,21 @@ export function handleCompletion(
     return LIQUID_FILTERS;
   }
 
-  // Check if cursor is inside a tag block '{%' (without being closed)
   const lastTagClose = lineText.lastIndexOf('%}');
   if (lastTagOpen !== -1 && lastTagOpen > lastTagClose) {
     const tagContent = lineText.slice(lastTagOpen + 2);
-    // Strip leading space
     const cleanContent = tagContent.replace(/^\s+/, '');
     const parts = cleanContent.split(/\s+/);
 
-    // If a tag name has been written followed by arguments/spaces, suggest variables
     if (parts.length > 1 && parts[0] !== '') {
-      return extractDeclaredVariables(doc.getText(), globalSchema, tokens);
+      return extractDeclaredVariables(globalSchema, tokens);
     }
     return LIQUID_TAGS;
   }
 
-  // Check if cursor is inside an output block '{{' (without being closed)
   const lastOutputClose = lineText.lastIndexOf('}}');
   if (lastOutputOpen !== -1 && lastOutputOpen > lastOutputClose) {
-    return extractDeclaredVariables(doc.getText(), globalSchema, tokens);
+    return extractDeclaredVariables(globalSchema, tokens);
   }
 
   return [];
@@ -450,16 +289,15 @@ export function handleCompletionResolve(item: CompletionItem): CompletionItem {
   } else if (data.startsWith('var-')) {
     const varName = data.replace('var-', '');
     item.detail = `Liquid Variable: ${varName}`;
-    item.documentation = {
-      kind: 'markdown',
-      value: `User-defined variable \`${varName}\` declared in this template.`,
-    };
+    item.documentation = `User-defined variable declared in the template.`;
   } else if (data.startsWith('schema-var-')) {
     const varName = data.replace('schema-var-', '');
     item.detail = `Schema Variable: ${varName}`;
+    item.documentation = `Global context variable from the variable schema.`;
   } else if (data.startsWith('schema-field-')) {
     const fieldName = data.replace('schema-field-', '');
     item.detail = `Schema Field: ${fieldName}`;
+    item.documentation = `Field of a composite schema variable.`;
   }
 
   return item;

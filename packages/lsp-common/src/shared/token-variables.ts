@@ -1,4 +1,9 @@
 import { TagTokenClass, type Token } from 'liquid-core';
+import {
+  parseAssignKeyValue,
+  parseCaptureVariable,
+  parseForLoopVariable,
+} from 'liquid-core';
 
 const ASSIGN_TAG_NAMES = new Set(['assign', 'assignVar', 'parseAssign']);
 
@@ -14,25 +19,25 @@ export function collectVariableNamesFromTokens(tokens: Token[]): string[] {
     const args = token.args.trim();
 
     if (ASSIGN_TAG_NAMES.has(tagName)) {
-      const varMatch = args.match(/^([a-zA-Z0-9_-]+)/);
-      if (varMatch?.[1]) {
-        names.push(varMatch[1]);
+      const parsed = parseAssignKeyValue(args);
+      if (parsed) {
+        names.push(parsed.key);
       }
       continue;
     }
 
     if (tagName === 'capture') {
-      const varMatch = args.match(/^([a-zA-Z0-9_-]+)/);
-      if (varMatch?.[1]) {
-        names.push(varMatch[1]);
+      const varName = parseCaptureVariable(args);
+      if (varName) {
+        names.push(varName);
       }
       continue;
     }
 
     if (tagName === 'for') {
-      const varMatch = args.match(/^([a-zA-Z0-9_-]+)\s+in\s+/);
-      if (varMatch?.[1]) {
-        names.push(varMatch[1]);
+      const varName = parseForLoopVariable(args);
+      if (varName) {
+        names.push(varName);
       }
     }
   }

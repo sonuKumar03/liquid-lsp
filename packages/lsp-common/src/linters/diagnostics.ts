@@ -60,7 +60,7 @@ function collectSyntaxDiagnostics(
   precomputedTokens?: Token[],
 ): void {
   let tokens: Token[] = [];
-  if (precomputedTokens) {
+  if (precomputedTokens !== undefined) {
     tokens = precomputedTokens;
   } else {
     try {

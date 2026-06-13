@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "fastest-levenshtein": "^1.0.16",
-    "liquidjs": "github:sonuKumar03/liquidjs"
+    "liquidjs": "file:../../../liquidjs"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

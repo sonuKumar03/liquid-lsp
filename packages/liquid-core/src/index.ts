@@ -1,5 +1,19 @@
 export { createLiquidEngine, type Liquid, type Token, type TagToken } from './engine.js';
 
+export { lexical } from './lexical.js';
+
+export {
+  ASSIGN_KEY_VALUE_PATTERN,
+  CAPTURE_VARIABLE_PATTERN,
+  FOR_LOOP_VARIABLE_PATTERN,
+  parseAssignKeyValue,
+  parseCaptureVariable,
+  parseForLoopVariable,
+  type AssignKeyValue,
+} from './tag-parsing.js';
+
+export { parseOutputValue } from './value-parsing.js';
+
 export {
   Tokenizer,
   TokenKind,

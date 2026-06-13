@@ -9,9 +9,9 @@ import {
   getTagDocumentation,
   getFilterDocumentation,
 } from '../shared/constants.js';
-import { getWordAtPosition, isKnownLiquidFilter } from 'liquid-core';
+import { getWordAtPosition, isKnownLiquidFilter, createLiquidEngine, tokenizeTopLevelSafe } from 'liquid-core';
 import type { LiquidType } from '../shared/schema.js';
-import { extractLocalVariableTypes } from '../completions/completions.js';
+import { extractLocalVariableTypes } from '../shared/local-variable-types.js';
 
 export function getVariablePathAtPosition(
   text: string,
@@ -190,7 +190,9 @@ export function handleHover(
   // 3. Check if we can resolve variable type from the schema
   const path = getVariablePathAtPosition(lineText, position.character);
   if (path && schema) {
-    const mergedSchema = extractLocalVariableTypes(doc.getText(), schema);
+    const engine = createLiquidEngine();
+    const tokens = tokenizeTopLevelSafe(doc.getText(), engine);
+    const mergedSchema = extractLocalVariableTypes(schema, tokens, engine);
     const resolvedType = resolveTypeForPath(path, mergedSchema);
     if (resolvedType !== 'unknown') {
       const val = resolveValueForPath(path, contextData);

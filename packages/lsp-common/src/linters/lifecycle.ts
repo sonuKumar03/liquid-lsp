@@ -12,7 +12,7 @@ import {
 } from 'liquid-core';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { LiquidType } from '../shared/schema.js';
-import { findVariableDeclarations } from '../definitions/definitions.js';
+import { findVariableDeclarations } from '../shared/variable-declarations.js';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 
 type ActiveVar = {
@@ -30,10 +30,13 @@ export function collectLifecycleDiagnostics(
   precomputedTokens?: Token[],
 ): void {
   const text = textDocument.getText();
+  let tokens: Token[] = [];
 
   try {
-    const tokens =
-      precomputedTokens ?? tokenizeTopLevel(text, liquidEngine);
+    tokens =
+      precomputedTokens !== undefined
+        ? precomputedTokens
+        : tokenizeTopLevel(text, liquidEngine);
 
     const activeVars = new Map<string, ActiveVar>();
     populateSchemaVars(activeVars, globalSchema);
@@ -58,7 +61,7 @@ export function collectLifecycleDiagnostics(
     return;
   }
 
-  checkUnusedVariables(textDocument, diagnostics);
+  checkUnusedVariables(textDocument, diagnostics, tokens);
 }
 
 function populateSchemaVars(
@@ -644,9 +647,10 @@ function applyFilterTypes(
 function checkUnusedVariables(
   textDocument: TextDocument,
   diagnostics: Diagnostic[],
+  tokens?: Token[],
 ): void {
   const docText = textDocument.getText();
-  const declarations = findVariableDeclarations(textDocument);
+  const declarations = findVariableDeclarations(textDocument, tokens);
 
   if (declarations.length === 0) return;
 

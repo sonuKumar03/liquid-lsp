@@ -4,77 +4,9 @@ import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getWordAtPosition } from 'liquid-core';
 import { getVariablePathAtPosition } from '../hovers/hovers.js';
+import { findVariableDeclarations } from '../shared/variable-declarations.js';
 import * as fs from 'fs';
 import * as path from 'path';
-
-interface VarDeclaration {
-  name: string;
-  range: Range;
-}
-
-export function findVariableDeclarations(doc: TextDocument): VarDeclaration[] {
-  const text = doc.getText();
-  const declarations: VarDeclaration[] = [];
-
-  // 1. {% assign var = ... %} or {% assignVar var = ... %}
-  const assignPattern = /\{%\s*(assign|assignVar)\s+([a-zA-Z0-9_-]+)\s*=/g;
-  let match: RegExpExecArray | null;
-  while ((match = assignPattern.exec(text))) {
-    if (match[2]) {
-      const name = match[2];
-      const nameStart = match.index + match[0].indexOf(name);
-      const nameEnd = nameStart + name.length;
-      declarations.push({
-        name,
-        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd)),
-      });
-    }
-  }
-
-  // 2. {% capture var %}
-  const capturePattern = /\{%\s*capture\s+([a-zA-Z0-9_-]+)\s*%\}/g;
-  while ((match = capturePattern.exec(text))) {
-    if (match[1]) {
-      const name = match[1];
-      const nameStart = match.index + match[0].indexOf(name);
-      const nameEnd = nameStart + name.length;
-      declarations.push({
-        name,
-        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd)),
-      });
-    }
-  }
-
-  // 3. {% for var in ... %}
-  const forPattern = /\{%\s*for\s+([a-zA-Z0-9_-]+)\s+in\s+/g;
-  while ((match = forPattern.exec(text))) {
-    if (match[1]) {
-      const name = match[1];
-      const nameStart = match.index + match[0].indexOf(name);
-      const nameEnd = nameStart + name.length;
-      declarations.push({
-        name,
-        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd)),
-      });
-    }
-  }
-
-  // 4. {% parseAssign var = ... %}
-  const parseAssignPattern = /\{%\s*parseAssign\s+([a-zA-Z0-9_-]+)\s*=/g;
-  while ((match = parseAssignPattern.exec(text))) {
-    if (match[1]) {
-      const name = match[1];
-      const nameStart = match.index + match[0].indexOf(name);
-      const nameEnd = nameStart + name.length;
-      declarations.push({
-        name,
-        range: Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd)),
-      });
-    }
-  }
-
-  return declarations;
-}
 
 export function locatePathInJson(jsonText: string, varPath: string): Range | null {
   const parts = varPath.split('.');
@@ -88,7 +20,6 @@ export function locatePathInJson(jsonText: string, varPath: string): Range | nul
     if (match) {
       currentOffset = match.index;
     } else {
-      // Fallback: search first occurrence of the target key
       const fallbackRegex = new RegExp(`"(${parts[parts.length - 1]})"\\s*:`);
       const fallbackMatch = fallbackRegex.exec(jsonText);
       if (fallbackMatch) {
@@ -108,8 +39,8 @@ export function locatePathInJson(jsonText: string, varPath: string): Range | nul
 
   const lastPart = parts[parts.length - 1] ?? '';
   return Range.create(
-    { line, character: character + 1 }, // skip opening quote
-    { line, character: character + 1 + lastPart.length }
+    { line, character: character + 1 },
+    { line, character: character + 1 + lastPart.length },
   );
 }
 
@@ -130,7 +61,6 @@ export function handleDefinition(
   const word = getWordAtPosition(lineText, position.character);
   if (!word) return null;
 
-  // Verify coordinate resides inside Liquid tag or output delimiters
   const lastTagOpen = lineText.lastIndexOf('{%', position.character);
   const lastTagClose = lineText.lastIndexOf('%}', position.character);
   const lastOutputOpen = lineText.lastIndexOf('{{', position.character);
@@ -144,14 +74,12 @@ export function handleDefinition(
     return null;
   }
 
-  // 1. Check if it's a local variable declaration
   const declarations = findVariableDeclarations(doc);
   const matched = declarations.find((d) => d.name === word);
   if (matched) {
     return Location.create(doc.uri, matched.range);
   }
 
-  // 2. Fallback: Check if it's a schema variable and navigate to .liquid-schema.json
   const fullPath = getVariablePathAtPosition(lineText, position.character);
   if (workspaceRoot && fullPath) {
     const schemaFilePath = path.join(workspaceRoot, '.liquid-schema.json');
@@ -163,7 +91,7 @@ export function handleDefinition(
           const fileUri = `file://${schemaFilePath.replace(/\\/g, '/')}`;
           return Location.create(fileUri, range);
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
     }

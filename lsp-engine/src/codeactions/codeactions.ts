@@ -38,7 +38,11 @@ export function handleCodeAction(
       | undefined;
 
     if (diagnostic.code === DIAGNOSTIC_CODES.UNCLOSED_DELIMITER) {
-      const tagName = data?.tagName ?? null;
+      const lineText = doc.getText({
+        start: { line: diagnostic.range.start.line, character: 0 },
+        end: { line: diagnostic.range.start.line + 1, character: 0 }
+      });
+      const tagName = lineText.match(/\{%\s*(\w+)/)?.[1] ?? data?.tagName ?? null;
       if (!tagName) continue;
       const endTagName = `end${tagName}`;
 
@@ -74,7 +78,6 @@ export function handleCodeAction(
     if (diagnostic.code === DIAGNOSTIC_CODES.UNKNOWN_FILTER) {
       const suggestedFilter = data?.suggestedFilter;
       if (suggestedFilter) {
-
         const edit = {
           changes: {
             [params.textDocument.uri]: [

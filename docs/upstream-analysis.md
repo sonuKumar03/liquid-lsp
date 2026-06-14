@@ -4,16 +4,16 @@ Build a Language Server Protocol (LSP) implementation for the SpotDraft Liquid c
 
 The focus is:
 
-* Computation analysis
-* Validation
-* Dependency analysis
-* Type checking
+- Computation analysis
+- Validation
+- Dependency analysis
+- Type checking
 
 Not:
 
-* Template rendering
-* Shopify compatibility
-* Theme development
+- Template rendering
+- Shopify compatibility
+- Theme development
 
 ---
 
@@ -51,13 +51,13 @@ Build a computation analyzer.
 
 Responsibilities:
 
-* Liquid tags
-* Output tags
-* Identifiers
-* Operators
-* Filters
-* Numbers
-* Strings
+- Liquid tags
+- Output tags
+- Identifiers
+- Operators
+- Filters
+- Numbers
+- Strings
 
 Output:
 
@@ -75,17 +75,17 @@ Convert tokens into AST.
 
 Supported initially:
 
-* assign
-* parseAssign
-* computeColumn
-* output expressions
-* variables
-* filters
+- assign
+- parseAssign
+- computeColumn
+- output expressions
+- variables
+- filters
 
 Output:
 
 ```ts
-DocumentNode
+DocumentNode;
 ```
 
 ---
@@ -95,11 +95,11 @@ DocumentNode
 Example:
 
 ```ts
-AssignNode
-FilterExpressionNode
-VariableNode
-LiteralNode
-OutputNode
+AssignNode;
+FilterExpressionNode;
+VariableNode;
+LiteralNode;
+OutputNode;
 ```
 
 ---
@@ -260,4 +260,5 @@ The LSP can:
 7. Provide diagnostics.
 
 ```
+
 ```

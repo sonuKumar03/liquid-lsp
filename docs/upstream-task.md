@@ -1,6 +1,7 @@
 # Task: Inspect SpotDraft LiquidJS vs upstream LiquidJS
 
 Repos:
+
 - Fork: SpotDraft/liquidjs
 - Upstream: harttle/liquidjs
 
@@ -24,3 +25,4 @@ comm -12 \
 
 git log --oneline upstream/master..HEAD
 git log --oneline HEAD..upstream/master
+```

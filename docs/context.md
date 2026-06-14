@@ -5,6 +5,7 @@ We are building an LSP for a SpotDraft LiquidJS fork.
 Focus: computation analysis, not rendering.
 
 Core features to support:
+
 - assign
 - parseAssign
 - computeColumn
@@ -19,20 +20,23 @@ Core features to support:
 Do not build full Liquid rendering support.
 
 Architecture:
+
 - liquid-core: tokenizer/parser/AST/analyzer/type-system/dependency-graph
 - liquid-lsp: completion/hover/diagnostics/definition/references/rename
 - vscode-extension: LSP client
 - monaco-adapter: web editor client
 
 Important type rules:
+
 - date + duration => date
 - date - duration => date
 - date - date => duration
 - date + date => invalid
 - currency + currency => currency
-- duration * number => duration
+- duration \* number => duration
 
 Initial implementation scope:
+
 1. Tokenizer
 2. Parser for assign/output/filter expressions
 3. Computation AST

@@ -526,7 +526,8 @@
               target="_blank"
               rel="noopener"
               style="color: var(--accent-secondary)"
-              >playground-variables.json</a>
+              >playground-variables.json</a
+            >
             (key-pointer)
           </span>
         </div>
@@ -604,7 +605,11 @@
           </div>
           <div
             class="preview-title"
-            style="font-size: 0.75rem; color: var(--text-muted); margin-left: 8px"
+            style="
+              font-size: 0.75rem;
+              color: var(--text-muted);
+              margin-left: 8px;
+            "
           >
             Values only — types from playground-variables.json
           </div>
@@ -642,14 +647,14 @@
     <!-- Client-side WebSocket & LSP Controller -->
     <script>
       require(['vs/editor/editor.main'], async function () {
-        const keyPointerPayload = await fetch('/playground-variables.json').then(
-          (res) => {
-            if (!res.ok) {
-              throw new Error('Failed to load playground-variables.json');
-            }
-            return res.json();
-          },
-        );
+        const keyPointerPayload = await fetch(
+          '/playground-variables.json',
+        ).then((res) => {
+          if (!res.ok) {
+            throw new Error('Failed to load playground-variables.json');
+          }
+          return res.json();
+        });
         const keyPointerVariables = keyPointerPayload.variables;
 
         // 2. Pre-populated sample LiquidJS code in the editor
@@ -875,8 +880,8 @@
           sendRequest('initialize', {
             capabilities: {},
             initializationOptions: {
-            schema: { variables: keyPointerVariables },
-          },
+              schema: { variables: keyPointerVariables },
+            },
           }).then(() => {
             sendNotification('initialized', {});
             sendNotification('textDocument/didOpen', {
@@ -942,9 +947,8 @@
           markLspDisconnected('Loading worker...');
           try {
             await ensureWorkerClient();
-            const client = await window.__liquidConnectBrowserLspWorker(
-              '/lsp-worker.js',
-            );
+            const client =
+              await window.__liquidConnectBrowserLspWorker('/lsp-worker.js');
             lspDispose = () => {
               isConnected = false;
               client.dispose();
@@ -954,7 +958,8 @@
                 applyDiagnostics(params.diagnostics);
               }
             });
-            sendRequest = (method, params) => client.sendRequest(method, params);
+            sendRequest = (method, params) =>
+              client.sendRequest(method, params);
             sendNotification = (method, params) =>
               client.sendNotification(method, params);
             isConnected = true;
@@ -1074,10 +1079,10 @@
                 res.range.start.line + 1,
                 res.range.start.character + 1,
                 res.range.end.line + 1,
-                res.range.end.character + 1
-              )
+                res.range.end.character + 1,
+              ),
             };
-          }
+          },
         });
 
         // Formatting Provider
@@ -1312,6 +1317,7 @@
         });
 
         // Client-side LiquidJS Engine Setup
+        const { Liquid } = window.liquidjs || window;
         const liquid = new Liquid();
 
         // Register Custom Filters matching LSP Environment

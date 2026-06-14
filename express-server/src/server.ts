@@ -86,7 +86,10 @@ app.get('/', (req, res) => {
 // Serve local SpotDraft LiquidJS browser build
 app.get('/liquid.js', (req, res) => {
   res.sendFile(
-    path.resolve(__dirname, '../../node_modules/liquidjs/dist/liquid.js'),
+    path.resolve(
+      __dirname,
+      '../../node_modules/liquidjs/dist/liquid.browser.umd.js',
+    ),
   );
 });
 

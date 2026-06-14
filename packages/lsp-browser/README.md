@@ -12,12 +12,12 @@ Workspace schema files (`.liquid-schema.json`) are not loaded in the browser unl
 
 ## Key exports
 
-| Export | Purpose |
-|--------|---------|
+| Export                         | Purpose                                               |
+| ------------------------------ | ----------------------------------------------------- |
 | `connectBrowserLspWorker(url)` | Main-thread client (MessageChannel + framed JSON-RPC) |
-| `startWorkerServer(port)` | Start LSP on a `Worker` or `MessagePort` |
-| `getWorkerConnection(port)` | Build a browser LSP `Connection` |
-| `startServer` | Re-export from `lsp-common` |
+| `startWorkerServer(port)`      | Start LSP on a `Worker` or `MessagePort`              |
+| `getWorkerConnection(port)`    | Build a browser LSP `Connection`                      |
+| `startServer`                  | Re-export from `lsp-common`                           |
 
 Bundled artifacts (esbuild):
 
@@ -41,7 +41,11 @@ rtk npm run test --workspace=lsp-browser
   const client = await connectBrowserLspWorker('/lsp-worker.js');
   await client.sendRequest('initialize', {
     capabilities: {},
-    initializationOptions: { schema: { /* ... */ } },
+    initializationOptions: {
+      schema: {
+        /* ... */
+      },
+    },
   });
   client.sendNotification('initialized', {});
   client.onNotification((method, params) => {

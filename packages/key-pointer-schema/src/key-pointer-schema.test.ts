@@ -15,10 +15,7 @@ import {
 } from './key-pointer-types.js';
 import { keyPointerTypeToLiquid } from './key-pointer-to-liquid.js';
 
-const packageRoot = join(
-  dirname(fileURLToPath(import.meta.url)),
-  '..',
-);
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('key-pointer-types', () => {
   it('loads the bundled type registry', () => {
@@ -75,7 +72,11 @@ describe('parseVariableSchema', () => {
   });
 
   it('parses bundled fixture file', () => {
-    const fixturePath = join(packageRoot, 'fixtures', 'key-pointer-variables.json');
+    const fixturePath = join(
+      packageRoot,
+      'fixtures',
+      'key-pointer-variables.json',
+    );
     const raw = JSON.parse(readFileSync(fixturePath, 'utf8'));
     const result = parseVariableSchema(raw);
 
@@ -112,7 +113,9 @@ describe('parseVariableSchema', () => {
 
     expect(result.variables.size).toBe(1);
     expect(
-      result.errors.some((e) => e.code === SCHEMA_ERROR_CODES.DUPLICATE_VARIABLE),
+      result.errors.some(
+        (e) => e.code === SCHEMA_ERROR_CODES.DUPLICATE_VARIABLE,
+      ),
     ).toBe(true);
   });
 
@@ -177,7 +180,9 @@ describe('mergeVariableSchemas', () => {
 
     expect(merged.variables.size).toBe(1);
     expect(
-      merged.errors.some((e) => e.code === SCHEMA_ERROR_CODES.DUPLICATE_VARIABLE),
+      merged.errors.some(
+        (e) => e.code === SCHEMA_ERROR_CODES.DUPLICATE_VARIABLE,
+      ),
     ).toBe(true);
   });
 });

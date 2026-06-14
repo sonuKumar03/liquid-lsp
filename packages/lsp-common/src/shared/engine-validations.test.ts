@@ -33,7 +33,10 @@ describe('collectEngineValidationDiagnostics', () => {
     const text = '{% parseAssign x2 = [1, 2,] %}';
     const doc = TextDocument.create('file:///t.liquid', 'liquid', 1, text);
     const tokens = tokenizeTopLevel(text, engine);
-    const diagnostics: Array<{ code?: string; range: { start: { line: number } } }> = [];
+    const diagnostics: Array<{
+      code?: string;
+      range: { start: { line: number } };
+    }> = [];
 
     collectEngineValidationDiagnostics(
       doc,

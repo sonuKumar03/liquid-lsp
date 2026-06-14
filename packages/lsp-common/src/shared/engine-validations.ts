@@ -1,12 +1,15 @@
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import type { Diagnostic } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import { createRequire } from 'module';
 import {
   TagTokenClass,
+  TokenKind,
   type Liquid,
   type Token,
   type TagTemplate,
+  parseAssign,
+  checkValidJSON,
+  checkAtleastOneDynamicTableAssignPresent,
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from './diagnostic-codes.js';
 
@@ -28,44 +31,17 @@ export type EngineValidationFns = {
   ) => { defined: string; dependsOn: string[] };
 };
 
-let injectedValidationFns: EngineValidationFns | null = null;
-let resolvedValidationFns: EngineValidationFns | null | undefined;
-
-/** Browser worker registers bundled liquidjs validators before starting the LSP. */
+/** Browser worker registers bundled liquidjs validators before starting the LSP. (Now a no-op since we use static imports) */
 export function setEngineValidationFns(fns: EngineValidationFns): void {
-  injectedValidationFns = fns;
-  resolvedValidationFns = fns;
+  void fns;
 }
 
 function getValidationFns(): EngineValidationFns | null {
-  if (injectedValidationFns) {
-    return injectedValidationFns;
-  }
-
-  if (resolvedValidationFns !== undefined) {
-    return resolvedValidationFns;
-  }
-
-  try {
-    const require = createRequire(import.meta.url);
-    const validations = require('liquidjs/validations.js') as {
-      checkValidJSON: EngineValidationFns['checkValidJSON'];
-      checkAtleastOneDynamicTableAssignPresent: EngineValidationFns['checkAtleastOneDynamicTableAssignPresent'];
-    };
-    const { parseAssign } = require('liquidjs/dependency-graph.js') as {
-      parseAssign: EngineValidationFns['parseAssign'];
-    };
-    resolvedValidationFns = {
-      checkValidJSON: validations.checkValidJSON,
-      checkAtleastOneDynamicTableAssignPresent:
-        validations.checkAtleastOneDynamicTableAssignPresent,
-      parseAssign,
-    };
-  } catch {
-    resolvedValidationFns = null;
-  }
-
-  return resolvedValidationFns;
+  return {
+    checkValidJSON,
+    checkAtleastOneDynamicTableAssignPresent,
+    parseAssign,
+  };
 }
 
 const PARSE_ASSIGN_LINE_RE = /at line (\d+)/;
@@ -100,7 +76,10 @@ function rangeForIdentifierInTagToken(
   doc: TextDocument,
   token: InstanceType<typeof TagTokenClass>,
   identifier: string,
-): { start: { line: number; character: number }; end: { line: number; character: number } } {
+): {
+  start: { line: number; character: number };
+  end: { line: number; character: number };
+} {
   const raw = token.getText();
   const openIdx = raw.indexOf('%');
   const searchFrom = openIdx >= 0 ? openIdx + 1 : 0;
@@ -116,7 +95,10 @@ function rangeForIdentifierInTagToken(
 function rangeForTagToken(
   doc: TextDocument,
   token: InstanceType<typeof TagTokenClass>,
-): { start: { line: number; character: number }; end: { line: number; character: number } } {
+): {
+  start: { line: number; character: number };
+  end: { line: number; character: number };
+} {
   return {
     start: doc.positionAt(token.begin),
     end: doc.positionAt(token.end),
@@ -165,7 +147,7 @@ function findTagTokenForTemplate(
   }
   const line = (tagToken as { line?: number }).line;
   if (typeof line === 'number') {
-    return findTagTokenOnLine(tokens, line, new Set([template.name]));
+    return findTagTokenOnLine(tokens, line, new Set([(template as any).name]));
   }
   return undefined;
 }
@@ -181,7 +163,7 @@ function reportUseBeforeAssign(
   const range = token
     ? rangeForIdentifierInTagToken(doc, token, varName)
     : { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
-  const message = `Variable "${varName}" used before assignment in expression "${template.token.args}" on line ${template.token.line}`;
+  const message = `Variable "${varName}" used before assignment in expression "${(template.token as any).args}" on line ${(template.token as any).line}`;
 
   pushUniqueDiagnostic(diagnostics, {
     severity: DiagnosticSeverity.Error,
@@ -217,6 +199,19 @@ function handleAssignTemplate(
   }
 }
 
+function getVariablesFromValue(value: any): string[] {
+  if (!value || !value.initial || !value.initial.postfix) {
+    return [];
+  }
+  const variables: string[] = [];
+  for (const token of value.initial.postfix) {
+    if (token.kind === TokenKind.PropertyAccess) {
+      variables.push(token.getText());
+    }
+  }
+  return variables;
+}
+
 function walkTagTemplate(
   doc: TextDocument,
   engine: Liquid,
@@ -228,12 +223,15 @@ function walkTagTemplate(
 ): void {
   const currentSet = new Set(assignedVars);
 
-  if (template.name === 'if') {
-    const impl = template.tagImpl;
+  if ((template as any).name === 'if' || (template as any).name === 'unless') {
+    const impl = template as any;
     for (const branch of impl.branches ?? []) {
       const branchSet = new Set(currentSet);
-      if (typeof branch.cond === 'string' && branch.cond.length > 0) {
-        branchSet.add(branch.cond[0]);
+      if (branch.value) {
+        const condVars = getVariablesFromValue(branch.value);
+        for (const variable of condVars) {
+          branchSet.add(variable);
+        }
       }
       walkTemplates(
         doc,
@@ -257,13 +255,17 @@ function walkTagTemplate(
     return;
   }
 
-  if (template.name === 'for' || template.name === 'unless') {
-    const impl = template.tagImpl;
+  if ((template as any).name === 'for') {
+    const impl = template as any;
+    const loopSet = new Set(currentSet);
+    if (impl.variable) {
+      loopSet.add(impl.variable);
+    }
     walkTemplates(
       doc,
       engine,
       impl.templates ?? [],
-      currentSet,
+      loopSet,
       diagnostics,
       tokens,
       parseAssignFn,
@@ -280,7 +282,7 @@ function walkTagTemplate(
     return;
   }
 
-  if (ASSIGN_DEPENDENCY_TAG_NAMES.has(template.name)) {
+  if (ASSIGN_DEPENDENCY_TAG_NAMES.has((template as any).name)) {
     handleAssignTemplate(
       doc,
       engine,
@@ -303,7 +305,7 @@ function walkTemplates(
   parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   for (const template of templates) {
-    if (template.type !== 'tag') {
+    if (!(template.token instanceof TagTokenClass)) {
       continue;
     }
     walkTagTemplate(
@@ -326,16 +328,18 @@ function findComputeColumnOpenLine(
   try {
     const templates = engine.parse(text) as TagTemplate[];
     for (const template of templates) {
-      if (template.type !== 'tag' || template.name !== 'computeColumn') {
+      if (
+        !(template.token instanceof TagTokenClass) ||
+        (template as any).name !== 'computeColumn'
+      ) {
         continue;
       }
-      const impl = template.tagImpl as {
-        tableName?: string;
-        columnName?: string;
-      };
+      const impl = template as any;
+      const tableName = impl.table?.content;
+      const columnName = impl.column?.content;
       if (
-        impl.tableName === metadata.tableName &&
-        impl.columnName === metadata.columnName
+        tableName === metadata.tableName &&
+        columnName === metadata.columnName
       ) {
         const line = (template.token as { line?: number }).line;
         if (typeof line === 'number') {

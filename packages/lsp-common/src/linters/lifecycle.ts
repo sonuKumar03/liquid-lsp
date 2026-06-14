@@ -12,9 +12,12 @@ import {
   parseCaptureVariable,
   parseForLoopVariable,
   parseOutputValue,
-  lexical,
 } from 'liquid-core';
-import { MATH_FILTERS, STRING_FILTERS } from '../shared/local-variable-types.js';
+import { PropertyAccessToken } from 'liquidjs';
+import {
+  MATH_FILTERS,
+  STRING_FILTERS,
+} from '../shared/local-variable-types.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { LiquidType } from '../shared/schema.js';
 import type { VariableDeclaration } from 'key-pointer-schema';
@@ -181,14 +184,7 @@ function collectTagDiagnostics(
       activeVars.set(varName, createDecl(varName, line, tokenText, 'unknown'));
     }
   } else if (isConditionalTagLine(name)) {
-    processExpression(
-      token.args,
-      token,
-      doc,
-      diagnostics,
-      activeVars,
-      engine,
-    );
+    processExpression(token.args, token, doc, diagnostics, activeVars, engine);
   }
 }
 
@@ -272,8 +268,7 @@ function validateNonComputableSchemaAssignment(
   const start = {
     line: doc.positionAt(token.begin).line,
     character:
-      doc.positionAt(token.begin).character +
-      (offset !== -1 ? offset : 0),
+      doc.positionAt(token.begin).character + (offset !== -1 ? offset : 0),
   };
   const end = {
     line: start.line,
@@ -450,7 +445,9 @@ function validateFilterNameSyntax(
     const leadingWhitespaceLen = afterPipe.length - trimmedAfterPipe.length;
     const filterNameStart = pipeIdx + 1 + leadingWhitespaceLen;
 
-    const filterNameMatch = trimmedAfterPipe.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)/);
+    const filterNameMatch = trimmedAfterPipe.match(
+      /^([a-zA-Z_][a-zA-Z0-9_-]*)/,
+    );
     if (!filterNameMatch) {
       const tokenText = token.getText();
       const exprOffsetInToken = tokenText.indexOf(expr);
@@ -625,16 +622,33 @@ function resolveBaseExpressionType(
   return currentType;
 }
 
+function extractVariables(token: any, variables: string[]): void {
+  if (token instanceof PropertyAccessToken) {
+    if (token.props && token.props.length > 0) {
+      const base = token.props[0];
+      if (base) {
+        variables.push(base.getText());
+      }
+      for (let i = 1; i < token.props.length; i++) {
+        extractVariables(token.props[i], variables);
+      }
+    }
+  }
+}
+
 function markVariableUsage(
   value: string,
   activeVars: Map<string, ActiveVar>,
 ): void {
   const trimmed = value.trim();
-  if (!trimmed || lexical.isLiteral(trimmed)) {
+  if (!trimmed) {
     return;
   }
 
-  const baseVar = trimmed.split('.')[0]?.replace(/\[\s*.+\s*\]/g, '').trim();
+  const baseVar = trimmed
+    .split('.')[0]
+    ?.replace(/\[\s*.+\s*\]/g, '')
+    .trim();
   if (baseVar && activeVars.has(baseVar)) {
     activeVars.get(baseVar)!.hasBeenRead = true;
   }
@@ -650,11 +664,27 @@ function markVariablesReadFromExpression(
     return;
   }
 
-  markVariableUsage(parsed.initial, activeVars);
+  const vars: string[] = [];
+
+  if (parsed.initial && parsed.initial.postfix) {
+    for (const token of parsed.initial.postfix) {
+      extractVariables(token, vars);
+    }
+  }
+
   for (const filter of parsed.filters) {
     for (const arg of filter.args) {
-      markVariableUsage(arg, activeVars);
+      const valueToken = Array.isArray(arg) ? arg[1] : arg;
+      if (valueToken) {
+        if (valueToken instanceof PropertyAccessToken) {
+          extractVariables(valueToken, vars);
+        }
+      }
     }
+  }
+
+  for (const v of vars) {
+    markVariableUsage(v, activeVars);
   }
 }
 
@@ -669,9 +699,7 @@ function processExpression(
   validateFilterNameSyntax(expr, token, doc, diagnostics);
   markVariablesReadFromExpression(expr, activeVars, engine);
 
-  const cleanExpr = expr
-    .replace(/"[^"]*"/g, '""')
-    .replace(/'[^']*'/g, "''");
+  const cleanExpr = expr.replace(/"[^"]*"/g, '""').replace(/'[^']*'/g, "''");
   const parts = cleanExpr.split('|');
   const basePart = (parts[0] ?? '').trim();
 

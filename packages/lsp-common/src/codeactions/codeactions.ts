@@ -1,8 +1,4 @@
-import {
-  CodeAction,
-  CodeActionKind,
-  Command,
-} from 'vscode-languageserver';
+import { CodeAction, CodeActionKind, Command } from 'vscode-languageserver';
 import type { CodeActionParams } from 'vscode-languageserver';
 import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -188,7 +184,9 @@ export function handleCodeAction(
       const tagText = doc.getText(diagnostic.range);
       let tagName = data?.tagName;
       if (!tagName && typeof message === 'string') {
-        const match = message.match(/tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/);
+        const match = message.match(
+          /tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/,
+        );
         if (match) {
           tagName = match[1];
         }

@@ -9,9 +9,9 @@ import { startServer } from 'lsp-common';
 export type BrowserLspPort = Worker | MessagePort;
 
 /** Build an LSP connection that reads/writes JSON-RPC via postMessage. */
-export function getWorkerConnection(port: BrowserLspPort): ReturnType<
-  typeof createConnection
-> {
+export function getWorkerConnection(
+  port: BrowserLspPort,
+): ReturnType<typeof createConnection> {
   const reader = new BrowserMessageReader(port);
   const writer = new BrowserMessageWriter(port);
   return createConnection(reader, writer);

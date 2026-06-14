@@ -9,15 +9,15 @@ Runtime-agnostic Liquid LSP core: server lifecycle, variable type state, documen
 
 ## Key exports
 
-| Export | Purpose |
-|--------|---------|
-| `startServer(connection, deps?)` | Wire all LSP handlers and start listening |
-| `TypeSystem` | Variable schema state + optional workspace loader |
-| `DocumentManager` | `TextDocuments` sync + per-URI token cache |
-| `DiagnosticsScheduler` | Debounced validation (default 150ms) |
-| `WorkspaceSchemaLoader` | Inject filesystem access for `.liquid-schema.json` |
-| `SERVER_CAPABILITIES` | LSP capability declaration |
-| `collectVariableNamesFromTokens(tokens)` | Extract assign/capture/for vars from token stream |
+| Export                                   | Purpose                                            |
+| ---------------------------------------- | -------------------------------------------------- |
+| `startServer(connection, deps?)`         | Wire all LSP handlers and start listening          |
+| `TypeSystem`                             | Variable schema state + optional workspace loader  |
+| `DocumentManager`                        | `TextDocuments` sync + per-URI token cache         |
+| `DiagnosticsScheduler`                   | Debounced validation (default 150ms)               |
+| `WorkspaceSchemaLoader`                  | Inject filesystem access for `.liquid-schema.json` |
+| `SERVER_CAPABILITIES`                    | LSP capability declaration                         |
+| `collectVariableNamesFromTokens(tokens)` | Extract assign/capture/for vars from token stream  |
 
 ## Dependencies
 

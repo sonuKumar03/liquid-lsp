@@ -1,7 +1,4 @@
-import type {
-  Hover,
-  TextDocumentPositionParams,
-} from 'vscode-languageserver';
+import type { Hover, TextDocumentPositionParams } from 'vscode-languageserver';
 import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
@@ -9,7 +6,12 @@ import {
   getTagDocumentation,
   getFilterDocumentation,
 } from '../shared/constants.js';
-import { getWordAtPosition, isKnownLiquidFilter, createLiquidEngine, tokenizeTopLevelSafe } from 'liquid-core';
+import {
+  getWordAtPosition,
+  isKnownLiquidFilter,
+  createLiquidEngine,
+  tokenizeTopLevelSafe,
+} from 'liquid-core';
 import type { LiquidType } from '../shared/schema.js';
 import { extractLocalVariableTypes } from '../shared/local-variable-types.js';
 

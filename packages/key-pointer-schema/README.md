@@ -10,14 +10,14 @@ Parse and validate key-pointer variable declarations for Liquid computation work
 
 ## Key exports
 
-| Export | Purpose |
-|--------|---------|
-| `parseVariableSchema(raw)` | Parse `{ variables: [...] }`, flat map, or legacy liquid schema |
-| `mergeVariableSchemas(base, overlay)` | Merge client schema with workspace file overlay |
-| `keyPointerTypeToLiquid(dataType, options?)` | Map key-pointer type → `LiquidType` |
-| `isKnownKeyPointerDataType(value)` | Check against the 19-type allowlist |
-| `KNOWN_KEY_POINTER_DATA_TYPES` | Fixed type list |
-| `SCHEMA_ERROR_CODES` | Stable error code strings for diagnostics |
+| Export                                       | Purpose                                                         |
+| -------------------------------------------- | --------------------------------------------------------------- |
+| `parseVariableSchema(raw)`                   | Parse `{ variables: [...] }`, flat map, or legacy liquid schema |
+| `mergeVariableSchemas(base, overlay)`        | Merge client schema with workspace file overlay                 |
+| `keyPointerTypeToLiquid(dataType, options?)` | Map key-pointer type → `LiquidType`                             |
+| `isKnownKeyPointerDataType(value)`           | Check against the 19-type allowlist                             |
+| `KNOWN_KEY_POINTER_DATA_TYPES`               | Fixed type list                                                 |
+| `SCHEMA_ERROR_CODES`                         | Stable error code strings for diagnostics                       |
 
 ## Dependencies
 
@@ -39,7 +39,11 @@ import { parseVariableSchema } from 'key-pointer-schema';
 const result = parseVariableSchema({
   variables: [
     { field_name: 'sd_payment', data_type: 'currency' },
-    { field_name: 'sd_term_type', data_type: 'dropdown', options: [{ label: 'Fixed', value: 'Fixed' }] },
+    {
+      field_name: 'sd_term_type',
+      data_type: 'dropdown',
+      options: [{ label: 'Fixed', value: 'Fixed' }],
+    },
   ],
 });
 

@@ -10,8 +10,8 @@ Node.js stdio transport wrapper for the Liquid LSP. Creates a JSON-RPC connectio
 
 ## Key exports
 
-| Export | Purpose |
-|--------|---------|
+| Export                         | Purpose                                                |
+| ------------------------------ | ------------------------------------------------------ |
 | `startNodeServer(connection?)` | Create stdio connection (if omitted) and start the LSP |
 
 Node-only helper (not re-exported): `nodeWorkspaceSchemaLoader` reads `.liquid-schema.json` from the workspace root.

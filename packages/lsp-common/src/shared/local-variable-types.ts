@@ -1,4 +1,16 @@
-import { lexical, parseOutputValue, TagTokenClass, type Liquid, type Token } from 'liquid-core';
+import {
+  parseOutputValue,
+  TagTokenClass,
+  type Liquid,
+  type Token,
+} from 'liquid-core';
+import {
+  Tokenizer,
+  LiteralToken,
+  NumberToken,
+  QuotedToken,
+  PropertyAccessToken,
+} from 'liquidjs';
 import { resolveTypeForPath } from '../hovers/hovers.js';
 import type { LiquidType } from '../shared/schema.js';
 import {
@@ -36,15 +48,25 @@ export const MATH_FILTERS = new Set([
 ]);
 
 export function inferLiteralType(value: string): LiquidType {
-  if (lexical.isLiteral(value)) {
-    const literal = lexical.parseLiteral(value);
-    if (typeof literal === 'boolean') {
-      return 'boolean';
+  try {
+    const tokenizer = new Tokenizer(value);
+    const token = tokenizer.readValue();
+    if (token && tokenizer.p === tokenizer.N) {
+      if (token instanceof LiteralToken) {
+        const txt = token.getText();
+        if (txt === 'true' || txt === 'false') {
+          return 'boolean';
+        }
+      }
+      if (token instanceof NumberToken) {
+        return 'number';
+      }
+      if (token instanceof QuotedToken) {
+        return 'string';
+      }
     }
-    if (typeof literal === 'number') {
-      return 'number';
-    }
-    return 'string';
+  } catch {
+    // ignore
   }
   return 'unknown';
 }
@@ -65,6 +87,30 @@ export function applyFilterTypeRules(
   return currentType;
 }
 
+function getExpressionText(expr: any): string {
+  if (!expr || !expr.postfix || expr.postfix.length === 0) {
+    return '';
+  }
+  let min = Infinity;
+  let max = -Infinity;
+  let input = '';
+  for (const token of expr.postfix) {
+    if (token.begin < min) {
+      min = token.begin;
+    }
+    if (token.end > max) {
+      max = token.end;
+    }
+    if (token.input) {
+      input = token.input;
+    }
+  }
+  if (min !== Infinity && max !== -Infinity && input) {
+    return input.slice(min, max);
+  }
+  return '';
+}
+
 export function inferTypeFromAssignValue(
   engine: Liquid,
   tagName: string,
@@ -74,39 +120,59 @@ export function inferTypeFromAssignValue(
   const parsed = parseOutputValue(engine, valueExpr);
   if (!parsed) {
     const trimmed = valueExpr.trim();
-    if (lexical.isLiteral(trimmed)) {
-      return inferLiteralType(trimmed);
+    const type = inferLiteralType(trimmed);
+    if (type !== 'unknown') {
+      return type;
     }
-    if (lexical.isVariable(trimmed)) {
-      return resolveTypeForPath(trimmed, localTypes);
+    try {
+      const tokenizer = new Tokenizer(trimmed);
+      const token = tokenizer.readValue();
+      if (
+        token &&
+        tokenizer.p === tokenizer.N &&
+        token instanceof PropertyAccessToken
+      ) {
+        return resolveTypeForPath(token.getText(), localTypes);
+      }
+    } catch {
+      // ignore
     }
     return 'unknown';
   }
 
-  const basePart = parsed.initial.trim();
-  let resolvedType: LiquidType;
-  if (lexical.isLiteral(basePart)) {
-    resolvedType = inferLiteralType(basePart);
-  } else {
-    resolvedType = resolveTypeForPath(basePart, localTypes);
+  let resolvedType: LiquidType = 'unknown';
+  const initial = parsed.initial;
+  if (initial.postfix && initial.postfix.length === 1) {
+    const token = initial.postfix[0];
+    if (token instanceof LiteralToken) {
+      const txt = token.getText();
+      if (txt === 'true' || txt === 'false') {
+        resolvedType = 'boolean';
+      }
+    } else if (token instanceof NumberToken) {
+      resolvedType = 'number';
+    } else if (token instanceof QuotedToken) {
+      resolvedType = 'string';
+    } else if (token instanceof PropertyAccessToken) {
+      resolvedType = resolveTypeForPath(token.getText(), localTypes);
+    }
   }
 
   for (const filterTemplate of parsed.filters) {
     resolvedType = applyFilterTypeRules(filterTemplate.name, resolvedType);
   }
 
-  if (
-    tagName === 'parseAssign' &&
-    parsed.filters.length === 0 &&
-    !basePart.includes('[')
-  ) {
-    if (
-      typeof resolvedType === 'object' &&
-      resolvedType.kind === 'composite'
-    ) {
-      resolvedType = 'string';
-    } else if (resolvedType === 'currency') {
-      resolvedType = 'number';
+  if (tagName === 'parseAssign' && parsed.filters.length === 0) {
+    const basePart = getExpressionText(parsed.initial).trim();
+    if (!basePart.includes('[')) {
+      if (
+        typeof resolvedType === 'object' &&
+        resolvedType.kind === 'composite'
+      ) {
+        resolvedType = 'string';
+      } else if (resolvedType === 'currency') {
+        resolvedType = 'number';
+      }
     }
   }
 

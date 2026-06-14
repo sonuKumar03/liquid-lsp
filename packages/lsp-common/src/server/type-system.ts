@@ -109,9 +109,7 @@ export class TypeSystem {
       this.liquidSchema = merged.liquidSchema;
       this.variableDeclarations = merged.variables;
       this.schemaLoadErrors = [...this.schemaLoadErrors, ...merged.errors];
-      this.logger.log(
-        `LSP server: Loaded workspace schema for ${rootPath}`,
-      );
+      this.logger.log(`LSP server: Loaded workspace schema for ${rootPath}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.log(

@@ -67,7 +67,8 @@ function isKeyPointerFlatMap(raw: Record<string, unknown>): boolean {
 
 function isLegacyLiquidSchema(raw: Record<string, unknown>): boolean {
   return Object.values(raw).some(
-    (value) => value !== null && typeof value === 'object' && !Array.isArray(value),
+    (value) =>
+      value !== null && typeof value === 'object' && !Array.isArray(value),
   );
 }
 
@@ -119,10 +120,7 @@ function parseVariableEntry(
   }
 
   const options = parseOptions(raw.options);
-  if (
-    (dataType === 'dropdown' || dataType === 'multi-dropdown') &&
-    !options
-  ) {
+  if ((dataType === 'dropdown' || dataType === 'multi-dropdown') && !options) {
     errors.push({
       severity: 'warning',
       code: SCHEMA_ERROR_CODES.SCHEMA_LOAD_ERROR,
@@ -142,7 +140,9 @@ function parseVariableEntry(
   return { declaration, errors };
 }
 
-function parseVariablesArray(rawVariables: unknown[]): ParseVariableSchemaResult {
+function parseVariablesArray(
+  rawVariables: unknown[],
+): ParseVariableSchemaResult {
   const result = emptyResult();
 
   for (let index = 0; index < rawVariables.length; index++) {

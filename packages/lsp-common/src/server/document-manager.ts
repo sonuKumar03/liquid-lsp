@@ -1,11 +1,7 @@
 import type { Connection } from 'vscode-languageserver';
 import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import {
-  tokenizeTopLevelSafe,
-  type Liquid,
-  type Token,
-} from 'liquid-core';
+import { tokenizeTopLevelSafe, type Liquid, type Token } from 'liquid-core';
 
 interface TokenCacheEntry {
   revision: number;

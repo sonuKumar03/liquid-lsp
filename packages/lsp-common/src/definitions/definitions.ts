@@ -7,7 +7,10 @@ import type { DocumentManager } from '../server/document-manager.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export function locatePathInJson(jsonText: string, varPath: string): Range | null {
+export function locatePathInJson(
+  jsonText: string,
+  varPath: string,
+): Range | null {
   const parts = varPath.split('.');
   let currentOffset = 0;
 

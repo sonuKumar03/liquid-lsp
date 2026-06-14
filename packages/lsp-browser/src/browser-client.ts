@@ -13,9 +13,7 @@ import {
 export type BrowserLspWorkerClient = {
   sendRequest(method: string, params?: object): Promise<unknown>;
   sendNotification(method: string, params?: object): void;
-  onNotification(
-    handler: (method: string, params: unknown) => void,
-  ): void;
+  onNotification(handler: (method: string, params: unknown) => void): void;
   dispose(): void;
 };
 
@@ -39,14 +37,11 @@ export function connectBrowserLspWorker(
       (method: string, params: unknown) => void
     > = [];
 
-    connection.onNotification(
-      PublishDiagnosticsNotification.type,
-      (params) => {
-        for (const handler of notificationHandlers) {
-          handler(PublishDiagnosticsNotification.method, params);
-        }
-      },
-    );
+    connection.onNotification(PublishDiagnosticsNotification.type, (params) => {
+      for (const handler of notificationHandlers) {
+        handler(PublishDiagnosticsNotification.method, params);
+      }
+    });
 
     connection.listen();
 

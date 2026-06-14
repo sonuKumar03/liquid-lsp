@@ -1,8 +1,5 @@
 import { CompletionItemKind } from 'vscode-languageserver';
-import type {
-  CompletionItem,
-  CompletionParams,
-} from 'vscode-languageserver';
+import type { CompletionItem, CompletionParams } from 'vscode-languageserver';
 import {
   LIQUID_TAGS,
   LIQUID_FILTERS,

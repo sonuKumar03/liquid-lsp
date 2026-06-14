@@ -254,10 +254,7 @@ test('Liquid hover documentation with variable values', () =>
                 uri: 'file:///t.liquid',
                 languageId: 'liquid',
                 version: 1,
-                text: [
-                  '{{ user.first_name }}',
-                  '{{ status }}',
-                ].join('\n'),
+                text: ['{{ user.first_name }}', '{{ status }}'].join('\n'),
               },
             },
           }),
@@ -420,7 +417,9 @@ test('Liquid hover documentation for local variables', () =>
       } else if (step === 1 && res.id === 2) {
         expect(res.result).toBeDefined();
         expect(res.result.contents).toBeDefined();
-        expect(res.result.contents.value).toContain('**Variable:** `local_str`');
+        expect(res.result.contents.value).toContain(
+          '**Variable:** `local_str`',
+        );
         expect(res.result.contents.value).toContain('**Type:** `string`');
 
         child.kill('SIGINT');

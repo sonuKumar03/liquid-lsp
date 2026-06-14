@@ -93,6 +93,7 @@ app.get('/liquid.js', (req, res) => {
 // Serve bundled browser LSP worker (Monaco Web Worker transport)
 app.get('/lsp-worker.js', (req, res) => {
   res.type('application/javascript');
+  res.set('Cache-Control', 'no-store');
   res.sendFile(
     path.resolve(__dirname, '../../packages/lsp-browser/dist/worker.js'),
   );
@@ -101,6 +102,7 @@ app.get('/lsp-worker.js', (req, res) => {
 // Main-thread client for worker transport (vscode-jsonrpc browser protocol)
 app.get('/lsp-browser-client.js', (req, res) => {
   res.type('application/javascript');
+  res.set('Cache-Control', 'no-store');
   res.sendFile(
     path.resolve(
       __dirname,

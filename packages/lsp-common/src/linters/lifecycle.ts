@@ -38,7 +38,7 @@ export function collectLifecycleDiagnostics(
   precomputedTokens?: Token[],
 ): void {
   const text = textDocument.getText();
-  let tokens: Token[] = [];
+  let tokens: Token[];
 
   try {
     tokens =
@@ -675,7 +675,7 @@ function processExpression(
   const parts = cleanExpr.split('|');
   const basePart = (parts[0] ?? '').trim();
 
-  let currentType = resolveBaseExpressionType(
+  const currentType = resolveBaseExpressionType(
     basePart,
     token,
     doc,

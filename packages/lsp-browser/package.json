@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "lsp-common": "1.0.0",
-    "liquidjs": "file:../../../liquidjs",
+    "liquidjs": "github:sonuKumar03/liquidjs",
     "vscode-languageserver": "^10.0.0"
   },
   "devDependencies": {

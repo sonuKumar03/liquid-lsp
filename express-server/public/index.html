@@ -874,7 +874,9 @@
         function startLspHandshake() {
           sendRequest('initialize', {
             capabilities: {},
-            initializationOptions: { variables: keyPointerVariables },
+            initializationOptions: {
+            schema: { variables: keyPointerVariables },
+          },
           }).then(() => {
             sendNotification('initialized', {});
             sendNotification('textDocument/didOpen', {
@@ -885,6 +887,7 @@
                 text: model.getValue(),
               },
             });
+            notifyLspContext(JSON.parse(contextInput.value));
           });
         }
 

@@ -38,12 +38,11 @@ const nodeBuiltinStubs = {
     export default { createRequire };
   `,
   assert: `
-    export default function assert(value, message) {
+    function assert(value, message) {
       if (!value) throw new Error(message ?? 'Assertion failed');
     }
-    export function ok(value, message) {
-      if (!value) throw new Error(message ?? 'Assertion failed');
-    }
+    assert.ok = assert;
+    module.exports = assert;
   `,
 };
 
@@ -69,8 +68,8 @@ const sharedBrowserBuild = {
   format: 'esm',
   target: 'es2022',
   sourcemap: true,
-  conditions: ['browser', 'import', 'node'],
-  mainFields: ['browser', 'module', 'main'],
+  conditions: ['node', 'import'],
+  mainFields: ['main', 'module'],
   plugins: [nodeBuiltinStubPlugin],
   logLevel: 'info',
 };

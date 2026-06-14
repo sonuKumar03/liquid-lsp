@@ -1,6 +1,5 @@
 import { Location, Range } from 'vscode-languageserver';
 import type { DefinitionParams } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getWordAtPosition, type Liquid } from 'liquid-core';
 import { getVariablePathAtPosition } from '../hovers/hovers.js';
 import { findVariableDeclarationsFromTokens } from '../shared/variable-declarations.js';

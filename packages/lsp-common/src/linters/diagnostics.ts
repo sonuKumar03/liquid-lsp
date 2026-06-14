@@ -52,7 +52,7 @@ export async function validateTextDocument(
   const schemaVarNames = globalSchema
     ? new Set(globalSchema.keys())
     : new Set<string>();
-  let validationTokens: Token[] = [];
+  let validationTokens: Token[];
   if (precomputedTokens !== undefined) {
     validationTokens = precomputedTokens;
   } else {
@@ -83,7 +83,7 @@ function collectSyntaxDiagnostics(
   liquidEngine: Liquid,
   precomputedTokens?: Token[],
 ): void {
-  let tokens: Token[] = [];
+  let tokens: Token[];
   if (precomputedTokens !== undefined) {
     tokens = precomputedTokens;
   } else {

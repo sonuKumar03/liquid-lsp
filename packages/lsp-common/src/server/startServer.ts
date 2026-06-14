@@ -69,7 +69,10 @@ export function startServer(
         params.initializationOptions.variables ||
         params.initializationOptions.schema;
       if (rawVars) {
-        typeSystem.applyVariableSchema(rawVars, 'initializationOptions');
+        const normalized = Array.isArray(rawVars)
+          ? { variables: rawVars }
+          : rawVars;
+        typeSystem.applyVariableSchema(normalized, 'initializationOptions');
       }
     }
 

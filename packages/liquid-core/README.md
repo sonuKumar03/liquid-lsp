@@ -10,15 +10,15 @@ Runtime helpers for LiquidJS: engine creation, tokenization, tag/filter metadata
 
 ## Key exports
 
-| Export | Purpose |
-|--------|---------|
-| `createLiquidEngine()` | Single entry point for a configured `Liquid` instance |
-| `tokenizeTopLevel(text, engine?)` | Top-level token stream for a template |
-| `tokenizeTopLevelSafe(...)` | Same as above; returns `[]` on tokenizer failure |
-| `LIQUID_TAG_NAMES`, `LIQUID_FILTER_METAS` | Tag/filter metadata for completions |
-| `isKnownLiquidFilter(name)` | Filter allowlist check |
-| `getEnhancedErrorMessage(msg, lineText)` | User-friendly syntax error messages |
-| `convertToLiquidMath(lineText)` | Inline math → filter quick-fix helper |
+| Export                                    | Purpose                                               |
+| ----------------------------------------- | ----------------------------------------------------- |
+| `createLiquidEngine()`                    | Single entry point for a configured `Liquid` instance |
+| `tokenizeTopLevel(text, engine?)`         | Top-level token stream for a template                 |
+| `tokenizeTopLevelSafe(...)`               | Same as above; returns `[]` on tokenizer failure      |
+| `LIQUID_TAG_NAMES`, `LIQUID_FILTER_METAS` | Tag/filter metadata for completions                   |
+| `isKnownLiquidFilter(name)`               | Filter allowlist check                                |
+| `getEnhancedErrorMessage(msg, lineText)`  | User-friendly syntax error messages                   |
+| `convertToLiquidMath(lineText)`           | Inline math → filter quick-fix helper                 |
 
 ## Dependencies
 
@@ -35,9 +35,16 @@ npm run test --workspace=liquid-core
 ## Usage
 
 ```typescript
-import { createLiquidEngine, tokenizeTopLevelSafe, isKnownLiquidFilter } from 'liquid-core';
+import {
+  createLiquidEngine,
+  tokenizeTopLevelSafe,
+  isKnownLiquidFilter,
+} from 'liquid-core';
 
 const engine = createLiquidEngine();
-const tokens = tokenizeTopLevelSafe('{% assign x = 1 %}{{ x | plus: 2 }}', engine);
+const tokens = tokenizeTopLevelSafe(
+  '{% assign x = 1 %}{{ x | plus: 2 }}',
+  engine,
+);
 console.log(isKnownLiquidFilter('plus')); // true
 ```

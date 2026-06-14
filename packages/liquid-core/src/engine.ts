@@ -1,10 +1,20 @@
-import liquidjs from 'liquidjs';
+import { Liquid } from 'liquidjs';
 
-const { Liquid } = liquidjs;
+export type {
+  Liquid,
+  Token,
+  TagToken,
+  Template as TagTemplate,
+  Value as ValueTemplate,
+} from 'liquidjs';
 
-export type { Liquid, Token, TagToken, TagTemplate, ValueTemplate } from 'liquidjs';
+export {
+  parseAssign,
+  checkValidJSON,
+  checkAtleastOneDynamicTableAssignPresent,
+} from 'liquidjs';
 
 /** Creates the shared LiquidJS engine used across LSP features. */
-export function createLiquidEngine(): InstanceType<typeof Liquid> {
+export function createLiquidEngine(): Liquid {
   return new Liquid();
 }

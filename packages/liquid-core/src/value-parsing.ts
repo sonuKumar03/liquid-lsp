@@ -1,4 +1,4 @@
-import type { Liquid, ValueTemplate } from 'liquidjs';
+import type { Liquid, ValueTemplate } from './engine.js';
 
 /**
  * Parses an output expression (without `{{ }}`) into base value + filter chain.

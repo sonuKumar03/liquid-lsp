@@ -1,4 +1,14 @@
-export { createLiquidEngine, type Liquid, type Token, type TagToken, type TagTemplate, type ValueTemplate } from './engine.js';
+export {
+  createLiquidEngine,
+  type Liquid,
+  type Token,
+  type TagToken,
+  type TagTemplate,
+  type ValueTemplate,
+  parseAssign,
+  checkValidJSON,
+  checkAtleastOneDynamicTableAssignPresent,
+} from './engine.js';
 
 export { lexical } from './lexical.js';
 

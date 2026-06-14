@@ -1,8 +1,5 @@
 import { closest, distance } from 'fastest-levenshtein';
-import {
-  LIQUID_FILTER_NAMES,
-  isKnownLiquidFilter,
-} from './metadata.js';
+import { LIQUID_FILTER_NAMES, isKnownLiquidFilter } from './metadata.js';
 import {
   CONDITIONAL_ASSIGNMENT_MESSAGE,
   EXPECTED_FILTER_NAME_MESSAGE,

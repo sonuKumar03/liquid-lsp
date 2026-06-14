@@ -1,18 +1,21 @@
-import { lexical } from './lexical.js';
+import { Tokenizer } from 'liquidjs';
+
+// Fallback regex pattern for backward-compatible exports
+const identifierRegex = /[_$\w-]+/;
 
 /** Matches assign-style tag args: `varName = expression`. */
 export const ASSIGN_KEY_VALUE_PATTERN = new RegExp(
-  `(${lexical.identifier.source})\\s*=(.*)`,
+  `(${identifierRegex.source})\\s*=(.*)`,
 );
 
 /** First identifier in capture tag args. */
 export const CAPTURE_VARIABLE_PATTERN = new RegExp(
-  `^\\s*(${lexical.identifier.source})`,
+  `^\\s*(${identifierRegex.source})`,
 );
 
 /** Loop variable in for tag args: `item in collection`. */
 export const FOR_LOOP_VARIABLE_PATTERN = new RegExp(
-  `^\\s*(${lexical.identifier.source})\\s+in\\s+`,
+  `^\\s*(${identifierRegex.source})\\s+in\\s+`,
 );
 
 export interface AssignKeyValue {
@@ -21,22 +24,38 @@ export interface AssignKeyValue {
 }
 
 export function parseAssignKeyValue(args: string): AssignKeyValue | null {
-  const match = args.match(ASSIGN_KEY_VALUE_PATTERN);
-  if (!match?.[1]) {
+  const tokenizer = new Tokenizer(args);
+  const key = tokenizer.readIdentifier().getText();
+  if (!key) {
     return null;
   }
+  tokenizer.skipBlank();
+  if (tokenizer.peek() !== '=') {
+    return null;
+  }
+  tokenizer.advance();
   return {
-    key: match[1],
-    value: (match[2] ?? '').trim(),
+    key,
+    value: tokenizer.remaining().trim(),
   };
 }
 
 export function parseCaptureVariable(args: string): string | null {
-  const match = args.match(CAPTURE_VARIABLE_PATTERN);
-  return match?.[1] ?? null;
+  const tokenizer = new Tokenizer(args);
+  const key = tokenizer.readIdentifier().getText();
+  return key || null;
 }
 
 export function parseForLoopVariable(args: string): string | null {
-  const match = args.match(FOR_LOOP_VARIABLE_PATTERN);
-  return match?.[1] ?? null;
+  const tokenizer = new Tokenizer(args);
+  const key = tokenizer.readIdentifier().getText();
+  if (!key) {
+    return null;
+  }
+  tokenizer.skipBlank();
+  const inWord = tokenizer.readIdentifier().getText();
+  if (inWord !== 'in') {
+    return null;
+  }
+  return key;
 }

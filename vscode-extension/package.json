@@ -2,10 +2,10 @@
   "name": "liquid-lsp-vscode-extension",
   "version": "1.0.0",
   "publisher": "liquid",
-  "main": "dist/client.js",
+  "main": "dist/client.cjs",
   "type": "module",
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.120.0"
   },
   "activationEvents": [
     "onLanguage:liquid"
@@ -91,7 +91,9 @@
     }
   },
   "scripts": {
-    "build": "tsc && node build.js"
+    "build": "tsc && node build.js",
+    "package": "npm run build && npm run package:vsix",
+    "package:vsix": "vsce package --no-dependencies --out dist/liquid-lsp.vsix"
   },
   "dependencies": {
     "vscode-languageclient": "^10.0.0"
@@ -99,6 +101,8 @@
   "devDependencies": {
     "@types/node": "^25.9.3",
     "@types/vscode": "^1.120.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.27.3",
     "typescript": "^6.0.3"
   }
 }

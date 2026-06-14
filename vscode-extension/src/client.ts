@@ -23,7 +23,7 @@ export function activate(context: ExtensionContext) {
 
   // Path to the compiled server file
   const serverModule = context.asAbsolutePath(
-    path.join('dist', 'server', 'main.js'),
+    path.join('dist', 'server', 'main.cjs'),
   );
 
   let serverOptions: ServerOptions;

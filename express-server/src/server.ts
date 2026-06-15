@@ -4,6 +4,9 @@ import { WebSocketServer } from 'ws';
 import { spawn } from 'child_process';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 
 const DEFAULT_EXPRESS_GATEWAY_PORT = 3000;
 
@@ -85,12 +88,7 @@ app.get('/', (req, res) => {
 
 // Serve local SpotDraft LiquidJS browser build
 app.get('/liquid.js', (req, res) => {
-  res.sendFile(
-    path.resolve(
-      __dirname,
-      '../../node_modules/liquidjs/dist/liquid.browser.umd.js',
-    ),
-  );
+  res.sendFile(require.resolve('liquidjs/dist/liquid.browser.umd.js'));
 });
 
 // Serve bundled browser LSP worker (Monaco Web Worker transport)

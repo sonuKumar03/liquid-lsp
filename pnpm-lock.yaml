@@ -36,6 +36,9 @@ importers:
       express:
         specifier: ^4.21.2
         version: 4.22.2
+      liquidjs:
+        specifier: github:sonuKumar03/liquidjs
+        version: https://codeload.github.com/sonuKumar03/liquidjs/tar.gz/5054036ee77f9c097d0c399b7efac99c0c97c194
       ws:
         specifier: ^8.18.0
         version: 8.21.0

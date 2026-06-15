@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "express": "^4.21.2",
+    "liquidjs": "github:sonuKumar03/liquidjs",
     "ws": "^8.18.0"
   },
   "devDependencies": {

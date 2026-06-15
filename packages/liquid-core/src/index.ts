@@ -28,6 +28,15 @@ export {
   type AssignKeyValue,
 } from './tag-parsing.js';
 
+export {
+  parseAssignKeyValueWithOffsets,
+  parseCaptureVariableWithOffsets,
+  parseForLoopVariableWithOffsets,
+  type ParsedAssignWithOffsets,
+  type ParsedCaptureWithOffsets,
+  type ParsedForWithOffsets,
+} from './chevrotain-parser.js';
+
 export { parseOutputValue } from './value-parsing.js';
 
 export {

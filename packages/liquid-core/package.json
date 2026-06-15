@@ -19,6 +19,7 @@
     "test:watch": "vitest src"
   },
   "dependencies": {
+    "chevrotain": "^12.0.0",
     "fastest-levenshtein": "^1.0.16",
     "liquidjs": "github:sonuKumar03/liquidjs"
   },

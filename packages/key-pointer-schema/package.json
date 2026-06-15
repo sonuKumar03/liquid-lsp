@@ -14,7 +14,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc && cp src/key-pointer-types.registry.json dist/",
+    "build": "tsc -p tsconfig.build.json && cp src/key-pointer-types.registry.json dist/",
     "test": "vitest run src",
     "test:watch": "vitest src"
   },

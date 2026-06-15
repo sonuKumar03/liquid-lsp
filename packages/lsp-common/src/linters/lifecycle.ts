@@ -109,6 +109,44 @@ export function collectLifecycleDiagnostics(
                   const types = assignedBranches.map((b) => b.info!.type);
                   const lines = assignedBranches.map((b) => b.info!.line);
                   const ranges = assignedBranches.map((b) => b.info!.range);
+
+                  const formatType = (t: LiquidType): string => {
+                    if (typeof t === 'string') return t;
+                    if (t && typeof t === 'object') {
+                      if (t.kind === 'primitive') return t.type + (t.optional ? '?' : '');
+                      if (t.kind === 'dropdown') return 'dropdown';
+                      if (t.kind === 'composite') return 'composite';
+                    }
+                    return 'unknown';
+                  };
+
+                  const typeStrings = types.map(formatType);
+
+                  for (let j = 0; j < assignedBranches.length; j++) {
+                    const info = assignedBranches[j]!.info!;
+                    const currentTypeStr = typeStrings[j] || 'unknown';
+                    const otherTypes = typeStrings.filter((_, idx) => idx !== j);
+                    const uniqueOtherTypes = Array.from(new Set(otherTypes));
+                    const otherBranchesStr = uniqueOtherTypes.join(' and ');
+
+                    diagnostics.push({
+                      severity: DiagnosticSeverity.Warning,
+                      range: info.range,
+                      message: `'${varName}' is assigned as ${currentTypeStr} in this branch, but as ${otherBranchesStr} in another. This may cause unexpected results.`,
+                      code: DIAGNOSTIC_CODES.BRANCH_TYPE_MISMATCH,
+                      source: 'liquid-lsp-linter',
+                      data: {
+                        varName,
+                        mismatchLine: info.line,
+                        mismatchRange: info.range,
+                        expected: typeStrings[0],
+                        actual: currentTypeStr,
+                        ranges,
+                        types: typeStrings,
+                      },
+                    });
+                  }
+
                   activeVars.set(varName, {
                     declRange: first.range,
                     line: first.line,

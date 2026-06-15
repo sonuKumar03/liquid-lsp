@@ -280,3 +280,27 @@ test('collectLifecycleDiagnostics filter argument validation (Feature 6)', () =>
 
   expect(diagnostics.some((d: any) => d.code === 'liquid.linter.filter_argument_type_mismatch')).toBe(true);
 });
+
+test('collectLifecycleDiagnostics branch consistency without filter usage', () => {
+  const engine = createLiquidEngine();
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `{% assign count = 10 %}
+     {% if count == null %}
+       {% assign is_fixed_term = "true" %}
+     {% else %}
+       {% assign is_fixed_term = false %}
+     {% endif %}
+     {{ is_fixed_term }}`,
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine);
+
+  const branchMismatches = diagnostics.filter((d: any) => d.code === 'liquid.linter.branch_type_mismatch');
+  expect(branchMismatches.length).toBe(2);
+  expect(branchMismatches[0].message).toContain("assigned as string in this branch");
+  expect(branchMismatches[1].message).toContain("assigned as boolean in this branch");
+});

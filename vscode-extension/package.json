@@ -2,10 +2,14 @@
   "name": "liquid-lsp-vscode-extension",
   "version": "1.0.0",
   "publisher": "liquid",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sonuKumar03/liquid-lsp.git"
+  },
   "main": "dist/client.cjs",
   "type": "module",
   "engines": {
-    "vscode": "^1.120.0"
+    "vscode": "^1.90.0"
   },
   "activationEvents": [
     "onLanguage:liquid"
@@ -100,7 +104,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
-    "@types/vscode": "^1.120.0",
+    "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.27.3",
     "typescript": "^6.0.3"

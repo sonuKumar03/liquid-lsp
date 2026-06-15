@@ -2,29 +2,20 @@
   "name": "liquid-lsp-monorepo",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "packages/key-pointer-schema",
-    "packages/liquid-core",
-    "packages/lsp-common",
-    "packages/lsp-node",
-    "packages/lsp-browser",
-    "lsp-engine",
-    "vscode-extension",
-    "express-server"
-  ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "package:extension": "npm run build && npm run package:vsix --workspace vscode-extension",
-    "build:playground": "npm run build --prefix playground",
-    "start:playground": "npm run start --prefix playground",
-    "test": "npm run test --workspaces --if-present",
-    "test:watch": "npm run test:watch --workspaces --if-present",
+    "build": "pnpm -r build",
+    "package:extension": "pnpm build && pnpm --filter liquid-lsp-vscode-extension package:vsix",
+    "build:playground": "pnpm build --prefix playground",
+    "start:playground": "pnpm start --prefix playground",
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r test:watch",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.5.0",
+    "pnpm": "^10.0.0",
     "prettier": "^3.8.4",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0"

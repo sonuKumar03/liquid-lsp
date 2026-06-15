@@ -5,11 +5,11 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
-    "test": "npm run test --workspace=lsp-common",
-    "test:watch": "npm run test:watch --workspace=lsp-common"
+    "test": "pnpm --filter lsp-common test",
+    "test:watch": "pnpm --filter lsp-common test:watch"
   },
   "dependencies": {
-    "lsp-node": "1.0.0"
+    "lsp-node": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

@@ -1,0 +1,11 @@
+packages:
+  - 'packages/*'
+  - 'lsp-engine'
+  - 'vscode-extension'
+  - 'express-server'
+
+allowBuilds:
+  '@vscode/vsce-sign': true
+  esbuild: true
+  keytar: true
+  'liquidjs@https://codeload.github.com/sonuKumar03/liquidjs/tar.gz/5054036ee77f9c097d0c399b7efac99c0c97c194': true

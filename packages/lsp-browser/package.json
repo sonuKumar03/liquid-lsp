@@ -24,9 +24,11 @@
     "test": "vitest run src"
   },
   "dependencies": {
-    "lsp-common": "1.0.0",
+    "lsp-common": "workspace:*",
     "liquidjs": "github:sonuKumar03/liquidjs",
-    "vscode-languageserver": "^10.0.0"
+    "vscode-languageserver": "^10.0.0",
+    "vscode-languageserver-protocol": "^3.18.0",
+    "vscode-jsonrpc": "^9.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

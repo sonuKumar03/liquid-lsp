@@ -19,8 +19,8 @@
     "test:watch": "vitest src"
   },
   "dependencies": {
-    "key-pointer-schema": "1.0.0",
-    "liquid-core": "1.0.0",
+    "key-pointer-schema": "workspace:*",
+    "liquid-core": "workspace:*",
     "vscode-languageserver": "^10.0.0",
     "vscode-languageserver-textdocument": "^1.0.12"
   },

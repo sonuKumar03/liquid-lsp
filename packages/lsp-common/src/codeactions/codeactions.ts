@@ -89,7 +89,7 @@ export function handleCodeAction(
         );
 
         if (mismatchedToken && mismatchedToken.constructor?.name === 'TagTokenClass') {
-          const tagToken = mismatchedToken as any;
+          const tagToken = mismatchedToken as TagTokenClass;
           const tokenText = tagToken.getText();
           const argsOffset = tokenText.indexOf(tagToken.args);
           const equalsIndex = tagToken.args.indexOf('=');

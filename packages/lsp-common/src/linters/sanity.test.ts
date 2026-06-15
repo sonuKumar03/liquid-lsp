@@ -1,10 +1,12 @@
 import { test, expect } from 'vitest';
 import { createLiquidEngine } from 'liquid-core';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import type { Diagnostic } from 'vscode-languageserver';
 import { collectLifecycleDiagnostics } from './lifecycle.js';
 import { handleRename } from '../rename/rename.js';
 import { handleSemanticTokens } from '../semanticTokens/semanticTokens.js';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
+import { DocumentManager } from '../server/document-manager.js';
 
 test('Sanity Check: Multi-Branch Type Consistency (String vs Boolean)', () => {
   const engine = createLiquidEngine();
@@ -21,19 +23,19 @@ test('Sanity Check: Multi-Branch Type Consistency (String vs Boolean)', () => {
 {{ is_fixed_term }}`,
   );
 
-  const diagnostics: any[] = [];
+  const diagnostics: Diagnostic[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
   // Assert branch mismatch warnings are reported on the assignments
-  const branchMismatches = diagnostics.filter((d: any) => d.code === DIAGNOSTIC_CODES.BRANCH_TYPE_MISMATCH);
+  const branchMismatches = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.BRANCH_TYPE_MISMATCH);
   expect(branchMismatches.length).toBe(2);
   
   // Verify plain language message content
-  expect(branchMismatches[0].message).toContain("'is_fixed_term' is assigned as string in this branch");
-  expect(branchMismatches[0].message).toContain("as boolean in another");
+  expect(branchMismatches[0]!.message).toContain("'is_fixed_term' is assigned as string in this branch");
+  expect(branchMismatches[0]!.message).toContain("as boolean in another");
   
-  expect(branchMismatches[1].message).toContain("'is_fixed_term' is assigned as boolean in this branch");
-  expect(branchMismatches[1].message).toContain("as string in another");
+  expect(branchMismatches[1]!.message).toContain("'is_fixed_term' is assigned as boolean in this branch");
+  expect(branchMismatches[1]!.message).toContain("as string in another");
 });
 
 test('Sanity Check: Nil Propagation & Output Default Warnings', () => {
@@ -48,13 +50,13 @@ test('Sanity Check: Nil Propagation & Output Default Warnings', () => {
     `{{ sd_payment }}`
   );
 
-  const diagnostics: any[] = [];
+  const diagnostics: Diagnostic[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine, schema);
 
   // Assert warning on output block with optional/nil variable
-  const nilPropDiags = diagnostics.filter((d: any) => d.code === DIAGNOSTIC_CODES.NIL_PROPAGATION);
+  const nilPropDiags = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.NIL_PROPAGATION);
   expect(nilPropDiags.length).toBe(1);
-  expect(nilPropDiags[0].message).toContain("is optional and might be blank");
+  expect(nilPropDiags[0]!.message).toContain("is optional and might be blank");
 });
 
 test('Sanity Check: Implicit Coercion Warnings', () => {
@@ -67,12 +69,12 @@ test('Sanity Check: Implicit Coercion Warnings', () => {
      {{ name | plus: 10 }}`
   );
 
-  const diagnostics: any[] = [];
+  const diagnostics: Diagnostic[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  const coercionDiags = diagnostics.filter((d: any) => d.code === DIAGNOSTIC_CODES.TYPE_MISMATCH);
+  const coercionDiags = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.NON_NUMERIC_COERCION);
   expect(coercionDiags.length).toBe(1);
-  expect(coercionDiags[0].message).toContain("only works on numbers. The value is text, not a number");
+  expect(coercionDiags[0]!.message).toContain("only works on numbers. The value is text, not a number");
 });
 
 test('Sanity Check: Filter Argument Validation', () => {
@@ -84,12 +86,12 @@ test('Sanity Check: Filter Argument Validation', () => {
     `{{ 100 | divided_by: "two" }}`
   );
 
-  const diagnostics: any[] = [];
+  const diagnostics: Diagnostic[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  const argDiags = diagnostics.filter((d: any) => d.code === DIAGNOSTIC_CODES.FILTER_ARGUMENT_TYPE_MISMATCH);
+  const argDiags = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.FILTER_ARGUMENT_TYPE_MISMATCH);
   expect(argDiags.length).toBe(1);
-  expect(argDiags[0].message).toContain("expects a number argument");
+  expect(argDiags[0]!.message).toContain("expects a number argument");
 });
 
 test('Sanity Check: Rename Guards (Schema Collision)', () => {
@@ -108,7 +110,7 @@ test('Sanity Check: Rename Guards (Schema Collision)', () => {
       get: (uri: string) => documentsMock.get(uri),
     },
     getTokens: () => [],
-  } as any;
+  } as unknown as DocumentManager;
 
   // Attempt to rename schema variable should throw error per guards
   expect(() =>
@@ -139,7 +141,7 @@ test('Sanity Check: Semantic Tokens Classification', () => {
     documents: {
       get: (uri: string) => documentsMock.get(uri),
     },
-  } as any;
+  } as unknown as DocumentManager;
 
   const tokens = handleSemanticTokens(documentManagerMock, { textDocument: { uri: doc.uri } });
   expect(tokens).toBeDefined();

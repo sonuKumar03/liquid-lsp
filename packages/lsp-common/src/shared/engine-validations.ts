@@ -62,7 +62,7 @@ function findTagTokenOnLine(
   tokens: TopLevelToken[],
   line: number,
   tagNames?: Set<string>,
-): InstanceType<typeof TagTokenClass> | undefined {
+): TagTokenClass | undefined {
   for (const token of tokens) {
     if (!(token instanceof TagTokenClass)) {
       continue;
@@ -80,7 +80,7 @@ function findTagTokenOnLine(
 
 function rangeForIdentifierInTagToken(
   doc: TextDocument,
-  token: InstanceType<typeof TagTokenClass>,
+  token: TagTokenClass,
   identifier: string,
 ): {
   start: { line: number; character: number };
@@ -100,7 +100,7 @@ function rangeForIdentifierInTagToken(
 
 function rangeForTagToken(
   doc: TextDocument,
-  token: InstanceType<typeof TagTokenClass>,
+  token: TagTokenClass,
 ): {
   start: { line: number; character: number };
   end: { line: number; character: number };
@@ -146,7 +146,7 @@ function pushUniqueDiagnostic(
 function findTagTokenForTemplate(
   tokens: TopLevelToken[],
   template: TagTemplate,
-): InstanceType<typeof TagTokenClass> | undefined {
+): TagTokenClass | undefined {
   const tagToken = template.token;
   if (tagToken instanceof TagTokenClass) {
     return tagToken;

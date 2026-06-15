@@ -29,12 +29,26 @@ import { supportsKeyPointerComputation } from 'key-pointer-schema';
 import { findVariableDeclarations } from '../shared/variable-declarations.js';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 
+type BranchMismatchType = {
+  kind: 'branch_mismatch';
+  types: LiquidType[];
+  lines: number[];
+  ranges: Range[];
+};
+
+type LinterVariableType = LiquidType | BranchMismatchType;
+
 type ActiveVar = {
   declRange: Range;
   line: number;
   hasBeenRead: boolean;
-  type: LiquidType;
+  type: LinterVariableType;
 };
+
+interface BlockStackEntry {
+  branches: Array<Map<string, { type: LinterVariableType; line: number; range: Range }>>;
+  currentBranchIndex: number;
+}
 
 export function collectLifecycleDiagnostics(
   textDocument: TextDocument,
@@ -56,10 +70,7 @@ export function collectLifecycleDiagnostics(
     const activeVars = new Map<string, ActiveVar>();
     populateSchemaVars(activeVars, globalSchema);
 
-    const blockStack: Array<{
-      branches: Array<Map<string, { type: LiquidType; line: number; range: Range }>>;
-      currentBranchIndex: number;
-    }> = [];
+    const blockStack: BlockStackEntry[] = [];
 
     for (const token of tokens) {
       const line = textDocument.positionAt(token.begin).line;
@@ -106,13 +117,20 @@ export function collectLifecycleDiagnostics(
                 console.log("VARNAME:", varName, "mismatch:", mismatch);
 
                 if (mismatch) {
-                  const types = assignedBranches.map((b) => b.info!.type);
+                  const types = assignedBranches.map((b) => {
+                    const t = b.info!.type;
+                    if (t && typeof t === 'object' && t.kind === 'branch_mismatch') {
+                      return t.types[0] || 'unknown';
+                    }
+                    return t;
+                  });
                   const lines = assignedBranches.map((b) => b.info!.line);
                   const ranges = assignedBranches.map((b) => b.info!.range);
 
-                  const formatType = (t: LiquidType): string => {
+                  const formatType = (t: LinterVariableType): string => {
                     if (typeof t === 'string') return t;
                     if (t && typeof t === 'object') {
+                      if (t.kind === 'branch_mismatch') return 'branch_mismatch';
                       if (t.kind === 'primitive') return t.type + (t.optional ? '?' : '');
                       if (t.kind === 'dropdown') return 'dropdown';
                       if (t.kind === 'composite') return 'composite';
@@ -156,7 +174,7 @@ export function collectLifecycleDiagnostics(
                       types,
                       lines,
                       ranges,
-                    } as unknown as LiquidType,
+                    },
                   });
                 } else {
                   const hasElse = block.branches.length > 1;
@@ -168,7 +186,7 @@ export function collectLifecycleDiagnostics(
                       } else {
                         optType = { kind: 'primitive', type: optType, optional: true };
                       }
-                    } else if (typeof optType === 'object') {
+                    } else if (typeof optType === 'object' && optType.kind !== 'branch_mismatch') {
                       optType = { ...optType, optional: true };
                     }
                     activeVars.set(varName, {
@@ -273,10 +291,7 @@ function collectTagDiagnostics(
   line: number,
   engine: Liquid,
   schemaVariables?: Map<string, VariableDeclaration>,
-  blockStack?: Array<{
-    branches: Array<Map<string, { type: LiquidType; line: number; range: Range }>>;
-    currentBranchIndex: number;
-  }>,
+  blockStack?: BlockStackEntry[],
 ): void {
   const tokenText = token.getText();
   const name = token.name;
@@ -392,7 +407,12 @@ function collectTagDiagnostics(
       if (collectionExpr) {
         const activeVarsTypes = new Map<string, LiquidType>();
         for (const [k, v] of activeVars.entries()) {
-          activeVarsTypes.set(k, v.type);
+          const t = v.type;
+          if (t && typeof t === 'object' && t.kind === 'branch_mismatch') {
+            activeVarsTypes.set(k, t.types[0] || 'unknown');
+          } else {
+            activeVarsTypes.set(k, t);
+          }
         }
         const resolved = resolveTypeForPath(collectionExpr, activeVarsTypes);
         if (
@@ -419,7 +439,7 @@ function createDecl(
   line: number,
   token: TagToken,
   offsetInToken: number,
-  type: LiquidType,
+  type: LinterVariableType,
   doc: TextDocument,
 ): ActiveVar {
   const absPos = doc.positionAt(token.begin + offsetInToken);
@@ -436,10 +456,7 @@ function createDecl(
 function isParallelBranchAssignment(
   activeVars: Map<string, ActiveVar>,
   varName: string,
-  blockStack?: Array<{
-    branches: Array<Map<string, { type: LiquidType; line: number; range: Range }>>;
-    currentBranchIndex: number;
-  }>,
+  blockStack?: BlockStackEntry[],
 ): boolean {
   if (!blockStack || blockStack.length === 0) return false;
   const prev = activeVars.get(varName);
@@ -470,10 +487,7 @@ function redefineIfNeeded(
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
   varName: string,
-  blockStack?: Array<{
-    branches: Array<Map<string, { type: LiquidType; line: number; range: Range }>>;
-    currentBranchIndex: number;
-  }>,
+  blockStack?: BlockStackEntry[],
 ): void {
   if (isParallelBranchAssignment(activeVars, varName, blockStack)) {
     return;
@@ -562,7 +576,7 @@ function processParseAssignExpression(
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
   engine: Liquid,
-): LiquidType {
+): LinterVariableType {
   const trimmedExpr = expr.trim();
   
   // Try raw JSON literal first
@@ -600,7 +614,7 @@ function processParseAssignExpression(
 
   if (!baseVar) return 'unknown';
 
-  let currentType: LiquidType = 'unknown';
+  let currentType: LinterVariableType = 'unknown';
   if (activeVars.has(baseVar)) {
     const v = activeVars.get(baseVar)!;
     v.hasBeenRead = true;
@@ -643,7 +657,7 @@ function processParseAssignExpression(
         (offset !== -1 ? offset + fieldNameRaw.length : token.getText().length),
     );
 
-    if (typeof currentType === 'object' && currentType.optional === true) {
+    if (typeof currentType === 'object' && currentType.kind !== 'branch_mismatch' && currentType.optional === true) {
       diagnostics.push({
         severity: DiagnosticSeverity.Warning,
         range: { start, end },
@@ -653,7 +667,7 @@ function processParseAssignExpression(
       });
     }
 
-    if (typeof currentType === 'object') {
+    if (typeof currentType === 'object' && currentType.kind !== 'branch_mismatch') {
       if (currentType.kind === 'composite') {
         const nextType = currentType.fields.get(fieldName);
         if (nextType) {
@@ -819,8 +833,11 @@ function validateFilterNameSyntax(
   }
 }
 
-function isOptionalType(type: LiquidType): boolean {
+function isOptionalType(type: LinterVariableType): boolean {
   if (type && typeof type === 'object') {
+    if (type.kind === 'branch_mismatch') {
+      return false;
+    }
     return type.optional === true;
   }
   return false;
@@ -856,9 +873,9 @@ function applyFilterTypeWarnings(
   doc: TextDocument,
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
-  currentType: LiquidType,
+  currentType: LinterVariableType,
   engine: Liquid,
-): LiquidType {
+): LinterVariableType {
   const parsed = parseOutputValue(engine, expr);
   if (!parsed) return currentType;
 
@@ -887,9 +904,8 @@ function applyFilterTypeWarnings(
           : tokenText.length)
     );
 
-    const isBranchMismatch = tempType && typeof tempType === 'object' && (tempType as any).kind === 'branch_mismatch';
-    if (isBranchMismatch) {
-      const bm = tempType as unknown as { types: LiquidType[]; lines: number[]; ranges: Range[] };
+    if (tempType && typeof tempType === 'object' && tempType.kind === 'branch_mismatch') {
+      const bm = tempType;
       for (let j = 0; j < bm.types.length; j++) {
         const t = bm.types[j]!;
         const l = bm.lines[j]!;
@@ -956,6 +972,7 @@ function applyFilterTypeWarnings(
             severity: DiagnosticSeverity.Warning,
             range: { start, end },
             message: `"${filterName}" only works on numbers. The value is text, not a number.`,
+            code: DIAGNOSTIC_CODES.NON_NUMERIC_COERCION,
             source: 'liquid-lsp-linter',
           });
         } else if (isOpt || isUnk) {
@@ -1042,7 +1059,7 @@ function applyFilterTypeWarnings(
     }
 
     if (filterName === 'default') {
-      if (typeof tempType === 'object') {
+      if (typeof tempType === 'object' && tempType.kind !== 'branch_mismatch') {
         tempType = { ...tempType, optional: false };
       }
     } else {
@@ -1053,7 +1070,7 @@ function applyFilterTypeWarnings(
           } else {
             tempType = { kind: 'primitive', type: tempType, optional: true };
           }
-        } else if (typeof tempType === 'object') {
+        } else if (typeof tempType === 'object' && tempType.kind !== 'branch_mismatch') {
           tempType = { ...tempType, optional: true };
         }
       }
@@ -1070,8 +1087,8 @@ function resolveBaseExpressionType(
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
   engine: Liquid,
-): LiquidType {
-  let currentType: LiquidType = 'unknown';
+): LinterVariableType {
+  let currentType: LinterVariableType = 'unknown';
   if (/^"[^"]*"|'[^']*'$/.test(basePart)) {
     currentType = 'string';
   } else if (/^(true|false)$/.test(basePart)) {
@@ -1228,7 +1245,7 @@ function processExpression(
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
   engine: Liquid,
-): LiquidType {
+): LinterVariableType {
   validateFilterNameSyntax(expr, token, doc, diagnostics);
   markVariablesReadFromExpression(expr, activeVars, engine);
 

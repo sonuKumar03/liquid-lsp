@@ -43,17 +43,6 @@ export class DocumentManager {
     return tokens;
   }
 
-  /** Registers a document for handlers/tests before LSP open notifications arrive. */
-  registerDocument(document: TextDocument): void {
-    const syncedDocuments = (
-      this.documents as unknown as {
-        _syncedDocuments: Map<string, TextDocument>;
-      }
-    )._syncedDocuments;
-    syncedDocuments.set(document.uri, document);
-    this.tokenCache.delete(document.uri);
-  }
-
   listen(): void {
     this.documents.listen(this.connection);
   }

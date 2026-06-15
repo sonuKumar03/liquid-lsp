@@ -116,6 +116,9 @@ export function collectLifecycleDiagnostics(
                 }
                 console.log("VARNAME:", varName, "mismatch:", mismatch);
 
+                const existing = activeVars.get(varName);
+                const hasBeenRead = existing ? existing.hasBeenRead : false;
+
                 if (mismatch) {
                   const types = assignedBranches.map((b) => {
                     const t = b.info!.type;
@@ -168,7 +171,7 @@ export function collectLifecycleDiagnostics(
                   activeVars.set(varName, {
                     declRange: first.range,
                     line: first.line,
-                    hasBeenRead: false,
+                    hasBeenRead,
                     type: {
                       kind: 'branch_mismatch',
                       types,
@@ -192,14 +195,14 @@ export function collectLifecycleDiagnostics(
                     activeVars.set(varName, {
                       declRange: first.range,
                       line: first.line,
-                      hasBeenRead: false,
+                      hasBeenRead,
                       type: optType,
                     });
                   } else {
                     activeVars.set(varName, {
                       declRange: first.range,
                       line: first.line,
-                      hasBeenRead: false,
+                      hasBeenRead,
                       type: first.type,
                     });
                   }
@@ -1309,7 +1312,26 @@ function checkUnusedVariables(
     const declCount =
       assignMatches.length + captureMatches.length + forMatches.length;
 
-    if (totalCount === declCount) {
+    // Count self-references on the RHS of assignments to this variable
+    const assignTags =
+      cleanText.match(
+        new RegExp(
+          `\\{%\\s*(assign|assignVar|parseAssign)\\s+${name}\\s*=[^%]*%\\}`,
+          'g',
+        ),
+      ) || [];
+    let selfReadCount = 0;
+    for (const tag of assignTags) {
+      const eqIdx = tag.indexOf('=');
+      if (eqIdx !== -1) {
+        const rhs = tag.slice(eqIdx + 1);
+        const rhsOccurrences =
+          rhs.match(new RegExp(`\\b${name}\\b`, 'g')) || [];
+        selfReadCount += rhsOccurrences.length;
+      }
+    }
+
+    if (totalCount === declCount + selfReadCount) {
       diagnostics.push({
         severity: DiagnosticSeverity.Warning,
         range: decl.range,

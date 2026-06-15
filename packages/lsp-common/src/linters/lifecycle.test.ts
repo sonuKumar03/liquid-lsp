@@ -304,3 +304,48 @@ test('collectLifecycleDiagnostics branch consistency without filter usage', () =
   expect(branchMismatches[0].message).toContain("assigned as string in this branch");
   expect(branchMismatches[1].message).toContain("assigned as boolean in this branch");
 });
+
+test('collectLifecycleDiagnostics does not report overwritten warning for sequential blocks if read inside first block (Bug A)', () => {
+  const engine = createLiquidEngine();
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `{% if true %}
+      {% assign current_date = "now" %}
+      {% if true %}
+        {{ current_date }}
+      {% endif %}
+     {% endif %}
+     {% if true %}
+      {% assign current_date = "now" %}
+     {% endif %}`,
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine);
+
+  const overwritingDiags = diagnostics.filter((d: any) =>
+    d.message.includes('never used it before overwriting'),
+  );
+  expect(overwritingDiags.length).toBe(0);
+});
+
+test('collectLifecycleDiagnostics reports unused variable when self-referenced (Bug B)', () => {
+  const engine = createLiquidEngine();
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `{% assign x = 10 %}
+     {% assign x = x | plus: 1 %}`,
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine);
+
+  const unusedDiags = diagnostics.filter((d: any) =>
+    d.message.includes('never read it anywhere'),
+  );
+  expect(unusedDiags.length).toBe(2);
+});

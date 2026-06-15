@@ -173,7 +173,7 @@ function reportUseBeforeAssign(
   const message = `You used "${varName}" before defining it. Move the {% assign ${varName} = ... %} line above this.`;
 
   pushUniqueDiagnostic(diagnostics, {
-    severity: DiagnosticSeverity.Error,
+    severity: DiagnosticSeverity.Warning,
     range,
     message,
     code: DIAGNOSTIC_CODES.USE_BEFORE_ASSIGN,

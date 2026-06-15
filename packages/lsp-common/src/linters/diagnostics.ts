@@ -153,6 +153,10 @@ function collectSyntaxDiagnostics(
         continue;
       }
 
+      if (errMessage.includes('invalid value expression') && errMessage.includes('=')) {
+        errMessage = 'Invalid assignment expression. Did you mean "=" instead of "=="?';
+      }
+
       // Extract exact error position from error message if available (e.g. ", line:11, col:32")
       const lineColMatch = errMessage.match(/,\s*line:(\d+),\s*col:(\d+)/);
       if (lineColMatch) {
@@ -284,7 +288,10 @@ function emitMainCompilerDiagnostic(
   );
   if (isDuplicate) return;
 
-  const message = typeof err.message === 'string' ? err.message : '';
+  let message = typeof err.message === 'string' ? err.message : '';
+  if (message.includes('invalid value expression') && message.includes('=')) {
+    message = 'Invalid assignment expression. Did you mean "=" instead of "=="?';
+  }
   const notClosedMatch = message.match(
     /^(tag|output)\s+(.+?)\s+not closed(?:,|$)/,
   );

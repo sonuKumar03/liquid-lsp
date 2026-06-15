@@ -550,6 +550,9 @@
           <i class="fa-solid fa-moon" id="theme-icon"></i>
           <span id="theme-text">Dark Mode</span>
         </button>
+        <button class="btn" id="btn-wrap-toggle">
+          <i class="fa-solid fa-text-width"></i> Toggle Wrap
+        </button>
         <button class="btn btn-primary" id="btn-format">
           <i class="fa-solid fa-wand-magic-sparkles"></i> Format Template
         </button>
@@ -1255,6 +1258,14 @@
         // Handle manual format button click
         document.getElementById('btn-format').addEventListener('click', () => {
           editor.getAction('editor.action.formatDocument').run();
+        });
+
+        // Handle Word Wrap toggle click
+        document.getElementById('btn-wrap-toggle').addEventListener('click', () => {
+          const currentWrap = editor.getOption(monaco.editor.EditorOption.wordWrap);
+          editor.updateOptions({
+            wordWrap: currentWrap === 'on' ? 'off' : 'on'
+          });
         });
 
         // Theme toggling event listener

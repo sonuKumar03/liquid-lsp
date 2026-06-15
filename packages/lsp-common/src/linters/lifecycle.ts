@@ -13,7 +13,7 @@ import {
   parseForLoopVariable,
   parseOutputValue,
 } from 'liquid-core';
-import { PropertyAccessToken } from 'liquidjs';
+import { PropertyAccessToken, Tokenizer } from 'liquidjs';
 import {
   MATH_FILTERS,
   STRING_FILTERS,
@@ -574,6 +574,7 @@ function resolveBaseExpressionType(
   doc: TextDocument,
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
+  engine: Liquid,
 ): LiquidType {
   let currentType: LiquidType = 'unknown';
   if (/^""|''$/.test(basePart)) {
@@ -590,13 +591,49 @@ function resolveBaseExpressionType(
       currentType = v.type;
     }
   } else if (basePart.includes('.')) {
-    currentType = processParseAssignExpression(
-      basePart,
-      token,
-      doc,
-      diagnostics,
-      activeVars,
-    );
+    let isSimpleProp = false;
+    try {
+      const tokenizer = new Tokenizer(basePart, engine.options);
+      const val = tokenizer.readValue();
+      if (val instanceof PropertyAccessToken) {
+        tokenizer.skipBlank();
+        if (tokenizer.p === tokenizer.N) {
+          isSimpleProp = true;
+        }
+      }
+    } catch {
+      // Ignore
+    }
+
+    if (isSimpleProp) {
+      currentType = processParseAssignExpression(
+        basePart,
+        token,
+        doc,
+        diagnostics,
+        activeVars,
+      );
+    } else {
+      const words = basePart.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
+      const keywords = new Set([
+        'true',
+        'false',
+        'nil',
+        'null',
+        'and',
+        'or',
+        'contains',
+        'in',
+      ]);
+      for (const word of words) {
+        if (!keywords.has(word) && activeVars.has(word)) {
+          activeVars.get(word)!.hasBeenRead = true;
+        }
+      }
+      if (/[=!<>+]/.test(basePart)) {
+        currentType = 'boolean';
+      }
+    }
   } else {
     const words = basePart.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
     const keywords = new Set([
@@ -709,6 +746,7 @@ function processExpression(
     doc,
     diagnostics,
     activeVars,
+    engine,
   );
 
   return applyFilterTypeWarnings(

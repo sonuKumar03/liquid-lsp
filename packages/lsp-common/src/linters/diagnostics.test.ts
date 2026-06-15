@@ -696,3 +696,55 @@ test('Liquid filter name syntax diagnostics', () =>
       }),
     );
   }));
+
+test('Liquid diagnostics regression test for complex conditional and assignVar/parseAssign block', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{% if sd_effective_date and sd_term_length and sd_term_length.value and sd_term_length.type %} {% parseAssign one_day = \'{"value": 1, "type": "DAYS", "days": 1}\' %} {% assign temp_expiration = sd_effective_date | plus: sd_term_length %} {% assign sd_expiration_date = temp_expiration | minus: one_day %} {% else %} {% assign sd_expiration_date = nil %} {% endif %}',
+              },
+            },
+          }),
+        );
+        step = 1;
+      } else if (
+        step === 1 &&
+        res.method === 'textDocument/publishDiagnostics'
+      ) {
+        const errors = res.params.diagnostics.filter((d: any) => d.severity === 1);
+        expect(errors.length).toBe(0);
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { capabilities: {} },
+      }),
+    );
+  }));

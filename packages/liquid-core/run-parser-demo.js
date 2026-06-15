@@ -1,3 +1,4 @@
+/* global console */
 import { createLiquidEngine, tokenizeTopLevel } from './dist/index.js';
 
 const code = `{% if sd_effective_date and sd_term_length and sd_term_length.value and sd_term_length.type %} {% parseAssign one_day = '{"value": 1, "type": "DAYS", "days": 1}' %} {% assign temp_expiration = sd_effective_date | plus: sd_term_length %} {% assign sd_expiration_date = temp_expiration | minus: one_day %} {% else %} {% assign sd_expiration_date = nil %} {% endif %} {% if sd_effective_date %} {% assign parse_sd_effective_date = sd_effective_date | date: "%Y-%m-%d" %} {% assign current_date = "now" | date: "%Y-%m-%d" %} {% if parse_sd_effective_date < current_date %} {% assign sd_dummy = true %} {% endif %} {% if parse_sd_effective_date >= current_date %} {% assign sd_dummy = false %} {% endif %} {% endif %} {% if sd_date_of_request %} {% assign check_start = sd_date_of_request | date: "%Y-%m-%d" %} {% assign current_date = "now" | date: "%Y-%m-%d" %} {% if check_start <= current_date %} {% assign sd_date_of_request = current_date %} {% endif %} {% endif %}`;
@@ -31,7 +32,7 @@ try {
     }
   }
 
-  templates.forEach((tpl, i) => {
+  templates.forEach((tpl) => {
     printTemplate(tpl);
   });
 } catch (err) {

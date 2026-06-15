@@ -10,6 +10,7 @@ import {
   NumberToken,
   QuotedToken,
   PropertyAccessToken,
+  evalQuotedToken,
 } from 'liquidjs';
 import { resolveTypeForPath } from '../hovers/hovers.js';
 import type { LiquidType } from '../shared/schema.js';
@@ -113,12 +114,114 @@ function getExpressionText(
   return '';
 }
 
+export function unquoteString(str: string): string {
+  const quote = str[0];
+  if (quote !== "'" && quote !== '"') return str;
+  let result = '';
+  for (let i = 1; i < str.length - 1; i++) {
+    const char = str[i];
+    if (char === '\\') {
+      const nextChar = str[i + 1];
+      if (
+        nextChar === quote ||
+        nextChar === '\\' ||
+        nextChar === '/' ||
+        nextChar === 'b' ||
+        nextChar === 'f' ||
+        nextChar === 'n' ||
+        nextChar === 'r' ||
+        nextChar === 't'
+      ) {
+        if (nextChar === quote) result += quote;
+        else if (nextChar === '\\') result += '\\';
+        else if (nextChar === '/') result += '/';
+        else if (nextChar === 'b') result += '\b';
+        else if (nextChar === 'f') result += '\f';
+        else if (nextChar === 'n') result += '\n';
+        else if (nextChar === 'r') result += '\r';
+        else if (nextChar === 't') result += '\t';
+        i++;
+      } else {
+        result += char;
+      }
+    } else {
+      result += char;
+    }
+  }
+  return result;
+}
+
+export function jsonValueToLiquidType(val: unknown): LiquidType {
+  if (val === null || val === undefined) {
+    return 'unknown';
+  }
+  if (typeof val === 'boolean') {
+    return 'boolean';
+  }
+  if (typeof val === 'number') {
+    return 'number';
+  }
+  if (typeof val === 'string') {
+    return 'string';
+  }
+  if (Array.isArray(val)) {
+    const fields = new Map<string, LiquidType>();
+    let hasObject = false;
+    for (const item of val) {
+      if (item && typeof item === 'object' && !Array.isArray(item)) {
+        hasObject = true;
+        for (const [k, v] of Object.entries(item)) {
+          const itemType = jsonValueToLiquidType(v);
+          if (itemType !== 'unknown') {
+            fields.set(k, itemType);
+          } else if (!fields.has(k)) {
+            fields.set(k, 'unknown');
+          }
+        }
+      }
+    }
+    if (hasObject) {
+      return {
+        kind: 'composite',
+        fields,
+      };
+    }
+    return 'unknown';
+  }
+  if (typeof val === 'object') {
+    const fields = new Map<string, LiquidType>();
+    for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+      fields.set(k, jsonValueToLiquidType(v));
+    }
+    return {
+      kind: 'composite',
+      fields,
+    };
+  }
+  return 'unknown';
+}
+
 export function inferTypeFromAssignValue(
   engine: Liquid,
   tagName: string,
   valueExpr: string,
   localTypes: Map<string, LiquidType>,
 ): LiquidType {
+  if (tagName === 'parseAssign') {
+    const trimmed = valueExpr.trim();
+    if (
+      (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
+      (trimmed.startsWith('{') && trimmed.endsWith('}'))
+    ) {
+      try {
+        const parsedJson = JSON.parse(trimmed);
+        return jsonValueToLiquidType(parsedJson);
+      } catch {
+        // ignore, fall back
+      }
+    }
+  }
+
   const parsed = parseOutputValue(engine, valueExpr);
   if (!parsed) {
     const trimmed = valueExpr.trim();
@@ -154,7 +257,21 @@ export function inferTypeFromAssignValue(
     } else if (token instanceof NumberToken) {
       resolvedType = 'number';
     } else if (token instanceof QuotedToken) {
-      resolvedType = 'string';
+      if (tagName === 'parseAssign') {
+        try {
+          const rawVal = evalQuotedToken(token);
+          if (typeof rawVal === 'string') {
+            const parsedJson = JSON.parse(rawVal);
+            resolvedType = jsonValueToLiquidType(parsedJson);
+          } else {
+            resolvedType = 'string';
+          }
+        } catch {
+          resolvedType = 'string';
+        }
+      } else {
+        resolvedType = 'string';
+      }
     } else if (token instanceof PropertyAccessToken) {
       resolvedType = resolveTypeForPath(token.getText(), localTypes);
     }
@@ -171,7 +288,12 @@ export function inferTypeFromAssignValue(
         typeof resolvedType === 'object' &&
         resolvedType.kind === 'composite'
       ) {
-        resolvedType = 'string';
+        const isJsonLiteralString =
+          (basePart.startsWith("'") && basePart.endsWith("'")) ||
+          (basePart.startsWith('"') && basePart.endsWith('"'));
+        if (!isJsonLiteralString) {
+          resolvedType = 'string';
+        }
       } else if (resolvedType === 'currency') {
         resolvedType = 'number';
       }

@@ -23,6 +23,50 @@ describe('extractLocalVariableTypes', () => {
 
     expect(types.get('y')).toBe('number');
   });
+
+  it('infers type for parseAssign with JSON array string', () => {
+    const engine = createLiquidEngine();
+    const text = `{% parseAssign local_items = '[{"title": "License", "cost": 450}]' %}`;
+    const tokens = tokenizeTopLevel(text, engine);
+    const types = extractLocalVariableTypes(undefined, tokens, engine);
+
+    const localItemsType = types.get('local_items');
+    expect(localItemsType).toBeDefined();
+    expect(typeof localItemsType).toBe('object');
+    if (typeof localItemsType === 'object' && localItemsType.kind === 'composite') {
+      expect(localItemsType.fields.get('title')).toBe('string');
+      expect(localItemsType.fields.get('cost')).toBe('number');
+    }
+  });
+
+  it('infers type for parseAssign with JSON object string', () => {
+    const engine = createLiquidEngine();
+    const text = `{% parseAssign item = '{"title": "License", "cost": 450}' %}`;
+    const tokens = tokenizeTopLevel(text, engine);
+    const types = extractLocalVariableTypes(undefined, tokens, engine);
+
+    const itemType = types.get('item');
+    expect(itemType).toBeDefined();
+    expect(typeof itemType).toBe('object');
+    if (typeof itemType === 'object' && itemType.kind === 'composite') {
+      expect(itemType.fields.get('title')).toBe('string');
+      expect(itemType.fields.get('cost')).toBe('number');
+    }
+  });
+
+  it('infers type for parseAssign with raw JSON literal', () => {
+    const engine = createLiquidEngine();
+    const text = `{% parseAssign local_items = [{"title": "License"}] %}`;
+    const tokens = tokenizeTopLevel(text, engine);
+    const types = extractLocalVariableTypes(undefined, tokens, engine);
+
+    const localItemsType = types.get('local_items');
+    expect(localItemsType).toBeDefined();
+    expect(typeof localItemsType).toBe('object');
+    if (typeof localItemsType === 'object' && localItemsType.kind === 'composite') {
+      expect(localItemsType.fields.get('title')).toBe('string');
+    }
+  });
 });
 
 describe('findVariableDeclarations', () => {

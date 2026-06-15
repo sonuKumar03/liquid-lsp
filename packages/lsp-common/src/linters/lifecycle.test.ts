@@ -156,3 +156,32 @@ test('collectLifecycleDiagnostics reports optional property path warnings', () =
     ),
   ).toBe(true);
 });
+
+test('collectLifecycleDiagnostics checks loop variable type access with parseAssign collection', () => {
+  const engine = createLiquidEngine();
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `{% parseAssign local_items = '[{"title": "License", "cost": 450}]' %}
+{% for row in local_items %}
+  {{ row.title }}
+  {{ row.non_existent_field }}
+{% endfor %}`,
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine, new Map());
+
+  expect(
+    diagnostics.some((d: any) =>
+      d.message.includes('Property "non_existent_field" does not exist on "row".'),
+    ),
+  ).toBe(true);
+
+  expect(
+    diagnostics.some((d: any) =>
+      d.message.includes('Property "title" does not exist on "row".'),
+    ),
+  ).toBe(false);
+});

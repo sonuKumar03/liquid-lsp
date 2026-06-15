@@ -676,6 +676,7 @@
           '  E6  parseAssign line_items = [1, 2,] → invalid JSON',
           '  E7  assign x = 1 + 2             → inline math',
           '  E8  sd_registered_address.zipcode → unknown address field',
+          '  E9  row.non_existent_field        → loop type checking warning',
           '{% endcomment %}',
           '',
           '{% comment %} E1: quick-fix conditional comparison {% endcomment %}',
@@ -714,6 +715,8 @@
           '{% parseAssign local_items = \'[{"title": "License", "cost": 450}, {"title": "Support", "cost": 50}]\' %}',
           '{% for row in local_items %}',
           '  - {{ row.title }}: {{ row.cost | toCurrency: "USD" }}<br>',
+          '  {% comment %} E9: invalid property access on loop variable {% endcomment %}',
+          '  {{ row.non_existent_field }}',
           '{% endfor %}',
         ].join('\n');
 

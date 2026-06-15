@@ -17,6 +17,8 @@ import { PropertyAccessToken, Tokenizer } from 'liquidjs';
 import {
   MATH_FILTERS,
   STRING_FILTERS,
+  jsonValueToLiquidType,
+  unquoteString,
 } from '../shared/local-variable-types.js';
 import { resolveTypeForPath } from '../hovers/hovers.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -330,6 +332,35 @@ function processParseAssignExpression(
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
 ): LiquidType {
+  const trimmedExpr = expr.trim();
+  
+  // Try raw JSON literal first
+  if (
+    (trimmedExpr.startsWith('[') && trimmedExpr.endsWith(']')) ||
+    (trimmedExpr.startsWith('{') && trimmedExpr.endsWith('}'))
+  ) {
+    try {
+      const parsedJson = JSON.parse(trimmedExpr);
+      return jsonValueToLiquidType(parsedJson);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Try quoted JSON string literal
+  const isQuoted =
+    (trimmedExpr.startsWith("'") && trimmedExpr.endsWith("'")) ||
+    (trimmedExpr.startsWith('"') && trimmedExpr.endsWith('"'));
+  if (isQuoted) {
+    try {
+      const innerStr = unquoteString(trimmedExpr);
+      const parsedJson = JSON.parse(innerStr);
+      return jsonValueToLiquidType(parsedJson);
+    } catch {
+      // ignore
+    }
+  }
+
   const filterParts = expr.split('|');
   const pathPart = (filterParts[0] ?? '').trim();
   const parts = pathPart.split('.');
@@ -399,10 +430,11 @@ function processParseAssignExpression(
         } else if (currentType.open) {
           currentType = 'unknown';
         } else {
+          const parentPath = parts.slice(0, i).join('.');
           diagnostics.push({
             severity: DiagnosticSeverity.Error,
             range: { start, end },
-            message: `Property "${fieldName}" does not exist on composite type.`,
+            message: `Property "${fieldName}" does not exist on "${parentPath}".`,
             source: 'liquid-lsp-linter',
           });
           currentType = 'unknown';

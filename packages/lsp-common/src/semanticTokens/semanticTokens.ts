@@ -1,6 +1,4 @@
-import { Range } from 'vscode-languageserver';
 import type { SemanticTokensParams, SemanticTokens } from 'vscode-languageserver';
-import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { createLiquidEngine, tokenizeTopLevelSafe, TagTokenClass, TokenKind } from 'liquid-core';
 import { findVariableDeclarationsFromTokens } from '../shared/variable-declarations.js';
 import type { DocumentManager } from '../server/document-manager.js';

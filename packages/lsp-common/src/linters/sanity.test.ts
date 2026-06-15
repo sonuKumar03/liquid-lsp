@@ -4,7 +4,6 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { collectLifecycleDiagnostics } from './lifecycle.js';
 import { handleRename } from '../rename/rename.js';
 import { handleSemanticTokens } from '../semanticTokens/semanticTokens.js';
-import { Range } from 'vscode-languageserver';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 
 test('Sanity Check: Multi-Branch Type Consistency (String vs Boolean)', () => {

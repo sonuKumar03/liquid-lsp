@@ -10,7 +10,6 @@ import {
   getClosestTag,
   getClosestFilter,
   TagTokenClass,
-  parseAssignKeyValueWithOffsets,
   type Liquid,
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';

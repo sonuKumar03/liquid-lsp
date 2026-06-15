@@ -1,6 +1,5 @@
 import { Range, WorkspaceEdit, ResponseError, ErrorCodes } from 'vscode-languageserver';
 import type { RenameParams } from 'vscode-languageserver';
-import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { getWordAtPosition, tokenizeTopLevelSafe, createLiquidEngine } from 'liquid-core';
 import { findVariableDeclarationsFromTokens } from '../shared/variable-declarations.js';
 import type { DocumentManager } from '../server/document-manager.js';

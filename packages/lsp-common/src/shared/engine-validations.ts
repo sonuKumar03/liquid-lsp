@@ -170,8 +170,6 @@ function reportUseBeforeAssign(
   const range = token
     ? rangeForIdentifierInTagToken(doc, token, varName)
     : { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
-  const args = token ? token.args : '';
-  const line = token ? token.line : 0;
   const message = `You used "${varName}" before defining it. Move the {% assign ${varName} = ... %} line above this.`;
 
   pushUniqueDiagnostic(diagnostics, {

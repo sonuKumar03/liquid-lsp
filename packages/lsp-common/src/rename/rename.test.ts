@@ -2,8 +2,7 @@ import { test, expect } from 'vitest';
 import { handleRename } from './rename.js';
 import { DocumentManager } from '../server/document-manager.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { ResponseError } from 'vscode-languageserver';
-import type { Liquid } from 'liquid-core';
+import { tokenizeTopLevelSafe, createLiquidEngine } from 'liquid-core';
 
 // Mock connection and document manager
 const documentsMock = new Map<string, TextDocument>();
@@ -51,9 +50,8 @@ test('handleRename rejects renaming to an existing variable name (collision)', (
     documents: {
       get: (uri: string) => documentsMock.get(uri),
     },
-    getTokens: (uri: string) => {
+    getTokens: () => {
       // Return tag tokens to let findVariableDeclarations find them
-      const { tokenizeTopLevelSafe, createLiquidEngine } = require('liquid-core');
       return tokenizeTopLevelSafe(doc.getText(), createLiquidEngine());
     }
   } as unknown as DocumentManager;

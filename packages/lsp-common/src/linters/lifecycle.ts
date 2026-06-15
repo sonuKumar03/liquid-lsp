@@ -14,7 +14,7 @@ import {
   parseOutputValue,
   LIQUID_FILTER_METAS,
 } from 'liquid-core';
-import { PropertyAccessToken, Tokenizer, LiteralToken, NumberToken, QuotedToken } from 'liquidjs';
+import { PropertyAccessToken, Tokenizer } from 'liquidjs';
 import {
   MATH_FILTERS,
   STRING_FILTERS,

@@ -2,14 +2,14 @@ import { test, expect } from 'vitest';
 import { handleSemanticTokens } from './semanticTokens.js';
 import { DocumentManager } from '../server/document-manager.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { tokenizeTopLevelSafe, createLiquidEngine } from 'liquid-core';
 
 const documentsMock = new Map<string, TextDocument>();
 const documentManagerMock = {
   documents: {
     get: (uri: string) => documentsMock.get(uri),
   },
-  getTokens: (uri: string, engine: any) => {
-    const { tokenizeTopLevelSafe, createLiquidEngine } = require('liquid-core');
+  getTokens: (uri: string) => {
     return tokenizeTopLevelSafe(documentsMock.get(uri)!.getText(), createLiquidEngine());
   }
 } as unknown as DocumentManager;

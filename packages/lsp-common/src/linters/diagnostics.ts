@@ -149,6 +149,10 @@ function collectSyntaxDiagnostics(
 
       let errMessage = error.originalError?.message ?? error.message;
 
+      if (errMessage.toLowerCase().includes('expected filter name')) {
+        continue;
+      }
+
       // Extract exact error position from error message if available (e.g. ", line:11, col:32")
       const lineColMatch = errMessage.match(/,\s*line:(\d+),\s*col:(\d+)/);
       if (lineColMatch) {

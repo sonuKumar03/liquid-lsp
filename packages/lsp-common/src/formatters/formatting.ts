@@ -64,7 +64,8 @@ export function handleDocumentFormatting(
   if (!doc) return null;
 
   const originalText = doc.getText();
-  const formattedText = formatLiquid(originalText);
+  const splitConsecutiveTags = params.options.splitConsecutiveTags !== false;
+  const formattedText = formatLiquid(originalText, splitConsecutiveTags);
 
   if (originalText === formattedText) {
     return [];
@@ -93,8 +94,10 @@ function extractBlockTagsFromLine(line: string): string[] {
   return tags;
 }
 
-export function formatLiquid(text: string): string {
-  const preProcessedText = text.replace(/%\}\s*\{%/g, '%\}\n\{%');
+export function formatLiquid(text: string, splitConsecutiveTags = true): string {
+  const preProcessedText = splitConsecutiveTags
+    ? text.replace(/%}\s*{%/g, '%}\n{%')
+    : text;
   const lines = preProcessedText.split(/\r?\n/);
   let indentLevel = 0;
   const indentString = '  '; // 2 spaces

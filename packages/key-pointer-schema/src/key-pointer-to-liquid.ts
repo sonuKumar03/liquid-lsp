@@ -20,6 +20,85 @@ function dropdownFromOptions(
   return { kind: 'dropdown', options: values };
 }
 
+// 1. Static type definitions mapping
+const STATIC_TYPE_MAPPING: Record<
+  Extract<
+    KeyPointerDataType,
+    | 'string'
+    | 'text-box'
+    | 'rich-text'
+    | 'image'
+    | 'number'
+    | 'check-box'
+    | 'date'
+    | 'date-range'
+    | 'currency'
+    | 'multi-dropdown'
+    | 'multi-text-input'
+  >,
+  LiquidType
+> = {
+  string: 'string',
+  'text-box': 'string',
+  'rich-text': 'string',
+  image: 'string',
+  number: 'number',
+  'check-box': 'boolean',
+  date: 'date',
+  'date-range': 'date',
+  currency: 'currency',
+  'multi-dropdown': 'string',
+  'multi-text-input': 'string',
+};
+
+// 2. Composite structures mapping
+const COMPOSITE_TYPE_MAPPING: Record<
+  Extract<
+    KeyPointerDataType,
+    | 'duration'
+    | 'phone-number'
+    | 'address'
+    | 'related-contract'
+    | 'repeating'
+    | 'table'
+    | 'multi-file'
+  >,
+  LiquidType
+> = {
+  duration: composite({
+    value: 'number',
+    type: 'string',
+    days: 'number',
+  }),
+  'phone-number': composite({
+    number: 'string',
+    code: 'string',
+    country_code: 'string',
+  }),
+  address: composite({
+    street: 'string',
+    country_name: 'string',
+    country_id: 'number',
+    pincode: 'string',
+    state_name: 'string',
+    city_name: 'string',
+    country_iso_code: 'string',
+  }),
+  'related-contract': composite({
+    parent_contract_id: 'number',
+    child_contract_id: 'number',
+    child_contract_version_id: 'number',
+  }),
+  repeating: composite({}, true),
+  table: composite({}, true),
+  'multi-file': composite({
+    name: 'string',
+    id: 'string',
+    sizeBytes: 'number',
+  }),
+};
+
+// 3. Entry point mapping with exhaustive compile-time checking
 export function keyPointerTypeToLiquid(
   dataType: KeyPointerDataType,
   options?: KeyPointerSelectOption[],
@@ -29,58 +108,27 @@ export function keyPointerTypeToLiquid(
     case 'text-box':
     case 'rich-text':
     case 'image':
-      return 'string';
     case 'number':
-      return 'number';
     case 'check-box':
-      return 'boolean';
     case 'date':
     case 'date-range':
-      return 'date';
     case 'currency':
-      return 'currency';
-    case 'dropdown':
-      return dropdownFromOptions(options);
     case 'multi-dropdown':
     case 'multi-text-input':
-      return 'string';
+      return STATIC_TYPE_MAPPING[dataType];
+
     case 'duration':
-      return composite({
-        value: 'number',
-        type: 'string',
-        days: 'number',
-      });
     case 'phone-number':
-      return composite({
-        number: 'string',
-        code: 'string',
-        country_code: 'string',
-      });
     case 'address':
-      return composite({
-        street: 'string',
-        country_name: 'string',
-        country_id: 'number',
-        pincode: 'string',
-        state_name: 'string',
-        city_name: 'string',
-        country_iso_code: 'string',
-      });
     case 'related-contract':
-      return composite({
-        parent_contract_id: 'number',
-        child_contract_id: 'number',
-        child_contract_version_id: 'number',
-      });
     case 'repeating':
     case 'table':
-      return composite({}, true);
     case 'multi-file':
-      return composite({
-        name: 'string',
-        id: 'string',
-        sizeBytes: 'number',
-      });
+      return COMPOSITE_TYPE_MAPPING[dataType];
+
+    case 'dropdown':
+      return dropdownFromOptions(options);
+
     default: {
       const exhaustive: never = dataType;
       throw new Error(`Unhandled key pointer data type: ${exhaustive}`);

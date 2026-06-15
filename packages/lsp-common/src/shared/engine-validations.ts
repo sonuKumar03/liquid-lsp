@@ -36,7 +36,7 @@ export function setEngineValidationFns(fns: EngineValidationFns): void {
   void fns;
 }
 
-function getValidationFns(): EngineValidationFns | null {
+function getValidationFns(): EngineValidationFns {
   return {
     checkValidJSON,
     checkAtleastOneDynamicTableAssignPresent,

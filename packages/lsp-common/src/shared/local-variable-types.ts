@@ -16,7 +16,7 @@ import type { LiquidType } from '../shared/schema.js';
 import {
   parseAssignKeyValue,
   parseCaptureVariable,
-  parseForLoopVariable,
+  parseForLoopVariableWithOffsets,
 } from 'liquid-core';
 import { collectVariableNamesFromTokens } from '../shared/token-variables.js';
 
@@ -236,9 +236,21 @@ export function extractLocalVariableTypes(
     }
 
     if (tagName === 'for') {
-      const varName = parseForLoopVariable(args);
-      if (varName) {
-        localTypes.set(varName, 'unknown');
+      const parsed = parseForLoopVariableWithOffsets(args);
+      if (parsed) {
+        let inferredType: LiquidType = 'unknown';
+        const collectionExpr = parsed.collection;
+        if (collectionExpr) {
+          const resolved = resolveTypeForPath(collectionExpr, localTypes);
+          if (
+            resolved &&
+            typeof resolved === 'object' &&
+            resolved.kind === 'composite'
+          ) {
+            inferredType = resolved;
+          }
+        }
+        localTypes.set(parsed.key, inferredType);
       }
     }
   }

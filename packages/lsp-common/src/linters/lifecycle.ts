@@ -18,6 +18,7 @@ import {
   MATH_FILTERS,
   STRING_FILTERS,
 } from '../shared/local-variable-types.js';
+import { resolveTypeForPath } from '../hovers/hovers.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { LiquidType } from '../shared/schema.js';
 import type { VariableDeclaration } from 'key-pointer-schema';
@@ -193,9 +194,27 @@ function collectTagDiagnostics(
           engine,
         );
       }
+
+      // Infer loop variable type from collection expression type if it's a composite
+      let inferredType: LiquidType = 'unknown';
+      if (collectionExpr) {
+        const activeVarsTypes = new Map<string, LiquidType>();
+        for (const [k, v] of activeVars.entries()) {
+          activeVarsTypes.set(k, v.type);
+        }
+        const resolved = resolveTypeForPath(collectionExpr, activeVarsTypes);
+        if (
+          resolved &&
+          typeof resolved === 'object' &&
+          resolved.kind === 'composite'
+        ) {
+          inferredType = resolved;
+        }
+      }
+
       activeVars.set(
         varName,
-        createDecl(varName, line, token, absOffset, 'unknown', doc),
+        createDecl(varName, line, token, absOffset, inferredType, doc),
       );
     }
   } else if (isConditionalTagLine(name)) {
@@ -338,6 +357,11 @@ function processParseAssignExpression(
   for (let i = 1; i < parts.length; i++) {
     const fieldNameRaw = (parts[i] ?? '').trim();
     if (!fieldNameRaw) continue;
+
+    if (currentType === 'unknown') {
+      currentType = 'unknown';
+      continue;
+    }
 
     const fieldName = fieldNameRaw.replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
     const offsetInToken = token

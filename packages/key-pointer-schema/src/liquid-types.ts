@@ -58,14 +58,15 @@ export function parseType(value: any): LiquidType {
         value.type === 'date' ||
         value.type === 'currency')
     ) {
+      const primType = value.type as 'string' | 'number' | 'boolean' | 'date' | 'currency';
       if (optional) {
         return {
           kind: 'primitive',
-          type: value.type as any,
+          type: primType,
           optional: true,
         };
       }
-      return value.type;
+      return primType;
     }
   }
   return 'unknown';

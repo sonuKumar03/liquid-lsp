@@ -3,6 +3,7 @@ import { Liquid } from 'liquidjs';
 export type {
   Liquid,
   Token,
+  TopLevelToken,
   TagToken,
   Template as TagTemplate,
   Value as ValueTemplate,

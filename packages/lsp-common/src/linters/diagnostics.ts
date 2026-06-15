@@ -3,7 +3,7 @@ import type { Diagnostic, Connection } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   type Liquid,
-  type Token,
+  type TopLevelToken,
   TokenKind,
   TagTokenClass,
   tokenizeTopLevel,
@@ -25,7 +25,7 @@ export async function validateTextDocument(
   globalSchema?: Map<string, LiquidType>,
   schemaVariables?: Map<string, VariableDeclaration>,
   schemaLoadErrors?: SchemaLoadError[],
-  precomputedTokens?: Token[],
+  precomputedTokens?: TopLevelToken[],
 ): Promise<void> {
   connection.console.log(
     'LSP server: validating document: ' + textDocument.uri,
@@ -52,7 +52,7 @@ export async function validateTextDocument(
   const schemaVarNames = globalSchema
     ? new Set(globalSchema.keys())
     : new Set<string>();
-  let validationTokens: Token[];
+  let validationTokens: TopLevelToken[];
   if (precomputedTokens !== undefined) {
     validationTokens = precomputedTokens;
   } else {
@@ -81,9 +81,9 @@ function collectSyntaxDiagnostics(
   textDocument: TextDocument,
   diagnostics: Diagnostic[],
   liquidEngine: Liquid,
-  precomputedTokens?: Token[],
+  precomputedTokens?: TopLevelToken[],
 ): void {
-  let tokens: Token[];
+  let tokens: TopLevelToken[];
   if (precomputedTokens !== undefined) {
     tokens = precomputedTokens;
   } else {
@@ -184,7 +184,7 @@ function collectSyntaxDiagnostics(
           ) {
             const dummyTokenizer = new Tokenizer(
               `{% end${tagName} %}`,
-              liquidEngine.options as any,
+              liquidEngine.options,
             );
             const dummyEndToken = dummyTokenizer.readTopLevelTokens()[0];
             if (dummyEndToken) {
@@ -194,17 +194,21 @@ function collectSyntaxDiagnostics(
         }
 
         try {
-          (liquidEngine as any).parser.parseToken(token, remainTokensCopy);
-        } catch (tokenErr: any) {
+          liquidEngine.parser.parseToken(token, remainTokensCopy);
+        } catch (tokenErr: unknown) {
           hasTokenErrors = true;
           const start = textDocument.positionAt(token.begin);
           const end = textDocument.positionAt(token.end);
 
           let code: string | undefined = undefined;
-          let data: any = undefined;
-          const message =
-            typeof tokenErr.message === 'string' ? tokenErr.message : '';
-          const tagMatch = message.match(
+          let data: unknown = undefined;
+          const errMessage =
+            tokenErr instanceof Error
+              ? tokenErr.message
+              : typeof tokenErr === 'object' && tokenErr !== null && 'message' in tokenErr
+              ? String((tokenErr as { message: unknown }).message)
+              : '';
+          const tagMatch = errMessage.match(
             /tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/,
           );
           if (tagMatch && tagMatch[1]) {
@@ -216,7 +220,7 @@ function collectSyntaxDiagnostics(
             severity: DiagnosticSeverity.Error,
             range: { start, end },
             message: getEnhancedErrorMessage(
-              tokenErr.message,
+              errMessage,
               getLineText(textDocument, start.line),
             ),
             source: 'liquid-lsp',

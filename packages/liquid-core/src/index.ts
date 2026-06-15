@@ -2,6 +2,7 @@ export {
   createLiquidEngine,
   type Liquid,
   type Token,
+  type TopLevelToken,
   type TagToken,
   type TagTemplate,
   type ValueTemplate,

@@ -5,7 +5,7 @@ import {
   TagTokenClass,
   TokenKind,
   type Liquid,
-  type Token,
+  type TopLevelToken,
   type TagTemplate,
   type ValueTemplate,
   parseAssign,
@@ -59,7 +59,7 @@ const ASSIGN_DEPENDENCY_TAG_NAMES = new Set([
 ]);
 
 function findTagTokenOnLine(
-  tokens: Token[],
+  tokens: TopLevelToken[],
   line: number,
   tagNames?: Set<string>,
 ): InstanceType<typeof TagTokenClass> | undefined {
@@ -144,7 +144,7 @@ function pushUniqueDiagnostic(
 }
 
 function findTagTokenForTemplate(
-  tokens: Token[],
+  tokens: TopLevelToken[],
   template: TagTemplate,
 ): InstanceType<typeof TagTokenClass> | undefined {
   const tagToken = template.token;
@@ -161,7 +161,7 @@ function findTagTokenForTemplate(
 
 function reportUseBeforeAssign(
   doc: TextDocument,
-  tokens: Token[],
+  tokens: TopLevelToken[],
   template: TagTemplate,
   varName: string,
   diagnostics: Diagnostic[],
@@ -190,7 +190,7 @@ function handleAssignTemplate(
   template: TagTemplate,
   assignedVars: Set<string>,
   diagnostics: Diagnostic[],
-  tokens: Token[],
+  tokens: TopLevelToken[],
   parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   const dependency = parseAssignFn(template, engine);
@@ -227,7 +227,7 @@ function walkTagTemplate(
   template: TagTemplate,
   assignedVars: Set<string>,
   diagnostics: Diagnostic[],
-  tokens: Token[],
+  tokens: TopLevelToken[],
   parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   const currentSet = new Set(assignedVars);
@@ -308,7 +308,7 @@ function walkTemplates(
   templates: TagTemplate[],
   assignedVars: Set<string>,
   diagnostics: Diagnostic[],
-  tokens: Token[],
+  tokens: TopLevelToken[],
   parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   for (const template of templates) {
@@ -361,7 +361,7 @@ function collectComputeColumnDiagnostics(
   doc: TextDocument,
   engine: Liquid,
   diagnostics: Diagnostic[],
-  tokens: Token[],
+  tokens: TopLevelToken[],
   checkDynamicTableFn: EngineValidationFns['checkAtleastOneDynamicTableAssignPresent'],
 ): void {
   const text = doc.getText();
@@ -404,7 +404,7 @@ function collectAssignDependencyDiagnostics(
   doc: TextDocument,
   engine: Liquid,
   diagnostics: Diagnostic[],
-  tokens: Token[],
+  tokens: TopLevelToken[],
   schemaVarNames: Set<string>,
   parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
@@ -428,7 +428,7 @@ export function collectEngineValidationDiagnostics(
   doc: TextDocument,
   engine: Liquid,
   diagnostics: Diagnostic[],
-  tokens: Token[],
+  tokens: TopLevelToken[],
   schemaVarNames?: Set<string>,
 ): void {
   const fns = getValidationFns();

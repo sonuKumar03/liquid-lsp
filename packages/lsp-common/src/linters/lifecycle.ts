@@ -1,6 +1,6 @@
 import { DiagnosticSeverity, Range } from 'vscode-languageserver';
 import type { Diagnostic } from 'vscode-languageserver';
-import type { Liquid, Token, TagToken } from 'liquid-core';
+import type { Liquid, Token, TopLevelToken, TagToken } from 'liquid-core';
 import {
   TokenKind,
   TagTokenClass,
@@ -38,10 +38,10 @@ export function collectLifecycleDiagnostics(
   liquidEngine: Liquid,
   globalSchema?: Map<string, LiquidType>,
   schemaVariables?: Map<string, VariableDeclaration>,
-  precomputedTokens?: Token[],
+  precomputedTokens?: TopLevelToken[],
 ): void {
   const text = textDocument.getText();
-  let tokens: Token[];
+  let tokens: TopLevelToken[];
 
   try {
     tokens =

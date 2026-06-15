@@ -1,11 +1,11 @@
 import type { Connection } from 'vscode-languageserver';
 import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { tokenizeTopLevelSafe, type Liquid, type Token } from 'liquid-core';
+import { tokenizeTopLevelSafe, type Liquid, type TopLevelToken } from 'liquid-core';
 
 interface TokenCacheEntry {
   revision: number;
-  tokens: Token[];
+  tokens: TopLevelToken[];
 }
 
 /**
@@ -23,7 +23,7 @@ export class DocumentManager {
   }
 
   /** Returns cached top-level tokens, re-tokenizing only when doc.version changes. */
-  getTokens(uri: string, engine: Liquid): Token[] {
+  getTokens(uri: string, engine: Liquid): TopLevelToken[] {
     const doc = this.documents.get(uri);
     if (!doc) {
       return [];

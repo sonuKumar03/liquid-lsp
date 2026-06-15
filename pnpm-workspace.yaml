@@ -9,3 +9,6 @@ allowBuilds:
   esbuild: true
   keytar: true
   'liquidjs@https://codeload.github.com/sonuKumar03/liquidjs/tar.gz/5054036ee77f9c097d0c399b7efac99c0c97c194': true
+  'liquidjs@https://codeload.github.com/sonuKumar03/liquidjs/tar.gz/9b253aa07d71fe4af5c17f36bdde3b79d5d79825': true
+  'liquidjs': true
+

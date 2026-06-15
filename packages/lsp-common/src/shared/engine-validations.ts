@@ -336,7 +336,7 @@ function findComputeColumnOpenLine(
   metadata: { tableName?: string; columnName?: string },
 ): number | undefined {
   try {
-    const templates = engine.parse(text);
+    const { templates } = engine.parser.parseResilient(text);
     for (const template of templates) {
       if (!(template instanceof ComputeColumnTag)) {
         continue;
@@ -412,11 +412,11 @@ function collectAssignDependencyDiagnostics(
   parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   const assignedVars = new Set<string>(schemaVarNames);
-  const templates = engine.parse(doc.getText()) as TagTemplate[];
+  const { templates } = engine.parser.parseResilient(doc.getText());
   walkTemplates(
     doc,
     engine,
-    templates,
+    templates as TagTemplate[],
     assignedVars,
     diagnostics,
     tokens,

@@ -7,9 +7,7 @@ import {
   TokenKind,
   TagTokenClass,
   tokenizeTopLevel,
-  cleanErrorMessage,
   getEnhancedErrorMessage,
-  Tokenizer,
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 import type { LiquidType } from '../shared/schema.js';
@@ -93,9 +91,6 @@ function collectSyntaxDiagnostics(
       tokens = [];
     }
   }
-
-  let hasTokenErrors = false;
-
   // 1. Run manual syntax checks (single equals and inline math) on all tokens unconditionally
   for (const token of tokens) {
     if (token.kind !== TokenKind.Tag && token.kind !== TokenKind.Output)
@@ -119,7 +114,6 @@ function collectSyntaxDiagnostics(
     const manualError = isConditionalAssignment || isInlineMath;
 
     if (manualError) {
-      hasTokenErrors = true;
       const start = textDocument.positionAt(token.begin);
       const end = textDocument.positionAt(token.end);
       const message = isConditionalAssignment
@@ -143,106 +137,94 @@ function collectSyntaxDiagnostics(
 
   // 2. Run standard parsing error checks
   try {
-    liquidEngine.parse(textDocument.getText());
-  } catch (mainErr: unknown) {
-    try {
-      for (const [tokenIndex, token] of tokens.entries()) {
-        if (token.kind !== TokenKind.Tag && token.kind !== TokenKind.Output)
-          continue;
+    const { errors } = liquidEngine.parser.parseResilient(textDocument.getText());
+    for (const error of errors) {
+      const token = error.token as unknown as Record<string, unknown> | undefined;
+      const start =
+        token && typeof token.begin === 'number'
+          ? textDocument.positionAt(token.begin)
+          : { line: 0, character: 0 };
+      const end =
+        token && typeof token.end === 'number'
+          ? textDocument.positionAt(token.end)
+          : { line: 0, character: 0 };
 
-        if (token instanceof TagTokenClass) {
-          const tagName = token.name;
-          if (tagName.startsWith('end')) continue;
-          if (tagName === 'else' || tagName === 'elsif' || tagName === 'when')
-            continue;
-        }
-
-        // Skip tokens that already have manual errors to avoid double diagnostics
-        const tokenText = token.getText();
+      // Skip tokens that already have manual errors to avoid double diagnostics
+      if (token && typeof token.getText === 'function') {
+        const tokenText = (token.getText as () => string)();
         const textWithoutQuotes = tokenText.replace(/'[^']*'|"[^"]*"/g, '');
         const isConditionalAssignment =
           token instanceof TagTokenClass &&
+          typeof token.name === 'string' &&
           isConditionalTagText(token.name) &&
           textWithoutQuotes.search(/(?<![=!<>])=(?![=<>])/) !== -1;
         const isInlineMath =
-          textWithoutQuotes.search(/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//) !==
-          -1;
-        if (isConditionalAssignment || isInlineMath) continue;
-
-        const remainTokensCopy = [...tokens.slice(tokenIndex + 1)];
-
-        if (token instanceof TagTokenClass) {
-          const tagName = token.name;
-          if (
-            tagName === 'if' ||
-            tagName === 'for' ||
-            tagName === 'unless' ||
-            tagName === 'capture' ||
-            tagName === 'tablerow' ||
-            tagName === 'case' ||
-            tagName === 'comment'
-          ) {
-            const dummyTokenizer = new Tokenizer(
-              `{% end${tagName} %}`,
-              liquidEngine.options,
-            );
-            const dummyEndToken = dummyTokenizer.readTopLevelTokens()[0];
-            if (dummyEndToken) {
-              remainTokensCopy.push(dummyEndToken);
-            }
-          }
+          textWithoutQuotes.search(/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//) !== -1;
+        if (isConditionalAssignment || isInlineMath) {
+          continue;
         }
+      }
 
-        try {
-          liquidEngine.parser.parseToken(token, remainTokensCopy);
-        } catch (tokenErr: unknown) {
-          hasTokenErrors = true;
-          const start = textDocument.positionAt(token.begin);
-          const end = textDocument.positionAt(token.end);
+      const isDuplicate = diagnostics.some(
+        (d) =>
+          d.range.start.line === start.line &&
+          d.range.start.character === start.character,
+      );
+      if (isDuplicate) {
+        continue;
+      }
 
-          let code: string | undefined = undefined;
-          let data: unknown = undefined;
-          const errMessage =
-            tokenErr instanceof Error
-              ? tokenErr.message
-              : typeof tokenErr === 'object' &&
-                  tokenErr !== null &&
-                  'message' in tokenErr
-                ? String((tokenErr as { message: unknown }).message)
-                : '';
-          const tagMatch = errMessage.match(
-            /tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/,
-          );
-          if (tagMatch && tagMatch[1]) {
-            code = DIAGNOSTIC_CODES.UNKNOWN_TAG;
-            data = { tagName: tagMatch[1] };
-          }
+      const errMessage = (error.originalError as Error | undefined)?.message ?? error.message;
 
-          const diagnostic: Diagnostic = {
-            severity: DiagnosticSeverity.Error,
-            range: { start, end },
-            message: getEnhancedErrorMessage(
-              errMessage,
-              getLineText(textDocument, start.line),
-            ),
-            source: 'liquid-lsp',
+      let code: string | undefined = undefined;
+      let data: unknown = undefined;
+
+      const notClosedMatch = errMessage.match(
+        /^(tag|output)\s+(.+?)\s+not closed(?:,|$)/,
+      );
+      if (notClosedMatch) {
+        code = DIAGNOSTIC_CODES.UNCLOSED_DELIMITER;
+        if (notClosedMatch[1] === 'tag') {
+          const rawTag =
+            token && typeof token.getText === 'function'
+              ? (token.getText as () => string)()
+              : notClosedMatch[2];
+          data = {
+            tagName:
+              (token && typeof token.name === 'string' ? token.name : undefined) ??
+              errMessage.match(/tag\s+\{%\s*(\w+)/)?.[1],
+            rawTag,
           };
-          if (code) {
-            diagnostic.code = code;
-          }
-          if (data) {
-            diagnostic.data = data;
-          }
-          diagnostics.push(diagnostic);
+        }
+      } else {
+        const tagMatch = errMessage.match(
+          /tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/,
+        );
+        if (tagMatch && tagMatch[1]) {
+          code = DIAGNOSTIC_CODES.UNKNOWN_TAG;
+          data = { tagName: tagMatch[1] };
         }
       }
 
-      if (!hasTokenErrors) {
-        emitMainCompilerDiagnostic(textDocument, diagnostics, mainErr);
+      const diagnostic: Diagnostic = {
+        severity: DiagnosticSeverity.Error,
+        range: { start, end },
+        message: getEnhancedErrorMessage(
+          errMessage,
+          getLineText(textDocument, start.line),
+        ),
+        source: 'liquid-lsp',
+      };
+      if (code) {
+        diagnostic.code = code;
       }
-    } catch {
-      emitFallbackSyntaxDiagnostic(textDocument, diagnostics, mainErr);
+      if (data) {
+        diagnostic.data = data;
+      }
+      diagnostics.push(diagnostic);
     }
+  } catch (mainErr: unknown) {
+    emitMainCompilerDiagnostic(textDocument, diagnostics, mainErr);
   }
 }
 
@@ -329,34 +311,6 @@ function emitMainCompilerDiagnostic(
   }
 
   diagnostics.push(diagnostic);
-}
-
-function emitFallbackSyntaxDiagnostic(
-  textDocument: TextDocument,
-  diagnostics: Diagnostic[],
-  mainErr: unknown,
-): void {
-  const err =
-    typeof mainErr === 'object' && mainErr !== null
-      ? (mainErr as Record<string, unknown>)
-      : {};
-  const errToken =
-    typeof err.token === 'object' && err.token !== null
-      ? (err.token as Record<string, unknown>)
-      : {};
-  let start = { line: 0, character: 0 };
-  let end = { line: 0, character: 0 };
-  if (typeof errToken.begin === 'number' && typeof errToken.end === 'number') {
-    start = textDocument.positionAt(errToken.begin);
-    end = textDocument.positionAt(errToken.end);
-  }
-  const message = typeof err.message === 'string' ? err.message : '';
-  diagnostics.push({
-    severity: DiagnosticSeverity.Error,
-    range: { start, end },
-    message: cleanErrorMessage(message),
-    source: 'liquid-lsp',
-  });
 }
 
 function getLineText(textDocument: TextDocument, line: number): string {

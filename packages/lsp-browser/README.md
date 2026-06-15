@@ -27,8 +27,8 @@ Bundled artifacts (esbuild):
 ## Build & test
 
 ```bash
-rtk npm run build --workspace=lsp-browser
-rtk npm run test --workspace=lsp-browser
+pnpm --filter lsp-browser build
+pnpm --filter lsp-browser test
 ```
 
 ## Usage
@@ -56,6 +56,25 @@ rtk npm run test --workspace=lsp-browser
 </script>
 ```
 
-The host transfers a `MessagePort` to the worker (`liquid-lsp-worker-init`); LSP JSON-RPC uses Content-Length framed `Uint8Array` on that port.
+---
 
-See `angular_integration.md` for the WebSocket gateway alternative (Node spawn, no worker bundle).
+## Developer & Architecture Reference
+
+### 1. Web Worker Handshake Protocol
+
+To run the server inside a Web Worker, a MessageChannel handshake must take place:
+
+1. **Host Client**: Creates a `MessageChannel` and spawns a new Web Worker (`new Worker(workerScriptUrl, { type: 'module' })`).
+2. **Init Message**: The host sends `WORKER_INIT_MESSAGE_TYPE` (`'liquid-lsp-worker-init'`) transferring `channel.port1` via `worker.postMessage`.
+3. **Worker Listener**: The worker receives the port, starts the LSP server on it using `startWorkerServer(port)`, and replies to the host with `WORKER_READY_SIGNAL` (`'liquid-lsp-worker-ready'`).
+4. **JSON-RPC Transport**: Both sides establish communication on `port2` using `BrowserMessageReader` and `BrowserMessageWriter` from `vscode-jsonrpc/browser`.
+
+### 2. Browser Bundling & Stubs
+
+Because `liquidjs` and the LSP core import Node utilities (like `fs` for loading schemas, `path` for folder joining, and `url`), `build-worker.mjs` uses `esbuild` to stub these APIs out:
+
+- **`fs` stub**: Returns a mocked `existsSync` (returns `false`) and `readFileSync` (returns `""`).
+- **`path` stub**: Simple POSIX string path logic (`join` and `dirname`).
+- **`url` stub**: Mocked `fileURLToPath`.
+- **`module` stub**: Mocks `createRequire`.
+- **`assert` stub**: Standard assertion helper.

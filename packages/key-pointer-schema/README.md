@@ -27,8 +27,8 @@ Parse and validate key-pointer variable declarations for Liquid computation work
 ## Build & test
 
 ```bash
-npm run build --workspace=key-pointer-schema
-npm run test --workspace=key-pointer-schema
+pnpm --filter key-pointer-schema build
+pnpm --filter key-pointer-schema test
 ```
 
 ## Usage
@@ -51,3 +51,59 @@ if (result.errors.length === 0) {
   console.log(result.liquidSchema.get('sd_payment')); // 'currency'
 }
 ```
+
+---
+
+## Developer & Architecture Reference
+
+### 1. Supported Wire Formats
+
+`parseVariableSchema(raw: unknown)` accepts three wire formats:
+
+- **Variables Array Format**:
+  ```json
+  {
+    "variables": [
+      { "field_name": "my_var", "data_type": "string", "options": [] }
+    ]
+  }
+  ```
+- **Flat Map Format**:
+  ```json
+  {
+    "sd_payment": "currency",
+    "sd_term_length": "duration"
+  }
+  ```
+- **Legacy Liquid Schema Format**:
+  ```json
+  {
+    "user": {
+      "type": "composite",
+      "fields": {
+        "id": "number",
+        "name": "string"
+      }
+    }
+  }
+  ```
+
+### 2. Type Mapping Table
+
+We map 19 key-pointer data types to internal LSP `LiquidType` markers:
+
+- `string`, `text-box`, `rich-text`, `image` → `'string'`
+- `number` → `'number'`
+- `check-box` → `'boolean'`
+- `date`, `date-range` → `'date'`
+- `currency` → `'currency'`
+- `dropdown` → `{ kind: 'dropdown', options: string[] }`
+- `duration` → `{ kind: 'composite', fields: { value: 'number', type: 'string', days: 'number' } }`
+- `address` → `{ kind: 'composite', fields: { street: 'string', city_name: 'string', pincode: 'string', ... } }`
+- `phone-number` → `{ kind: 'composite', fields: { number: 'string', code: 'string', ... } }`
+- `multi-file` → `{ kind: 'composite', fields: { name: 'string', id: 'string', sizeBytes: 'number' } }`
+
+### 3. Implementation Details
+
+- **Strict type narrowing**: `parseType` and `parseSchema` take `unknown` and perform strict type-guards to parse values safely, avoiding `any` completely.
+- **Type registry**: A detailed list of capabilities for each type is loaded from [key-pointer-types.registry.json](file:///Users/sonukumar/project/liquid-lsp/packages/key-pointer-schema/src/key-pointer-types.registry.json).

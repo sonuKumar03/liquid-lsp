@@ -27,8 +27,8 @@ Runtime-agnostic Liquid LSP core: server lifecycle, variable type state, documen
 ## Build & test
 
 ```bash
-npm run build --workspace=lsp-common
-npm run test --workspace=lsp-common
+pnpm --filter lsp-common build
+pnpm --filter lsp-common test
 ```
 
 Integration tests spawn `lsp-engine/dist/main.js` as a child process.
@@ -51,3 +51,33 @@ startServer(connection, {
 ```
 
 Custom notification supported: `workspace/updateSchema` with `{ schema, contextData? }`.
+
+---
+
+## Developer & Architecture Reference
+
+### 1. Document Caching & Tokenizer Sync
+
+`DocumentManager` wraps the native `TextDocuments` collection. To optimize performance, it caches token streams:
+
+- `getTokens(uri, engine)` checks if the cached version is still fresh. It tokenizes on-demand and saves the result.
+- Key handlers (Hover, Completions, Symbols) retrieve cached token streams to analyze lines and bounds, avoiding duplicate parsing.
+
+### 2. Type Inference Engine
+
+Type inferences and validation are managed by:
+
+- **`TypeSystem`**: Resolves type scopes from client variable schema payloads and filesystem schema file merges.
+- **`local-variable-types.ts`**: Infers local worksheet variable assignments (`assign`, `assignVar`, `parseAssign`, `capture`, `for`).
+- **`lifecycle.ts`**: Runs the linter validator tracking variable writes, reads, and warnings (e.g. use before assignment, unread variables, dropdown value mismatches).
+
+### 3. Diagnostics Pipeline
+
+`DiagnosticsScheduler` manages debounced updates:
+
+- Runs validation debounced by **150ms** upon document changes to protect CPU usage.
+- Orchestrates:
+  - Delimiter matching (e.g., matching unclosed tags/output expressions).
+  - Parser validation (calling `liquidEngine.parse` and mapping parsing errors back to tokens).
+  - Lifecycle lint rules (variables assignments and type warnings).
+  - Custom worksheet engine validations (e.g., unclosed computations on tables).

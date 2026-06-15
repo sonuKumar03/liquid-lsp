@@ -1,6 +1,6 @@
 # lsp-node
 
-Node.js stdio transport wrapper for the Liquid LSP. Creates a JSON-RPC connection over stdin/stdout and starts `lsp-common` with filesystem-backed workspace schema loading.
+Node.js stdio/socket transport wrapper for the Liquid LSP. Creates a JSON-RPC connection over stdin/stdout or sockets and starts `lsp-common` with filesystem-backed workspace schema loading.
 
 ## When to use
 
@@ -24,7 +24,7 @@ Node-only helper (not re-exported): `nodeWorkspaceSchemaLoader` reads `.liquid-s
 ## Build
 
 ```bash
-npm run build --workspace=lsp-node
+pnpm --filter lsp-node build
 ```
 
 Tests run via `lsp-common` workspace.
@@ -43,3 +43,22 @@ Or from the shell after building `lsp-engine`:
 ```bash
 node lsp-engine/dist/main.js --stdio
 ```
+
+---
+
+## Developer & Architecture Reference
+
+### 1. Filesystem Workspace Schema Loader
+
+Unlike the browser environment, `lsp-node` injects a filesystem-based schema loader:
+
+- **`.liquid-schema.json`**: Located at the workspace root directory.
+- **`nodeWorkspaceSchemaLoader`**: Implements the `WorkspaceSchemaLoader` interface from `lsp-common`.
+- **Loading behavior**: On handshake (`onInitialize`), the server reads this file asynchronously/synchronously from the local filesystem, parses it using `key-pointer-schema`, and merges it into the LSP's active `TypeSystem`.
+
+### 2. Transport Execution Modes
+
+`lsp-node` can bind to two node communication flows:
+
+- **Stdio (`--stdio`)**: Listens on standard process input/output. This is the default used by VS Code client instances.
+- **Socket / Remote (`--port`)**: (Optional extension integration) Binds the LSP connection over a TCP net socket port.

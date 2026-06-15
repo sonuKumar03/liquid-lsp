@@ -28,8 +28,8 @@ Runtime helpers for LiquidJS: engine creation, tokenization, tag/filter metadata
 ## Build & test
 
 ```bash
-npm run build --workspace=liquid-core
-npm run test --workspace=liquid-core
+pnpm --filter liquid-core build
+pnpm --filter liquid-core test
 ```
 
 ## Usage
@@ -48,3 +48,31 @@ const tokens = tokenizeTopLevelSafe(
 );
 console.log(isKnownLiquidFilter('plus')); // true
 ```
+
+---
+
+## Developer & Architecture Reference
+
+### 1. LiquidJS Custom Fork Details
+
+This workspace depends on a custom LiquidJS fork `"liquidjs": "github:sonuKumar03/liquidjs"`. This fork registers custom computational worksheet tags natively:
+
+- **`computeColumn`**: Used for worksheet column-level evaluations.
+- **`assignVar`**: Custom variable assignment.
+- **`parseAssign`**: JSON-RPC and schema assignment tagging.
+
+### 2. Type-safe Tag Checking
+
+To enable safe runtime inspections without type-casting hacks, `liquid-core` re-exports the native classes from `liquidjs`:
+
+- `Tag`
+- `IfTag`
+- `UnlessTag`
+- `ForTag`
+- `ComputeColumnTag`
+
+This allows files in `lsp-common` to run clean `instanceof` checks (e.g. `template instanceof ComputeColumnTag`).
+
+### 3. API Constraints
+
+- **Private Fields Limitation**: Do not access internal, private-like variables directly on tag objects (such as `template.table` or `template.column`). Instead, extract the arguments from the public `token.args` property (e.g., splitting by whitespace).

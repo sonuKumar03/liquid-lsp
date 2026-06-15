@@ -83,7 +83,7 @@ export function getClosestFilter(name: string): string | null {
  */
 export function convertToLiquidMath(lineText: string): string | null {
   const mathRegex =
-    /([a-zA-Z0-9_-]+|\d+(?:\.\d+)?)\s*([-+*/])\s*([a-zA-Z0-9_-]+|\d+(?:\.\d+)?)/g;
+    /([a-zA-Z0-9_-]+|\d+(?:\.\d+)?)\s*(?:\|\s*)?([-+*/])\s*([a-zA-Z0-9_-]+|\d+(?:\.\d+)?)/g;
 
   let hasMath = false;
   const newText = lineText.replace(mathRegex, (match, op1, operator, op2) => {

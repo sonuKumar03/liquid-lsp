@@ -75,6 +75,10 @@ describe('utils', () => {
 
   it('converts inline math to liquid filters', () => {
     expect(convertToLiquidMath('a + 2')).toBe('a | plus: 2');
+    expect(convertToLiquidMath('a | + 2')).toBe('a | plus: 2');
+    expect(convertToLiquidMath('a | - 2')).toBe('a | minus: 2');
+    expect(convertToLiquidMath('a |+ 2')).toBe('a | plus: 2');
+    expect(convertToLiquidMath('a | +2')).toBe('a | plus: 2');
     expect(convertToLiquidMath('no math here')).toBeNull();
   });
 });

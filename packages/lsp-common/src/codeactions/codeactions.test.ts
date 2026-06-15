@@ -438,3 +438,88 @@ test('Liquid spelling correction for unknown tag assignment', () =>
       }),
     );
   }));
+
+test('Liquid spelling correction for unknown tag names', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+    let diagnostic: any = null;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{% asign x = 1 %}',
+              },
+            },
+          }),
+        );
+        step = 1;
+      } else if (
+        step === 1 &&
+        res.method === 'textDocument/publishDiagnostics'
+      ) {
+        expect(res.params.diagnostics.length).toBeGreaterThan(0);
+        diagnostic = res.params.diagnostics.find(
+          (d: any) =>
+            d.message.includes('not found') || d.code === 'liquid.tag.unknown',
+        );
+        expect(diagnostic).toBeDefined();
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/codeAction',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              range: diagnostic.range,
+              context: { diagnostics: [diagnostic] },
+            },
+          }),
+        );
+        step = 2;
+      } else if (step === 2 && res.id === 2) {
+        const actions = res.result;
+        expect(actions.length).toBeGreaterThan(0);
+
+        const spellAction = actions.find((a: any) =>
+          a.title.includes('Change tag to "assign"'),
+        );
+        expect(spellAction).toBeDefined();
+        expect(spellAction.kind).toBe('quickfix');
+        expect(spellAction.edit.changes['file:///t.liquid']).toBeDefined();
+
+        const editChange = spellAction.edit.changes['file:///t.liquid'][0];
+        expect(editChange.newText).toBe('{% assign x = 1 %}');
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { capabilities: {} },
+      }),
+    );
+  }));

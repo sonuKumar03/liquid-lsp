@@ -71,5 +71,6 @@ export {
   getWordAtPosition,
   getEnhancedErrorMessage,
   getClosestFilter,
+  getClosestTag,
   convertToLiquidMath,
 } from './utils.js';

@@ -8,6 +8,7 @@ import {
   cleanErrorMessage,
   convertToLiquidMath,
   getClosestFilter,
+  getClosestTag,
   getEnhancedErrorMessage,
   getWordAtPosition,
   isKnownLiquidFilter,
@@ -73,12 +74,25 @@ describe('utils', () => {
     expect(getClosestFilter('zzzzzz')).toBeNull();
   });
 
+  it('suggests closest tag names', () => {
+    expect(getClosestTag('asign')).toBe('assign');
+    expect(getClosestTag('captur')).toBe('capture');
+    expect(getClosestTag('zzzzzz')).toBeNull();
+  });
+
   it('converts inline math to liquid filters', () => {
     expect(convertToLiquidMath('a + 2')).toBe('a | plus: 2');
     expect(convertToLiquidMath('a | + 2')).toBe('a | plus: 2');
     expect(convertToLiquidMath('a | - 2')).toBe('a | minus: 2');
     expect(convertToLiquidMath('a |+ 2')).toBe('a | plus: 2');
     expect(convertToLiquidMath('a | +2')).toBe('a | plus: 2');
+    expect(convertToLiquidMath('a | -2')).toBe('a | minus: 2');
+    expect(convertToLiquidMath('1 + 2 + 3')).toBe('1 | plus: 2 | plus: 3');
+    expect(convertToLiquidMath('a += 5')).toBe('a = a | plus: 5');
+    expect(convertToLiquidMath('a++')).toBe('a = a | plus: 1');
+    expect(convertToLiquidMath('a--')).toBe('a = a | minus: 1');
+    expect(convertToLiquidMath('a-2')).toBeNull();
+    expect(convertToLiquidMath('1 | plus: -2')).toBeNull();
     expect(convertToLiquidMath('no math here')).toBeNull();
   });
 });

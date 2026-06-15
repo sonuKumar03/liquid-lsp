@@ -7,6 +7,7 @@ import {
   INLINE_MATH_OPERATOR_MESSAGE,
   SINGLE_EQUALS_ASSIGNMENT_REGEX,
   convertToLiquidMath,
+  getClosestTag,
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 
@@ -189,6 +190,30 @@ export function handleCodeAction(
         );
         if (match) {
           tagName = match[1];
+        }
+      }
+
+      if (tagName) {
+        const closestTag = getClosestTag(tagName);
+        if (closestTag) {
+          const newText = tagText.replace(tagName, closestTag);
+          const edit = {
+            changes: {
+              [params.textDocument.uri]: [
+                {
+                  range: diagnostic.range,
+                  newText,
+                },
+              ],
+            },
+          };
+          const action = CodeAction.create(
+            `Change tag to "${closestTag}"`,
+            edit,
+            CodeActionKind.QuickFix,
+          );
+          action.diagnostics = [diagnostic];
+          codeActions.push(action);
         }
       }
 

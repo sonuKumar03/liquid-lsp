@@ -561,6 +561,25 @@ function applyFilterTypeWarnings(
       }
       currentType = 'number';
     } else if (STRING_FILTERS.has(filterName)) {
+      if (currentType === 'number') {
+        const tokenText = token.getText();
+        const filterOffsetInToken = tokenText.indexOf(filterName);
+        const start = doc.positionAt(
+          token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken : 0),
+        );
+        const end = doc.positionAt(
+          token.begin +
+            (filterOffsetInToken !== -1
+              ? filterOffsetInToken + filterName.length
+              : tokenText.length),
+        );
+        diagnostics.push({
+          severity: DiagnosticSeverity.Warning,
+          range: { start, end },
+          message: `Type mismatch: String filter "${filterName}" is applied to a number value.`,
+          source: 'liquid-lsp-linter',
+        });
+      }
       currentType = 'string';
     }
   }

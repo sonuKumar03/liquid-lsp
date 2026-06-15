@@ -37,6 +37,23 @@ test('collectLifecycleDiagnostics reports math filter type mismatches', () => {
   ).toBe(true);
 });
 
+test('collectLifecycleDiagnostics reports string filter type mismatches', () => {
+  const engine = createLiquidEngine();
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    '{% assign x = 42 %}\n{% assign y = x | upcase %}',
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine);
+
+  expect(
+    diagnostics.some((d: any) => d.message.includes('Type mismatch: String filter')),
+  ).toBe(true);
+});
+
 test('collectLifecycleDiagnostics flags assign to non-computable schema variable', () => {
   const engine = createLiquidEngine();
   const schemaVariables = new Map([

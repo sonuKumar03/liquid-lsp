@@ -12,8 +12,9 @@ import {
   parseCaptureVariableWithOffsets,
   parseForLoopVariableWithOffsets,
   parseOutputValue,
+  LIQUID_FILTER_METAS,
 } from 'liquid-core';
-import { PropertyAccessToken, Tokenizer } from 'liquidjs';
+import { PropertyAccessToken, Tokenizer, LiteralToken, NumberToken, QuotedToken } from 'liquidjs';
 import {
   MATH_FILTERS,
   STRING_FILTERS,
@@ -55,10 +56,103 @@ export function collectLifecycleDiagnostics(
     const activeVars = new Map<string, ActiveVar>();
     populateSchemaVars(activeVars, globalSchema);
 
+    const blockStack: Array<{
+      branches: Array<Map<string, { type: LiquidType; line: number; range: Range }>>;
+      currentBranchIndex: number;
+    }> = [];
+
     for (const token of tokens) {
       const line = textDocument.positionAt(token.begin).line;
-
       if (token instanceof TagTokenClass) {
+        console.log("LINTER TOKEN:", token.name, token.constructor.name);
+        const tagName = token.name;
+        if (tagName === 'if' || tagName === 'unless') {
+          blockStack.push({
+            branches: [new Map()],
+            currentBranchIndex: 0,
+          });
+        } else if (tagName === 'else' || tagName === 'elsif') {
+          if (blockStack.length > 0) {
+            const block = blockStack[blockStack.length - 1]!;
+            block.currentBranchIndex++;
+            block.branches.push(new Map());
+          }
+        } else if (tagName === 'endif' || tagName === 'endunless') {
+          if (blockStack.length > 0) {
+            const block = blockStack.pop()!;
+            console.log("POP BLOCK:", JSON.stringify(block));
+            const allAssignedVars = new Set<string>();
+            for (const branch of block.branches) {
+              for (const varName of branch.keys()) {
+                allAssignedVars.add(varName);
+              }
+            }
+
+            for (const varName of allAssignedVars) {
+              const assignedBranches = block.branches
+                .map((b, idx) => ({ idx, info: b.get(varName) }))
+                .filter((b) => b.info !== undefined);
+
+              const first = assignedBranches[0]?.info;
+              if (first) {
+                let mismatch = false;
+                for (let j = 1; j < assignedBranches.length; j++) {
+                  const curr = assignedBranches[j]?.info;
+                  if (curr && JSON.stringify(curr.type) !== JSON.stringify(first.type)) {
+                    mismatch = true;
+                    break;
+                  }
+                }
+                console.log("VARNAME:", varName, "mismatch:", mismatch);
+
+                if (mismatch) {
+                  const types = assignedBranches.map((b) => b.info!.type);
+                  const lines = assignedBranches.map((b) => b.info!.line);
+                  const ranges = assignedBranches.map((b) => b.info!.range);
+                  activeVars.set(varName, {
+                    declRange: first.range,
+                    line: first.line,
+                    hasBeenRead: false,
+                    type: {
+                      kind: 'branch_mismatch',
+                      types,
+                      lines,
+                      ranges,
+                    } as unknown as LiquidType,
+                  });
+                } else {
+                  const hasElse = block.branches.length > 1;
+                  if (assignedBranches.length < block.branches.length && hasElse) {
+                    let optType = first.type;
+                    if (typeof optType === 'string') {
+                      if (optType === 'unknown') {
+                        optType = 'unknown';
+                      } else {
+                        optType = { kind: 'primitive', type: optType, optional: true };
+                      }
+                    } else if (typeof optType === 'object') {
+                      optType = { ...optType, optional: true };
+                    }
+                    activeVars.set(varName, {
+                      declRange: first.range,
+                      line: first.line,
+                      hasBeenRead: false,
+                      type: optType,
+                    });
+                  } else {
+                    activeVars.set(varName, {
+                      declRange: first.range,
+                      line: first.line,
+                      hasBeenRead: false,
+                      type: first.type,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+
         collectTagDiagnostics(
           textDocument,
           diagnostics,
@@ -67,10 +161,11 @@ export function collectLifecycleDiagnostics(
           line,
           liquidEngine,
           schemaVariables,
+          blockStack,
         );
       } else if (token.kind === TokenKind.Output) {
         const expr = token.getText().slice(2, -2).trim();
-        processExpression(
+        const resolved = processExpression(
           expr,
           token,
           textDocument,
@@ -78,6 +173,35 @@ export function collectLifecycleDiagnostics(
           activeVars,
           liquidEngine,
         );
+
+        if (resolved && isOptionalType(resolved)) {
+          const tokenText = token.getText();
+          const exprOffset = tokenText.indexOf(expr);
+          const start = textDocument.positionAt(token.begin + (exprOffset !== -1 ? exprOffset : 2));
+          const end = textDocument.positionAt(token.begin + (exprOffset !== -1 ? exprOffset + expr.length : tokenText.length - 2));
+          
+          const isNumeric =
+            resolved === 'number' ||
+            resolved === 'currency' ||
+            (typeof resolved === 'object' &&
+              resolved !== null &&
+              'kind' in resolved &&
+              resolved.kind === 'primitive' &&
+              (resolved.type === 'number' || resolved.type === 'currency'));
+          const defaultVal = isNumeric ? '0' : '""';
+
+          diagnostics.push({
+            severity: DiagnosticSeverity.Warning,
+            range: { start, end },
+            message: `"${expr}" is optional and might be blank, which will render as empty text. Consider adding a default filter like "| default: ${defaultVal}".`,
+            code: DIAGNOSTIC_CODES.NIL_PROPAGATION,
+            data: {
+              insertRange: { start: end, end: end },
+              newText: ` | default: ${defaultVal}`,
+            },
+            source: 'liquid-lsp-linter',
+          });
+        }
       }
     }
   } catch {
@@ -111,6 +235,10 @@ function collectTagDiagnostics(
   line: number,
   engine: Liquid,
   schemaVariables?: Map<string, VariableDeclaration>,
+  blockStack?: Array<{
+    branches: Array<Map<string, { type: LiquidType; line: number; range: Range }>>;
+    currentBranchIndex: number;
+  }>,
 ): void {
   const tokenText = token.getText();
   const name = token.name;
@@ -141,6 +269,7 @@ function collectTagDiagnostics(
               doc,
               diagnostics,
               activeVars,
+              engine,
             )
           : processExpression(
               expr,
@@ -150,11 +279,22 @@ function collectTagDiagnostics(
               activeVars,
               engine,
             );
-      redefineIfNeeded(diagnostics, activeVars, varName);
+      redefineIfNeeded(diagnostics, activeVars, varName, blockStack);
       activeVars.set(
         varName,
         createDecl(varName, line, token, absOffset, inferredType, doc),
       );
+      if (blockStack && blockStack.length > 0) {
+        const block = blockStack[blockStack.length - 1]!;
+        const branchMap = block.branches[block.currentBranchIndex];
+        if (branchMap) {
+          branchMap.set(varName, {
+            type: inferredType,
+            line,
+            range: createDecl(varName, line, token, absOffset, inferredType, doc).declRange,
+          });
+        }
+      }
       validateDropdownValue(
         doc,
         diagnostics,
@@ -172,11 +312,23 @@ function collectTagDiagnostics(
       const argsOffset = tokenText.indexOf(token.args);
       const absOffset = (argsOffset >= 0 ? argsOffset : 0) + parsed.keyStart;
 
-      redefineIfNeeded(diagnostics, activeVars, varName);
+      redefineIfNeeded(diagnostics, activeVars, varName, blockStack);
+      const inferredType = 'string';
       activeVars.set(
         varName,
-        createDecl(varName, line, token, absOffset, 'string', doc),
+        createDecl(varName, line, token, absOffset, inferredType, doc),
       );
+      if (blockStack && blockStack.length > 0) {
+        const block = blockStack[blockStack.length - 1]!;
+        const branchMap = block.branches[block.currentBranchIndex];
+        if (branchMap) {
+          branchMap.set(varName, {
+            type: inferredType,
+            line,
+            range: createDecl(varName, line, token, absOffset, inferredType, doc).declRange,
+          });
+        }
+      }
     }
   } else if (name === 'for') {
     const parsed = parseForLoopVariableWithOffsets(token.args);
@@ -243,17 +395,57 @@ function createDecl(
   };
 }
 
+function isParallelBranchAssignment(
+  activeVars: Map<string, ActiveVar>,
+  varName: string,
+  blockStack?: Array<{
+    branches: Array<Map<string, { type: LiquidType; line: number; range: Range }>>;
+    currentBranchIndex: number;
+  }>,
+): boolean {
+  if (!blockStack || blockStack.length === 0) return false;
+  const prev = activeVars.get(varName);
+  if (!prev) return false;
+
+  for (let i = blockStack.length - 1; i >= 0; i--) {
+    const block = blockStack[i]!;
+    for (let bIdx = 0; bIdx < block.branches.length; bIdx++) {
+      if (bIdx === block.currentBranchIndex) continue;
+      const branchMap = block.branches[bIdx]!;
+      const branchVar = branchMap.get(varName);
+      if (branchVar) {
+        if (
+          prev.declRange.start.line === branchVar.range.start.line &&
+          prev.declRange.start.character === branchVar.range.start.character &&
+          prev.declRange.end.line === branchVar.range.end.line &&
+          prev.declRange.end.character === branchVar.range.end.character
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 function redefineIfNeeded(
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
   varName: string,
+  blockStack?: Array<{
+    branches: Array<Map<string, { type: LiquidType; line: number; range: Range }>>;
+    currentBranchIndex: number;
+  }>,
 ): void {
+  if (isParallelBranchAssignment(activeVars, varName, blockStack)) {
+    return;
+  }
   const prev = activeVars.get(varName);
   if (prev && !prev.hasBeenRead && prev.line !== -1) {
     diagnostics.push({
       severity: DiagnosticSeverity.Warning,
       range: prev.declRange,
-      message: `Variable "${varName}" is overwritten here but its value was never read.`,
+      message: `You assigned a value to "${varName}" but never used it before overwriting it.`,
       source: 'liquid-lsp-linter',
     });
   }
@@ -280,7 +472,7 @@ function validateDropdownValue(
   diagnostics.push({
     severity: DiagnosticSeverity.Warning,
     range: Range.create(doc.positionAt(tokenBegin), doc.positionAt(tokenEnd)),
-    message: `Value "${strVal}" is not a valid option for dropdown variable "${varName}". Valid options are: ${prev.type.options.map((o) => `"${o}"`).join(', ')}.`,
+    message: `"${strVal}" is not one of the choices for "${varName}". Valid choices are: ${prev.type.options.map((o) => `"${o}"`).join(', ')}.`,
     source: 'liquid-lsp-linter',
   });
 }
@@ -315,7 +507,7 @@ function validateNonComputableSchemaAssignment(
   diagnostics.push({
     severity: DiagnosticSeverity.Warning,
     range: Range.create(start, end),
-    message: `Variable "${varName}" has key-pointer type "${declaration.data_type}", which does not support liquid computation assignments.`,
+    message: `"${varName}" is a database field of type "${declaration.data_type}" and cannot be set directly in the template.`,
     code: DIAGNOSTIC_CODES.COMPUTATION_ASSIGN_NOT_SUPPORTED,
     data: {
       field_name: varName,
@@ -331,6 +523,7 @@ function processParseAssignExpression(
   doc: TextDocument,
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
+  engine: Liquid,
 ): LiquidType {
   const trimmedExpr = expr.trim();
   
@@ -416,7 +609,7 @@ function processParseAssignExpression(
       diagnostics.push({
         severity: DiagnosticSeverity.Warning,
         range: { start, end },
-        message: `Property "${fieldName}" is accessed on optional parent. Consider checking if the parent exists first or using a default filter.`,
+        message: `"${fieldName}" might be missing because its parent is optional. Use a fallback value or check if the parent is defined.`,
         source: 'liquid-lsp-linter',
         code: 'liquid.linter.optional_access',
       });
@@ -426,15 +619,30 @@ function processParseAssignExpression(
       if (currentType.kind === 'composite') {
         const nextType = currentType.fields.get(fieldName);
         if (nextType) {
-          currentType = nextType;
+          const isParentOpt = currentType.optional === true;
+          if (isParentOpt) {
+            if (typeof nextType === 'string') {
+              if (nextType === 'unknown') {
+                currentType = 'unknown';
+              } else {
+                currentType = { kind: 'primitive', type: nextType, optional: true };
+              }
+            } else if (typeof nextType === 'object') {
+              currentType = { ...nextType, optional: true };
+            }
+          } else {
+            currentType = nextType;
+          }
         } else if (currentType.open) {
           currentType = 'unknown';
         } else {
           const parentPath = parts.slice(0, i).join('.');
+          const available = Array.from(currentType.fields.keys()).map((f) => `"${f}"`).join(', ');
+          const availStr = available ? ` Available fields are: ${available}.` : '';
           diagnostics.push({
             severity: DiagnosticSeverity.Error,
             range: { start, end },
-            message: `Property "${fieldName}" does not exist on "${parentPath}".`,
+            message: `"${parentPath}" doesn't have a field called "${fieldName}".${availStr}`,
             source: 'liquid-lsp-linter',
           });
           currentType = 'unknown';
@@ -444,7 +652,7 @@ function processParseAssignExpression(
         diagnostics.push({
           severity: DiagnosticSeverity.Error,
           range: { start, end },
-          message: `Cannot access property "${fieldName}" on non-composite type.`,
+          message: `You can't access "${fieldName}" because parent is not a container structure (it is a single value).`,
           source: 'liquid-lsp-linter',
         });
         currentType = 'unknown';
@@ -459,7 +667,7 @@ function processParseAssignExpression(
         diagnostics.push({
           severity: DiagnosticSeverity.Error,
           range: { start, end },
-          message: `Property "${fieldName}" does not exist on currency. Available fields are "amount" and "symbol".`,
+          message: `Currency values only have "amount" and "symbol". "${fieldName}" is not valid.`,
           source: 'liquid-lsp-linter',
         });
         currentType = 'unknown';
@@ -469,7 +677,7 @@ function processParseAssignExpression(
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
         range: { start, end },
-        message: `Cannot access property "${fieldName}" on primitive type "${currentType}".`,
+        message: `You can't access "${fieldName}" on "${currentType}" because it is a single value, not a list or record.`,
         source: 'liquid-lsp-linter',
       });
       currentType = 'unknown';
@@ -493,6 +701,7 @@ function processParseAssignExpression(
       diagnostics,
       activeVars,
       currentType,
+      engine,
     );
   }
 
@@ -572,6 +781,37 @@ function validateFilterNameSyntax(
   }
 }
 
+function isOptionalType(type: LiquidType): boolean {
+  if (type && typeof type === 'object') {
+    return type.optional === true;
+  }
+  return false;
+}
+
+function inferArgumentType(
+  argToken: unknown,
+  activeVars: Map<string, ActiveVar>,
+): string {
+  if (argToken && typeof argToken === 'object') {
+    const constructorName = argToken.constructor?.name;
+    if (constructorName === 'LiteralToken') {
+      const txt = (argToken as { getText?: () => string }).getText?.();
+      if (txt === 'true' || txt === 'false') return 'boolean';
+    } else if (constructorName === 'NumberToken') {
+      return 'number';
+    } else if (constructorName === 'QuotedToken') {
+      return 'string';
+    } else if (constructorName === 'PropertyAccessToken') {
+      const varName = (argToken as { getText?: () => string }).getText?.();
+      if (varName && activeVars.has(varName)) {
+        const t = activeVars.get(varName)!.type;
+        return typeof t === 'object' && t.kind === 'primitive' ? t.type : typeof t === 'string' ? t : 'unknown';
+      }
+    }
+  }
+  return 'unknown';
+}
+
 function applyFilterTypeWarnings(
   expr: string,
   token: Token,
@@ -579,88 +819,210 @@ function applyFilterTypeWarnings(
   diagnostics: Diagnostic[],
   activeVars: Map<string, ActiveVar>,
   currentType: LiquidType,
+  engine: Liquid,
 ): LiquidType {
-  const parts = expr
-    .replace(/"[^"]*"/g, '""')
-    .replace(/'[^']*'/g, "''")
-    .split('|');
+  const parsed = parseOutputValue(engine, expr);
+  if (!parsed) return currentType;
 
-  for (let i = 1; i < parts.length; i++) {
-    const filterPart = (parts[i] ?? '').trim();
-    if (!filterPart) continue;
+  const tokenText = token.getText();
+  const exprOffsetInToken = tokenText.indexOf(expr);
+  const basePart = expr.split('|')[0]?.trim() ?? '';
 
-    const filterMatch = filterPart.match(/^([a-zA-Z0-9_-]+)/);
-    if (!filterMatch) continue;
+  const isStringLiteral = /^"[^"]*"|'[^']*'$/.test(basePart);
+  const unquotedBase = isStringLiteral ? basePart.slice(1, -1) : basePart;
+  const isBaseNumeric = /^\s*-?\d+(\.\d+)?\s*$/.test(unquotedBase);
 
-    const filterName = filterMatch[1];
-    if (!filterName) continue;
+  console.log("APPLY FILTER currentType:", JSON.stringify(currentType));
+  let tempType = currentType;
 
-    const argsText = filterPart.slice(filterName.length).trim();
-    if (argsText) {
-      const words = argsText.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
-      const keywords = new Set([
-        'true',
-        'false',
-        'nil',
-        'null',
-        'and',
-        'or',
-        'contains',
-        'in',
-      ]);
-      for (const word of words) {
-        if (!keywords.has(word) && activeVars.has(word)) {
-          activeVars.get(word)!.hasBeenRead = true;
+  for (const filter of parsed.filters) {
+    const filterName = filter.name;
+    const filterOffsetInToken = tokenText.indexOf(filterName, exprOffsetInToken);
+    
+    const start = doc.positionAt(
+      token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken : 0)
+    );
+    const end = doc.positionAt(
+      token.begin +
+        (filterOffsetInToken !== -1
+          ? filterOffsetInToken + filterName.length
+          : tokenText.length)
+    );
+
+    const isBranchMismatch = tempType && typeof tempType === 'object' && (tempType as any).kind === 'branch_mismatch';
+    if (isBranchMismatch) {
+      const bm = tempType as unknown as { types: LiquidType[]; lines: number[]; ranges: Range[] };
+      for (let j = 0; j < bm.types.length; j++) {
+        const t = bm.types[j]!;
+        const l = bm.lines[j]!;
+        const r = bm.ranges[j]!;
+        const tStr = typeof t === 'object' && t.kind === 'primitive' ? t.type : typeof t === 'string' ? t : 'unknown';
+
+        if (MATH_FILTERS.has(filterName) && tStr !== 'number' && tStr !== 'currency' && tStr !== 'unknown') {
+          const branchDesc = j === 0 ? 'if-branch' : 'else-branch';
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: { start, end },
+            message: `"${basePart}" is a string in the ${branchDesc} (line ${l + 1}) — math filter "${filterName}" will break at runtime.`,
+            code: DIAGNOSTIC_CODES.BRANCH_TYPE_MISMATCH,
+            data: {
+              varName: basePart,
+              mismatchLine: l,
+              mismatchRange: r,
+              expected: 'number',
+              actual: tStr,
+              ranges: bm.ranges,
+            },
+            source: 'liquid-lsp-linter',
+          });
+        } else if (STRING_FILTERS.has(filterName) && tStr !== 'string' && tStr !== 'unknown') {
+          const branchDesc = j === 0 ? 'if-branch' : 'else-branch';
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: { start, end },
+            message: `"${basePart}" is a number in the ${branchDesc} (line ${l + 1}) — string filter "${filterName}" will break at runtime.`,
+            code: DIAGNOSTIC_CODES.BRANCH_TYPE_MISMATCH,
+            data: {
+              varName: basePart,
+              mismatchLine: l,
+              mismatchRange: r,
+              expected: 'string',
+              actual: tStr,
+              ranges: bm.ranges,
+            },
+            source: 'liquid-lsp-linter',
+          });
+        }
+      }
+      if (MATH_FILTERS.has(filterName)) {
+        tempType = 'number';
+      } else if (STRING_FILTERS.has(filterName)) {
+        tempType = 'string';
+      }
+    } else {
+      if (MATH_FILTERS.has(filterName)) {
+        const isString = tempType === 'string' || (typeof tempType === 'object' && tempType.kind === 'primitive' && tempType.type === 'string');
+        const isOpt = isOptionalType(tempType);
+        const isUnk = tempType === 'unknown';
+
+        if (isString && isStringLiteral && !isBaseNumeric) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Warning,
+            range: { start, end },
+            message: `String literal "${unquotedBase}" contains non-numeric characters and cannot be used in math operations.`,
+            code: DIAGNOSTIC_CODES.NON_NUMERIC_COERCION,
+            source: 'liquid-lsp-linter',
+          });
+        } else if (isString) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Warning,
+            range: { start, end },
+            message: `"${filterName}" only works on numbers. The value is text, not a number.`,
+            source: 'liquid-lsp-linter',
+          });
+        } else if (isOpt || isUnk) {
+          const offset = exprOffsetInToken !== -1 ? exprOffsetInToken : 0;
+          const insertPos = doc.positionAt(token.begin + offset + basePart.length);
+          diagnostics.push({
+            severity: DiagnosticSeverity.Warning,
+            range: { start, end },
+            message: `"${basePart}" might be blank. Add a fallback value using "| default: 0".`,
+            code: DIAGNOSTIC_CODES.COERCION_WARNING,
+            data: {
+              insertRange: { start: insertPos, end: insertPos },
+              newText: ' | default: 0',
+            },
+            source: 'liquid-lsp-linter',
+          });
+        }
+
+        tempType = 'number';
+      } else if (STRING_FILTERS.has(filterName)) {
+        const isNumber = tempType === 'number' || tempType === 'currency' || (typeof tempType === 'object' && tempType.kind === 'primitive' && (tempType.type === 'number' || tempType.type === 'currency'));
+        if (isNumber) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Warning,
+            range: { start, end },
+            message: `"${filterName}" only works on text. The value is a number, not text.`,
+            source: 'liquid-lsp-linter',
+          });
+        }
+        tempType = 'string';
+      }
+    }
+
+    const filterMeta = LIQUID_FILTER_METAS.find((m) => m.name === filterName);
+    if (filterMeta && filterMeta.argTypes) {
+      let argIndex = 0;
+      for (const arg of filter.args) {
+        const isNamed = Array.isArray(arg);
+        if (!isNamed) {
+          const valToken = arg;
+          const expectedType = filterMeta.argTypes[argIndex];
+          if (expectedType && expectedType !== 'any') {
+            const actualType = inferArgumentType(valToken, activeVars);
+            if (actualType !== 'unknown' && actualType !== expectedType) {
+              const argOffset = tokenText.indexOf(valToken.getText(), filterOffsetInToken);
+              const argStart = doc.positionAt(token.begin + (argOffset !== -1 ? argOffset : 0));
+              const argEnd = doc.positionAt(token.begin + (argOffset !== -1 ? argOffset + valToken.getText().length : tokenText.length));
+
+              diagnostics.push({
+                severity: DiagnosticSeverity.Warning,
+                range: Range.create(argStart, argEnd),
+                message: `"${filterName}" expects a ${expectedType} argument, got a ${actualType} literal "${valToken.getText()}".`,
+                code: DIAGNOSTIC_CODES.FILTER_ARGUMENT_TYPE_MISMATCH,
+                source: 'liquid-lsp-linter',
+              });
+            }
+          }
+          argIndex++;
         }
       }
     }
 
-    if (MATH_FILTERS.has(filterName)) {
-      if (currentType === 'string') {
-        const tokenText = token.getText();
-        const filterOffsetInToken = tokenText.indexOf(filterName);
-        const start = doc.positionAt(
-          token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken : 0),
-        );
-        const end = doc.positionAt(
-          token.begin +
-            (filterOffsetInToken !== -1
-              ? filterOffsetInToken + filterName.length
-              : tokenText.length),
-        );
-        diagnostics.push({
-          severity: DiagnosticSeverity.Warning,
-          range: { start, end },
-          message: `Type mismatch: Math filter "${filterName}" is applied to a string value.`,
-          source: 'liquid-lsp-linter',
-        });
+    if (filterName === 'date') {
+      for (const arg of filter.args) {
+        const valToken = Array.isArray(arg) ? arg[1] : arg;
+        if (valToken && valToken.constructor?.name === 'QuotedToken') {
+          const rawVal = (valToken as { getText?: () => string }).getText?.() ?? '';
+          const val = rawVal.slice(1, -1);
+          if (val && !val.includes('%')) {
+            const argOffset = tokenText.indexOf(rawVal, filterOffsetInToken);
+            const argStart = doc.positionAt(token.begin + (argOffset !== -1 ? argOffset : 0));
+            const argEnd = doc.positionAt(token.begin + (argOffset !== -1 ? argOffset + rawVal.length : tokenText.length));
+
+            diagnostics.push({
+              severity: DiagnosticSeverity.Warning,
+              range: Range.create(argStart, argEnd),
+              message: `Date format string "${val}" doesn't contain any standard formatting placeholders (like %Y, %m, %d).`,
+              code: DIAGNOSTIC_CODES.FILTER_ARGUMENT_TYPE_MISMATCH,
+              source: 'liquid-lsp-linter',
+            });
+          }
+        }
       }
-      currentType = 'number';
-    } else if (STRING_FILTERS.has(filterName)) {
-      if (currentType === 'number') {
-        const tokenText = token.getText();
-        const filterOffsetInToken = tokenText.indexOf(filterName);
-        const start = doc.positionAt(
-          token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken : 0),
-        );
-        const end = doc.positionAt(
-          token.begin +
-            (filterOffsetInToken !== -1
-              ? filterOffsetInToken + filterName.length
-              : tokenText.length),
-        );
-        diagnostics.push({
-          severity: DiagnosticSeverity.Warning,
-          range: { start, end },
-          message: `Type mismatch: String filter "${filterName}" is applied to a number value.`,
-          source: 'liquid-lsp-linter',
-        });
+    }
+
+    if (filterName === 'default') {
+      if (typeof tempType === 'object') {
+        tempType = { ...tempType, optional: false };
       }
-      currentType = 'string';
+    } else {
+      if (isOptionalType(currentType)) {
+        if (typeof tempType === 'string') {
+          if (tempType === 'unknown') {
+            // Keep it unknown
+          } else {
+            tempType = { kind: 'primitive', type: tempType, optional: true };
+          }
+        } else if (typeof tempType === 'object') {
+          tempType = { ...tempType, optional: true };
+        }
+      }
     }
   }
 
-  return currentType;
+  return tempType;
 }
 
 function resolveBaseExpressionType(
@@ -672,7 +1034,7 @@ function resolveBaseExpressionType(
   engine: Liquid,
 ): LiquidType {
   let currentType: LiquidType = 'unknown';
-  if (/^""|''$/.test(basePart)) {
+  if (/^"[^"]*"|'[^']*'$/.test(basePart)) {
     currentType = 'string';
   } else if (/^(true|false)$/.test(basePart)) {
     currentType = 'boolean';
@@ -707,6 +1069,7 @@ function resolveBaseExpressionType(
         doc,
         diagnostics,
         activeVars,
+        engine,
       );
     } else {
       const words = basePart.match(/[a-zA-Z_][a-zA-Z0-9_-]*/g) || [];
@@ -851,6 +1214,7 @@ function processExpression(
     diagnostics,
     activeVars,
     currentType,
+    engine,
   );
 }
 
@@ -894,7 +1258,7 @@ function checkUnusedVariables(
       diagnostics.push({
         severity: DiagnosticSeverity.Warning,
         range: decl.range,
-        message: `Variable "${name}" is declared but its value is never read.`,
+        message: `You created "${name}" but never read it anywhere. If it isn't needed, you can delete this line.`,
         source: 'liquid-lsp-linter',
       });
     }

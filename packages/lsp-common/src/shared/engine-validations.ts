@@ -172,7 +172,7 @@ function reportUseBeforeAssign(
     : { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
   const args = token ? token.args : '';
   const line = token ? token.line : 0;
-  const message = `Variable "${varName}" used before assignment in expression "${args}" on line ${line}`;
+  const message = `You used "${varName}" before defining it. Move the {% assign ${varName} = ... %} line above this.`;
 
   pushUniqueDiagnostic(diagnostics, {
     severity: DiagnosticSeverity.Error,

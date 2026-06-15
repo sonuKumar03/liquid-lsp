@@ -1,4 +1,4 @@
-import type { Connection } from 'vscode-languageserver';
+import type { Connection, SemanticTokensParams } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { createLiquidEngine } from 'liquid-core';
 import { handleCodeAction } from '../codeactions/codeactions.js';
@@ -15,6 +15,8 @@ import { handleHover } from '../hovers/hovers.js';
 import { validateTextDocument } from '../linters/diagnostics.js';
 import { handleSignatureHelp } from '../signatures/signatures.js';
 import { handleDocumentSymbol } from '../symbols/symbols.js';
+import { handleRename } from '../rename/rename.js';
+import { handleSemanticTokens } from '../semanticTokens/semanticTokens.js';
 import { SERVER_CAPABILITIES } from './capabilities.js';
 import { DocumentManager } from './document-manager.js';
 import { DiagnosticsScheduler } from './diagnostics-scheduler.js';
@@ -136,6 +138,22 @@ export function startServer(
 
   connection.onDocumentSymbol((params) => {
     return handleDocumentSymbol(documentManager, liquidEngine, params);
+  });
+
+  connection.onRenameRequest((params) => {
+    return handleRename(
+      documentManager,
+      params,
+      typeSystem.getLiquidSchema(),
+    );
+  });
+
+  connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
+    return handleSemanticTokens(
+      documentManager,
+      params,
+      typeSystem.getLiquidSchema(),
+    );
   });
 
   connection.onNotification(

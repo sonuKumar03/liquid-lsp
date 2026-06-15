@@ -1,5 +1,6 @@
 import { TextDocumentSyncKind } from 'vscode-languageserver';
 import type { ServerCapabilities } from 'vscode-languageserver';
+import { SEMANTIC_TOKEN_TYPES, SEMANTIC_TOKEN_MODIFIERS } from '../semanticTokens/semanticTokens.js';
 
 export const SERVER_CAPABILITIES: ServerCapabilities = {
   textDocumentSync: TextDocumentSyncKind.Incremental,
@@ -19,4 +20,12 @@ export const SERVER_CAPABILITIES: ServerCapabilities = {
   definitionProvider: true,
   codeActionProvider: true,
   documentSymbolProvider: true,
+  renameProvider: true,
+  semanticTokensProvider: {
+    legend: {
+      tokenTypes: SEMANTIC_TOKEN_TYPES,
+      tokenModifiers: SEMANTIC_TOKEN_MODIFIERS,
+    },
+    full: true,
+  },
 };

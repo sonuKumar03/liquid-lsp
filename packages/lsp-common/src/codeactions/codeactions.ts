@@ -1,4 +1,4 @@
-import { CodeAction, CodeActionKind, Command } from 'vscode-languageserver';
+import { CodeAction, CodeActionKind, Command, Range } from 'vscode-languageserver';
 import type { CodeActionParams } from 'vscode-languageserver';
 import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -9,12 +9,18 @@ import {
   convertToLiquidMath,
   getClosestTag,
   getClosestFilter,
+  TagTokenClass,
+  parseAssignKeyValueWithOffsets,
+  type Liquid,
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
+import type { DocumentManager } from '../server/document-manager.js';
 
 export function handleCodeAction(
   documents: TextDocuments<TextDocument>,
   params: CodeActionParams,
+  documentManager?: DocumentManager,
+  liquidEngine?: Liquid,
 ): (Command | CodeAction)[] {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
@@ -35,6 +41,97 @@ export function handleCodeAction(
     if (typeof message !== 'string') {
       continue;
     }
+
+    // Coercion / Nil Propagation Quick Fixes
+    if (
+      diagnostic.code === DIAGNOSTIC_CODES.COERCION_WARNING ||
+      diagnostic.code === DIAGNOSTIC_CODES.NIL_PROPAGATION
+    ) {
+      const diagData = diagnostic.data as { insertRange?: Range; newText?: string } | undefined;
+      if (diagData?.insertRange && diagData?.newText) {
+        const edit = {
+          changes: {
+            [params.textDocument.uri]: [
+              {
+                range: diagData.insertRange,
+                newText: diagData.newText,
+              },
+            ],
+          },
+        };
+        const action = CodeAction.create(
+          `Add fallback: "${diagData.newText.trim()}"`,
+          edit,
+          CodeActionKind.QuickFix,
+        );
+        action.diagnostics = [diagnostic];
+        codeActions.push(action);
+        continue;
+      }
+    }
+
+    // Branch Type Mismatch Quick Fix
+    if (diagnostic.code === DIAGNOSTIC_CODES.BRANCH_TYPE_MISMATCH && documentManager && liquidEngine) {
+      const diagData = diagnostic.data as {
+        varName: string;
+        mismatchLine: number;
+        mismatchRange: Range;
+        expected: 'number' | 'string';
+        actual: string;
+        ranges: Range[];
+      } | undefined;
+
+      if (diagData && diagData.ranges) {
+        const tokens = documentManager.getTokens(params.textDocument.uri, liquidEngine);
+        
+        // Find mismatched assignment token on mismatchLine
+        const mismatchedToken = tokens.find(
+          (t) => t instanceof TagTokenClass && t.line === diagData.mismatchLine && ['assign', 'assignVar', 'parseAssign'].includes(t.name)
+        );
+
+        if (mismatchedToken && mismatchedToken.constructor?.name === 'TagTokenClass') {
+          const tagToken = mismatchedToken as any;
+          const tokenText = tagToken.getText();
+          const argsOffset = tokenText.indexOf(tagToken.args);
+          const equalsIndex = tagToken.args.indexOf('=');
+
+          if (equalsIndex !== -1) {
+            const startOffset = tagToken.begin + (argsOffset >= 0 ? argsOffset : 0) + equalsIndex + 1;
+            const endOffset = tagToken.begin + (argsOffset >= 0 ? argsOffset : 0) + tagToken.args.length;
+            
+            const rawVal = doc.getText(Range.create(doc.positionAt(startOffset), doc.positionAt(endOffset)));
+            const leadingSpaces = rawVal.length - rawVal.trimStart().length;
+            const trimmed = rawVal.trim();
+
+            const valueRange = Range.create(
+              doc.positionAt(startOffset + leadingSpaces),
+              doc.positionAt(startOffset + leadingSpaces + trimmed.length)
+            );
+
+            // 1. Offer to align mismatched branch to expected type
+            const newText = diagData.expected === 'number' ? '0.0' : '""';
+            const edit = {
+              changes: {
+                [params.textDocument.uri]: [
+                  {
+                    range: valueRange,
+                    newText,
+                  },
+                ],
+              },
+            };
+            const action = CodeAction.create(
+              `Align "${diagData.varName}" in branch on line ${diagData.mismatchLine + 1} to type ${diagData.expected}`,
+              edit,
+              CodeActionKind.QuickFix,
+            );
+            action.diagnostics = [diagnostic];
+            codeActions.push(action);
+          }
+        }
+      }
+    }
+
     const data = diagnostic.data as
       | { tagName?: string; suggestedFilter?: string }
       | undefined;

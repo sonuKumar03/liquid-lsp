@@ -45,7 +45,7 @@ test('Liquid computational edge cases (output type mismatch, formatter string pr
       ) {
         const diagnostics = res.params.diagnostics;
         const typeMismatchWarning = diagnostics.find((d: any) =>
-          d.message.includes('Type mismatch'),
+          d.message.includes('only works on'),
         );
         expect(typeMismatchWarning).toBeDefined();
         expect(typeMismatchWarning.range.start.line).toBe(1);
@@ -156,7 +156,7 @@ test('Liquid custom parseAssign tag validation and coercion', () =>
         // 1. Verify y (raw_price) coerced from currency to number: no plus filter type warning
         const rawPriceMismatch = diagnostics.find(
           (d: any) =>
-            d.range.start.line === 1 && d.message.includes('Type mismatch'),
+            d.range.start.line === 1 && d.message.includes('only works on'),
         );
         expect(rawPriceMismatch).toBeUndefined();
 
@@ -164,7 +164,7 @@ test('Liquid custom parseAssign tag validation and coercion', () =>
         const invalidPropertyError = diagnostics.find(
           (d: any) =>
             d.range.start.line === 3 &&
-            d.message.includes('Property "invalid_prop" does not exist'),
+            d.message.includes('doesn\'t have a field called "invalid_prop"'),
         );
         expect(invalidPropertyError).toBeDefined();
         expect(invalidPropertyError.severity).toBe(1); // 1 = Error
@@ -175,14 +175,14 @@ test('Liquid custom parseAssign tag validation and coercion', () =>
         );
         // Wait, there could be unused variable warning, check that it's only warning for unused, not property error
         if (filteredNameError) {
-          expect(filteredNameError.message).not.toContain('does not exist');
+          expect(filteredNameError.message).not.toContain('doesn\'t have a field called');
         }
 
         // 4. Verify invalid_filtered (invalid property with filter chain) triggers error
         const invalidFilteredError = diagnostics.find(
           (d: any) =>
             d.range.start.line === 5 &&
-            d.message.includes('Property "invalid_prop" does not exist'),
+            d.message.includes('doesn\'t have a field called "invalid_prop"'),
         );
         expect(invalidFilteredError).toBeDefined();
 
@@ -190,7 +190,7 @@ test('Liquid custom parseAssign tag validation and coercion', () =>
         const offsetCollisionError = diagnostics.find(
           (d: any) =>
             d.range.start.line === 6 &&
-            d.message.includes('Cannot access property "first_name"'),
+            d.message.includes('You can\'t access "first_name"'),
         );
         expect(offsetCollisionError).toBeDefined();
         expect(offsetCollisionError.range.start.character).toBe(44);
@@ -198,7 +198,7 @@ test('Liquid custom parseAssign tag validation and coercion', () =>
         // 6. Verify item_title bracket access (user.items[0].title) does not trigger property/bracket error
         const bracketAccessError = diagnostics.find(
           (d: any) =>
-            d.range.start.line === 7 && d.message.includes('does not exist'),
+            d.range.start.line === 7 && d.message.includes('doesn\'t have a field called'),
         );
         expect(bracketAccessError).toBeUndefined();
 
@@ -282,7 +282,7 @@ test('Liquid SpotDraft-specific custom filters and assignVar linter validation',
         // 1. Verify val_unused triggers unused warning
         const unusedWarning = diagnostics.find(
           (d: any) =>
-            d.message.includes('declared but its value is never read') &&
+            d.message.includes('never read it anywhere') &&
             d.message.includes('val_unused'),
         );
         expect(unusedWarning).toBeDefined();
@@ -290,7 +290,7 @@ test('Liquid SpotDraft-specific custom filters and assignVar linter validation',
         // 2. Verify val_used does not trigger unused warning
         const usedWarning = diagnostics.find(
           (d: any) =>
-            d.message.includes('declared but its value is never read') &&
+            d.message.includes('never read it anywhere') &&
             d.message.includes('val_used'),
         );
         expect(usedWarning).toBeUndefined();

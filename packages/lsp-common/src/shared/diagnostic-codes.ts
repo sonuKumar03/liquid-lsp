@@ -11,6 +11,11 @@ export const DIAGNOSTIC_CODES = {
   INVALID_PARSE_ASSIGN_JSON: 'liquid.linter.invalid_parse_assign_json',
   INVALID_DYNAMIC_TABLE_COMPUTATION:
     'liquid.linter.invalid_dynamic_table_computation',
+  COERCION_WARNING: 'liquid.linter.coercion_warning',
+  NON_NUMERIC_COERCION: 'liquid.linter.non_numeric_coercion',
+  NIL_PROPAGATION: 'liquid.linter.nil_propagation',
+  BRANCH_TYPE_MISMATCH: 'liquid.linter.branch_type_mismatch',
+  FILTER_ARGUMENT_TYPE_MISMATCH: 'liquid.linter.filter_argument_type_mismatch',
   ...SCHEMA_ERROR_CODES,
 } as const;
 

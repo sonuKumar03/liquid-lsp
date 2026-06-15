@@ -311,7 +311,7 @@ test('Liquid unused variables diagnostics', () =>
       ) {
         const diagnostics = res.params.diagnostics;
         const unusedWarnings = diagnostics.filter((d: any) =>
-          d.message.includes('declared but its value is never read'),
+          d.message.includes('never read it anywhere'),
         );
         expect(unusedWarnings.length).toBe(1);
         expect(unusedWarnings[0].message).toContain('val');
@@ -368,13 +368,13 @@ test('Liquid enhanced diagnostics (type mismatch & redefinition)', () =>
       ) {
         const diagnostics = res.params.diagnostics;
         const overwrittenWarning = diagnostics.find((d: any) =>
-          d.message.includes('overwritten'),
+          d.message.includes('overwriting'),
         );
         expect(overwrittenWarning).toBeDefined();
         expect(overwrittenWarning.range.start.line).toBe(0);
 
         const typeMismatchWarning = diagnostics.find((d: any) =>
-          d.message.includes('Type mismatch'),
+          d.message.includes('only works on'),
         );
         expect(typeMismatchWarning).toBeUndefined();
 
@@ -399,7 +399,7 @@ test('Liquid enhanced diagnostics (type mismatch & redefinition)', () =>
       ) {
         const diagnostics = res.params.diagnostics;
         const typeMismatchWarning = diagnostics.find((d: any) =>
-          d.message.includes('Type mismatch'),
+          d.message.includes('only works on'),
         );
         expect(typeMismatchWarning).toBeDefined();
         expect(typeMismatchWarning.range.start.line).toBe(1);
@@ -459,10 +459,10 @@ test('Liquid schema and dropdown options validation', () =>
       ) {
         const diagnostics = res.params.diagnostics;
         const dropdownWarning = diagnostics.find((d: any) =>
-          d.message.includes('not a valid option for dropdown'),
+          d.message.includes('not one of the choices for'),
         );
         expect(dropdownWarning).toBeDefined();
-        expect(dropdownWarning.message).toContain('valid option');
+        expect(dropdownWarning.message).toContain('choices');
         expect(dropdownWarning.message).toContain('Active');
 
         child.kill('SIGINT');

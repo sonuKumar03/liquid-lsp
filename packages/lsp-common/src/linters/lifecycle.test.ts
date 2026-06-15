@@ -15,7 +15,7 @@ test('collectLifecycleDiagnostics reports overwritten variables', () => {
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  expect(diagnostics.some((d: any) => d.message.includes('overwritten'))).toBe(
+  expect(diagnostics.some((d: any) => d.message.includes('never used it before overwriting'))).toBe(
     true,
   );
 });
@@ -33,7 +33,7 @@ test('collectLifecycleDiagnostics reports math filter type mismatches', () => {
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
   expect(
-    diagnostics.some((d: any) => d.message.includes('Type mismatch')),
+    diagnostics.some((d: any) => d.message.includes('only works on numbers')),
   ).toBe(true);
 });
 
@@ -50,7 +50,7 @@ test('collectLifecycleDiagnostics reports string filter type mismatches', () => 
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
   expect(
-    diagnostics.some((d: any) => d.message.includes('Type mismatch: String filter')),
+    diagnostics.some((d: any) => d.message.includes('only works on text')),
   ).toBe(true);
 });
 
@@ -80,7 +80,7 @@ test('collectLifecycleDiagnostics flags assign to non-computable schema variable
 
   expect(
     diagnostics.some((d: any) =>
-      d.message.includes('does not support liquid computation assignments'),
+      d.message.includes('cannot be set directly in the template'),
     ),
   ).toBe(true);
   expect(
@@ -118,7 +118,7 @@ test('collectLifecycleDiagnostics allows assign to computable schema variable', 
 
   expect(
     diagnostics.some((d: any) =>
-      d.message.includes('does not support liquid computation assignments'),
+      d.message.includes('cannot be set directly in the template'),
     ),
   ).toBe(false);
 });
@@ -152,7 +152,7 @@ test('collectLifecycleDiagnostics reports optional property path warnings', () =
 
   expect(
     diagnostics.some((d: any) =>
-      d.message.includes('accessed on optional parent'),
+      d.message.includes('parent is optional'),
     ),
   ).toBe(true);
 });
@@ -175,13 +175,108 @@ test('collectLifecycleDiagnostics checks loop variable type access with parseAss
 
   expect(
     diagnostics.some((d: any) =>
-      d.message.includes('Property "non_existent_field" does not exist on "row".'),
+      d.message.includes('"row" doesn\'t have a field called "non_existent_field".'),
     ),
   ).toBe(true);
 
   expect(
     diagnostics.some((d: any) =>
-      d.message.includes('Property "title" does not exist on "row".'),
+      d.message.includes('"row" doesn\'t have a field called "title"'),
     ),
   ).toBe(false);
+});
+
+test('collectLifecycleDiagnostics coercion warnings (Feature 1)', () => {
+  const engine = createLiquidEngine();
+  const schema = new Map<string, any>();
+  schema.set('price', { kind: 'primitive', type: 'number', optional: true });
+  
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    '{{ price | plus: 5 }}',
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine, schema);
+
+  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.coercion_warning')).toBe(true);
+});
+
+test('collectLifecycleDiagnostics format-to-numeric warning (Feature 1)', () => {
+  const engine = createLiquidEngine();
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    '{{ "123a" | plus: 5 }}',
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine);
+
+  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.non_numeric_coercion')).toBe(true);
+});
+
+test('collectLifecycleDiagnostics nil propagation (Feature 3)', () => {
+  const engine = createLiquidEngine();
+  const schema = new Map<string, any>();
+  schema.set('contract', {
+    kind: 'composite',
+    optional: true,
+    fields: new Map<string, any>([['items', 'number']]),
+  });
+
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `{% assign subtotal = contract.items %}
+    {% assign tax = subtotal | times: 10 %}
+    {{ tax }}`,
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine, schema);
+
+  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.nil_propagation')).toBe(true);
+});
+
+test('collectLifecycleDiagnostics branch consistency (Feature 5)', () => {
+  const engine = createLiquidEngine();
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `{% if true %}
+      {% assign rate = 0.15 %}
+     {% else %}
+      {% assign rate = "standard" %}
+     {% endif %}
+     {{ rate | times: 10 }}`,
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine);
+
+  console.log("DEBUG DIAGS:", JSON.stringify(diagnostics, null, 2));
+
+  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.branch_type_mismatch')).toBe(true);
+});
+
+test('collectLifecycleDiagnostics filter argument validation (Feature 6)', () => {
+  const engine = createLiquidEngine();
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `{{ 100 | divided_by: "two" }}
+     {{ "hello" | date: "2026-06-15" }}`,
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine);
+
+  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.filter_argument_type_mismatch')).toBe(true);
 });

@@ -523,3 +523,99 @@ test('Liquid spelling correction for unknown tag names', () =>
       }),
     );
   }));
+
+test('Liquid quoted filter name quick fix', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+    let diagnostic: any = null;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{{ name | "uppercase" }}',
+              },
+            },
+          }),
+        );
+        step = 1;
+      } else if (
+        step === 1 &&
+        res.method === 'textDocument/publishDiagnostics'
+      ) {
+        const diagnostics = res.params.diagnostics;
+        expect(diagnostics.length).toBeGreaterThan(0);
+
+        diagnostic = diagnostics.find(
+          (d: any) =>
+            d.code === 'liquid.syntax.expected_filter_name' ||
+            d.message.includes('Expected filter name'),
+        );
+        expect(diagnostic).toBeDefined();
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/codeAction',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              range: diagnostic.range,
+              context: { diagnostics: [diagnostic] },
+            },
+          }),
+        );
+        step = 2;
+      } else if (step === 2 && res.id === 2) {
+        const actions = res.result;
+        expect(actions.length).toBeGreaterThan(0);
+
+        // Expect "Remove quotes from filter name"
+        const unquoteAction = actions.find((a: any) =>
+          a.title.includes('Remove quotes from filter name'),
+        );
+        expect(unquoteAction).toBeDefined();
+        expect(unquoteAction.kind).toBe('quickfix');
+        const unquoteEdit = unquoteAction.edit.changes['file:///t.liquid'][0];
+        expect(unquoteEdit.newText).toBe('uppercase');
+
+        // Expect "Change to filter "upcase""
+        const suggestAction = actions.find((a: any) =>
+          a.title.includes('Change to filter "upcase"'),
+        );
+        expect(suggestAction).toBeDefined();
+        expect(suggestAction.kind).toBe('quickfix');
+        const suggestEdit = suggestAction.edit.changes['file:///t.liquid'][0];
+        expect(suggestEdit.newText).toBe('upcase');
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { capabilities: {} },
+      }),
+    );
+  }));

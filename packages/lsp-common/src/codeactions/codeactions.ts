@@ -8,6 +8,7 @@ import {
   SINGLE_EQUALS_ASSIGNMENT_REGEX,
   convertToLiquidMath,
   getClosestTag,
+  getClosestFilter,
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from '../shared/diagnostic-codes.js';
 
@@ -98,6 +99,59 @@ export function handleCodeAction(
         );
         action.diagnostics = [diagnostic];
         codeActions.push(action);
+      }
+    }
+
+    // Quoted filter name Quick Fixes (e.g. | "uppercase")
+    if (
+      diagnostic.code === DIAGNOSTIC_CODES.EXPECTED_FILTER_NAME ||
+      message.toLowerCase().includes('expected filter name')
+    ) {
+      const text = doc.getText(diagnostic.range).trim();
+      const isQuoted = /^("[^"]*"|'[^']*')$/.test(text);
+      if (isQuoted) {
+        const unquoted = text.slice(1, -1);
+
+        // Remove quotes suggestion
+        const editUnquote = {
+          changes: {
+            [params.textDocument.uri]: [
+              {
+                range: diagnostic.range,
+                newText: unquoted,
+              },
+            ],
+          },
+        };
+        const actionUnquote = CodeAction.create(
+          `Remove quotes from filter name`,
+          editUnquote,
+          CodeActionKind.QuickFix,
+        );
+        actionUnquote.diagnostics = [diagnostic];
+        codeActions.push(actionUnquote);
+
+        // Correct spelling suggestion
+        const closestFilter = getClosestFilter(unquoted);
+        if (closestFilter) {
+          const editSuggest = {
+            changes: {
+              [params.textDocument.uri]: [
+                {
+                  range: diagnostic.range,
+                  newText: closestFilter,
+                },
+              ],
+            },
+          };
+          const actionSuggest = CodeAction.create(
+            `Change to filter "${closestFilter}"`,
+            editSuggest,
+            CodeActionKind.QuickFix,
+          );
+          actionSuggest.diagnostics = [diagnostic];
+          codeActions.push(actionSuggest);
+        }
       }
     }
 

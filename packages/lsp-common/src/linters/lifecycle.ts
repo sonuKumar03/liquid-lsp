@@ -455,7 +455,8 @@ function validateFilterNameSyntax(
         token.begin +
         (exprOffsetInToken !== -1 ? exprOffsetInToken : 0) +
         filterNameStart;
-      const matchWord = trimmedAfterPipe.match(/^[^\s|]*/);
+      const quotedMatch = trimmedAfterPipe.match(/^("[^"]*"|'[^']*')/);
+      const matchWord = quotedMatch ? quotedMatch : trimmedAfterPipe.match(/^[^\s|]*/);
       const highlightLen = Math.max(1, matchWord ? matchWord[0].length : 1);
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
@@ -464,6 +465,7 @@ function validateFilterNameSyntax(
           end: doc.positionAt(errorStartOffset + highlightLen),
         },
         message: 'Expected filter name.',
+        code: DIAGNOSTIC_CODES.EXPECTED_FILTER_NAME,
         source: 'liquid-lsp-linter',
       });
     } else {

@@ -139,23 +139,20 @@ function collectSyntaxDiagnostics(
   try {
     const { errors } = liquidEngine.parser.parseResilient(textDocument.getText());
     for (const error of errors) {
-      const token = error.token as unknown as Record<string, unknown> | undefined;
-      const start =
-        token && typeof token.begin === 'number'
-          ? textDocument.positionAt(token.begin)
-          : { line: 0, character: 0 };
-      const end =
-        token && typeof token.end === 'number'
-          ? textDocument.positionAt(token.end)
-          : { line: 0, character: 0 };
+      const token = error.token;
+      const start = token
+        ? textDocument.positionAt(token.begin)
+        : { line: 0, character: 0 };
+      const end = token
+        ? textDocument.positionAt(token.end)
+        : { line: 0, character: 0 };
 
       // Skip tokens that already have manual errors to avoid double diagnostics
-      if (token && typeof token.getText === 'function') {
-        const tokenText = (token.getText as () => string)();
+      if (token) {
+        const tokenText = token.getText();
         const textWithoutQuotes = tokenText.replace(/'[^']*'|"[^"]*"/g, '');
         const isConditionalAssignment =
           token instanceof TagTokenClass &&
-          typeof token.name === 'string' &&
           isConditionalTagText(token.name) &&
           textWithoutQuotes.search(/(?<![=!<>])=(?![=<>])/) !== -1;
         const isInlineMath =
@@ -174,7 +171,7 @@ function collectSyntaxDiagnostics(
         continue;
       }
 
-      const errMessage = (error.originalError as Error | undefined)?.message ?? error.message;
+      const errMessage = error.originalError?.message ?? error.message;
 
       let code: string | undefined = undefined;
       let data: unknown = undefined;
@@ -185,13 +182,10 @@ function collectSyntaxDiagnostics(
       if (notClosedMatch) {
         code = DIAGNOSTIC_CODES.UNCLOSED_DELIMITER;
         if (notClosedMatch[1] === 'tag') {
-          const rawTag =
-            token && typeof token.getText === 'function'
-              ? (token.getText as () => string)()
-              : notClosedMatch[2];
+          const rawTag = token ? token.getText() : notClosedMatch[2];
           data = {
             tagName:
-              (token && typeof token.name === 'string' ? token.name : undefined) ??
+              (token instanceof TagTokenClass ? token.name : undefined) ??
               errMessage.match(/tag\s+\{%\s*(\w+)/)?.[1],
             rawTag,
           };

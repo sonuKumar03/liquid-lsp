@@ -331,3 +331,18 @@ test('Liquid document formatting regression for complex conditionals', () =>
     );
   }));
 
+test('formatLiquid splits consecutive logic tags', () => {
+  const input = '{% assign x = 1 %} {% assign y = 2 %}';
+  expect(formatLiquid(input)).toBe('{% assign x = 1 %}\n{% assign y = 2 %}');
+});
+
+test('formatLiquid splits and indents consecutive logic tags inside blocks', () => {
+  const input = '{% if true %}{% assign x = 1 %}{% endif %}';
+  const expected = [
+    '{% if true %}',
+    '  {% assign x = 1 %}',
+    '{% endif %}',
+  ].join('\n');
+  expect(formatLiquid(input)).toBe(expected);
+});
+

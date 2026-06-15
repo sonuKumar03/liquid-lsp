@@ -94,7 +94,8 @@ function extractBlockTagsFromLine(line: string): string[] {
 }
 
 export function formatLiquid(text: string): string {
-  const lines = text.split(/\r?\n/);
+  const preProcessedText = text.replace(/%\}\s*\{%/g, '%\}\n\{%');
+  const lines = preProcessedText.split(/\r?\n/);
   let indentLevel = 0;
   const indentString = '  '; // 2 spaces
 

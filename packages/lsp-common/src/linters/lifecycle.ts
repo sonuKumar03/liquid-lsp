@@ -8,9 +8,9 @@ import {
   isKnownLiquidFilter,
   isConditionalTagLine,
   getClosestFilter,
-  parseAssignKeyValue,
-  parseCaptureVariable,
-  parseForLoopVariable,
+  parseAssignKeyValueWithOffsets,
+  parseCaptureVariableWithOffsets,
+  parseForLoopVariableWithOffsets,
   parseOutputValue,
 } from 'liquid-core';
 import { PropertyAccessToken, Tokenizer } from 'liquidjs';
@@ -113,17 +113,20 @@ function collectTagDiagnostics(
   const name = token.name;
 
   if (name === 'assign' || name === 'assignVar' || name === 'parseAssign') {
-    const parsed = parseAssignKeyValue(token.args);
+    const parsed = parseAssignKeyValueWithOffsets(token.args);
     if (parsed) {
       const varName = parsed.key;
       const expr = parsed.value;
       const prev = activeVars.get(varName);
+      const argsOffset = tokenText.indexOf(token.args);
+      const absOffset = (argsOffset >= 0 ? argsOffset : 0) + parsed.keyStart;
 
       validateNonComputableSchemaAssignment(
         doc,
         diagnostics,
         token,
         varName,
+        absOffset,
         schemaVariables,
       );
 
@@ -147,7 +150,7 @@ function collectTagDiagnostics(
       redefineIfNeeded(diagnostics, activeVars, varName);
       activeVars.set(
         varName,
-        createDecl(varName, line, tokenText, inferredType),
+        createDecl(varName, line, token, absOffset, inferredType, doc),
       );
       validateDropdownValue(
         doc,
@@ -160,17 +163,26 @@ function collectTagDiagnostics(
       );
     }
   } else if (name === 'capture') {
-    const varName = parseCaptureVariable(token.args);
-    if (varName) {
+    const parsed = parseCaptureVariableWithOffsets(token.args);
+    if (parsed) {
+      const varName = parsed.key;
+      const argsOffset = tokenText.indexOf(token.args);
+      const absOffset = (argsOffset >= 0 ? argsOffset : 0) + parsed.keyStart;
+
       redefineIfNeeded(diagnostics, activeVars, varName);
-      activeVars.set(varName, createDecl(varName, line, tokenText, 'string'));
+      activeVars.set(
+        varName,
+        createDecl(varName, line, token, absOffset, 'string', doc),
+      );
     }
   } else if (name === 'for') {
-    const varName = parseForLoopVariable(token.args);
-    if (varName) {
-      const collectionExpr = token.args
-        .replace(new RegExp(`^\\s*${varName}\\s+in\\s+`), '')
-        .trim();
+    const parsed = parseForLoopVariableWithOffsets(token.args);
+    if (parsed) {
+      const varName = parsed.key;
+      const collectionExpr = parsed.collection;
+      const argsOffset = tokenText.indexOf(token.args);
+      const absOffset = (argsOffset >= 0 ? argsOffset : 0) + parsed.keyStart;
+
       if (collectionExpr) {
         processExpression(
           collectionExpr,
@@ -181,7 +193,10 @@ function collectTagDiagnostics(
           engine,
         );
       }
-      activeVars.set(varName, createDecl(varName, line, tokenText, 'unknown'));
+      activeVars.set(
+        varName,
+        createDecl(varName, line, token, absOffset, 'unknown', doc),
+      );
     }
   } else if (isConditionalTagLine(name)) {
     processExpression(token.args, token, doc, diagnostics, activeVars, engine);
@@ -191,12 +206,14 @@ function collectTagDiagnostics(
 function createDecl(
   varName: string,
   line: number,
-  tokenText: string,
+  token: TagToken,
+  offsetInToken: number,
   type: LiquidType,
+  doc: TextDocument,
 ): ActiveVar {
-  const offset = tokenText.indexOf(varName);
-  const start = { line, character: Math.max(0, offset) };
-  const end = { line, character: Math.max(0, offset) + varName.length };
+  const absPos = doc.positionAt(token.begin + offsetInToken);
+  const start = { line: absPos.line, character: absPos.character };
+  const end = { line: absPos.line, character: absPos.character + varName.length };
   return {
     declRange: Range.create(start, end),
     line,
@@ -252,6 +269,7 @@ function validateNonComputableSchemaAssignment(
   diagnostics: Diagnostic[],
   token: TagToken,
   varName: string,
+  offsetInToken: number,
   schemaVariables?: Map<string, VariableDeclaration>,
 ): void {
   if (!schemaVariables?.has(varName)) {
@@ -263,12 +281,10 @@ function validateNonComputableSchemaAssignment(
     return;
   }
 
-  const tokenText = token.getText();
-  const offset = tokenText.indexOf(varName);
+  const absPos = doc.positionAt(token.begin + offsetInToken);
   const start = {
-    line: doc.positionAt(token.begin).line,
-    character:
-      doc.positionAt(token.begin).character + (offset !== -1 ? offset : 0),
+    line: absPos.line,
+    character: absPos.character,
   };
   const end = {
     line: start.line,

@@ -5,10 +5,11 @@ import type {
   KeyPointerSelectOption,
 } from './key-pointer-types.js';
 
-function composite(fields: Record<string, LiquidType>): LiquidType {
+function composite(fields: Record<string, LiquidType>, open?: boolean): LiquidType {
   return {
     kind: 'composite',
     fields: new Map(Object.entries(fields)),
+    ...(open ? { open } : {}),
   };
 }
 
@@ -73,7 +74,7 @@ export function keyPointerTypeToLiquid(
       });
     case 'repeating':
     case 'table':
-      return composite({});
+      return composite({}, true);
     case 'multi-file':
       return composite({
         name: 'string',

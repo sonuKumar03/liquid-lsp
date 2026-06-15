@@ -372,6 +372,8 @@ function processParseAssignExpression(
         const nextType = currentType.fields.get(fieldName);
         if (nextType) {
           currentType = nextType;
+        } else if (currentType.open) {
+          currentType = 'unknown';
         } else {
           diagnostics.push({
             severity: DiagnosticSeverity.Error,

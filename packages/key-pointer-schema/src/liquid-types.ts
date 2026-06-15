@@ -13,7 +13,7 @@ export type LiquidType =
   | { kind: 'composite'; fields: Map<string, LiquidType>; optional?: boolean }
   | 'unknown';
 
-export function parseType(value: any): LiquidType {
+export function parseType(value: unknown): LiquidType {
   if (typeof value === 'string') {
     if (
       value === 'string' ||
@@ -27,21 +27,24 @@ export function parseType(value: any): LiquidType {
     return 'unknown';
   }
   if (value && typeof value === 'object') {
-    const optional = value.optional === true || value.nullable === true;
-    if (value.type === 'dropdown' && Array.isArray(value.options)) {
+    const valObj = value as Record<string, unknown>;
+    const optional = valObj.optional === true || valObj.nullable === true;
+    if (valObj.type === 'dropdown' && Array.isArray(valObj.options)) {
       return {
         kind: 'dropdown',
-        options: value.options.map((o: any) => String(o)),
+        options: valObj.options.map((o: unknown) => String(o)),
         ...(optional ? { optional } : {}),
       };
     }
     if (
-      value.type === 'composite' &&
-      value.fields &&
-      typeof value.fields === 'object'
+      valObj.type === 'composite' &&
+      valObj.fields &&
+      typeof valObj.fields === 'object'
     ) {
       const fields = new Map<string, LiquidType>();
-      for (const [k, v] of Object.entries(value.fields)) {
+      for (const [k, v] of Object.entries(
+        valObj.fields as Record<string, unknown>,
+      )) {
         fields.set(k, parseType(v));
       }
       return {
@@ -51,14 +54,19 @@ export function parseType(value: any): LiquidType {
       };
     }
     if (
-      typeof value.type === 'string' &&
-      (value.type === 'string' ||
-        value.type === 'number' ||
-        value.type === 'boolean' ||
-        value.type === 'date' ||
-        value.type === 'currency')
+      typeof valObj.type === 'string' &&
+      (valObj.type === 'string' ||
+        valObj.type === 'number' ||
+        valObj.type === 'boolean' ||
+        valObj.type === 'date' ||
+        valObj.type === 'currency')
     ) {
-      const primType = value.type as 'string' | 'number' | 'boolean' | 'date' | 'currency';
+      const primType = valObj.type as
+        | 'string'
+        | 'number'
+        | 'boolean'
+        | 'date'
+        | 'currency';
       if (optional) {
         return {
           kind: 'primitive',
@@ -72,10 +80,10 @@ export function parseType(value: any): LiquidType {
   return 'unknown';
 }
 
-export function parseSchema(rawSchema: any): Map<string, LiquidType> {
+export function parseSchema(rawSchema: unknown): Map<string, LiquidType> {
   const schema = new Map<string, LiquidType>();
-  if (rawSchema && typeof rawSchema === 'object') {
-    for (const [k, v] of Object.entries(rawSchema)) {
+  if (rawSchema && typeof rawSchema === 'object' && !Array.isArray(rawSchema)) {
+    for (const [k, v] of Object.entries(rawSchema as Record<string, unknown>)) {
       schema.set(k, parseType(v));
     }
   }

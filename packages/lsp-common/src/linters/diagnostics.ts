@@ -144,7 +144,7 @@ function collectSyntaxDiagnostics(
   // 2. Run standard parsing error checks
   try {
     liquidEngine.parse(textDocument.getText());
-  } catch (mainErr: any) {
+  } catch (mainErr: unknown) {
     try {
       for (const [tokenIndex, token] of tokens.entries()) {
         if (token.kind !== TokenKind.Tag && token.kind !== TokenKind.Output)
@@ -205,9 +205,11 @@ function collectSyntaxDiagnostics(
           const errMessage =
             tokenErr instanceof Error
               ? tokenErr.message
-              : typeof tokenErr === 'object' && tokenErr !== null && 'message' in tokenErr
-              ? String((tokenErr as { message: unknown }).message)
-              : '';
+              : typeof tokenErr === 'object' &&
+                  tokenErr !== null &&
+                  'message' in tokenErr
+                ? String((tokenErr as { message: unknown }).message)
+                : '';
           const tagMatch = errMessage.match(
             /tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/,
           );
@@ -253,17 +255,21 @@ function isConditionalTagText(name: string): boolean {
 function emitMainCompilerDiagnostic(
   textDocument: TextDocument,
   diagnostics: Diagnostic[],
-  mainErr: any,
+  mainErr: unknown,
 ): void {
+  const err =
+    typeof mainErr === 'object' && mainErr !== null
+      ? (mainErr as Record<string, unknown>)
+      : {};
+  const errToken =
+    typeof err.token === 'object' && err.token !== null
+      ? (err.token as Record<string, unknown>)
+      : {};
   let start = { line: 0, character: 0 };
   let end = { line: 0, character: 0 };
-  if (
-    mainErr.token &&
-    typeof mainErr.token.begin === 'number' &&
-    typeof mainErr.token.end === 'number'
-  ) {
-    start = textDocument.positionAt(mainErr.token.begin);
-    end = textDocument.positionAt(mainErr.token.end);
+  if (typeof errToken.begin === 'number' && typeof errToken.end === 'number') {
+    start = textDocument.positionAt(errToken.begin);
+    end = textDocument.positionAt(errToken.end);
   }
 
   const isDuplicate = diagnostics.some(
@@ -273,21 +279,27 @@ function emitMainCompilerDiagnostic(
   );
   if (isDuplicate) return;
 
-  const message = typeof mainErr.message === 'string' ? mainErr.message : '';
+  const message = typeof err.message === 'string' ? err.message : '';
   const notClosedMatch = message.match(
     /^(tag|output)\s+(.+?)\s+not closed(?:,|$)/,
   );
   let code: string | undefined = notClosedMatch
     ? DIAGNOSTIC_CODES.UNCLOSED_DELIMITER
     : undefined;
-  let data: any =
-    notClosedMatch && notClosedMatch[1] === 'tag'
-      ? {
-          tagName:
-            mainErr.token?.name ?? message.match(/tag\s+\{%\s*(\w+)/)?.[1],
-          rawTag: mainErr.token?.getText?.() ?? notClosedMatch[2],
-        }
-      : undefined;
+
+  let data: unknown = undefined;
+  if (notClosedMatch && notClosedMatch[1] === 'tag') {
+    const rawTag =
+      typeof errToken.getText === 'function'
+        ? (errToken.getText as () => string)()
+        : notClosedMatch[2];
+    data = {
+      tagName:
+        (typeof errToken.name === 'string' ? errToken.name : undefined) ??
+        message.match(/tag\s+\{%\s*(\w+)/)?.[1],
+      rawTag,
+    };
+  }
 
   if (!code) {
     const tagMatch = message.match(
@@ -303,7 +315,7 @@ function emitMainCompilerDiagnostic(
     severity: DiagnosticSeverity.Error,
     range: { start, end },
     message: getEnhancedErrorMessage(
-      mainErr.message,
+      message,
       getLineText(textDocument, start.line),
     ),
     source: 'liquid-lsp',
@@ -322,22 +334,27 @@ function emitMainCompilerDiagnostic(
 function emitFallbackSyntaxDiagnostic(
   textDocument: TextDocument,
   diagnostics: Diagnostic[],
-  mainErr: any,
+  mainErr: unknown,
 ): void {
+  const err =
+    typeof mainErr === 'object' && mainErr !== null
+      ? (mainErr as Record<string, unknown>)
+      : {};
+  const errToken =
+    typeof err.token === 'object' && err.token !== null
+      ? (err.token as Record<string, unknown>)
+      : {};
   let start = { line: 0, character: 0 };
   let end = { line: 0, character: 0 };
-  if (
-    mainErr.token &&
-    typeof mainErr.token.begin === 'number' &&
-    typeof mainErr.token.end === 'number'
-  ) {
-    start = textDocument.positionAt(mainErr.token.begin);
-    end = textDocument.positionAt(mainErr.token.end);
+  if (typeof errToken.begin === 'number' && typeof errToken.end === 'number') {
+    start = textDocument.positionAt(errToken.begin);
+    end = textDocument.positionAt(errToken.end);
   }
+  const message = typeof err.message === 'string' ? err.message : '';
   diagnostics.push({
     severity: DiagnosticSeverity.Error,
     range: { start, end },
-    message: cleanErrorMessage(mainErr.message),
+    message: cleanErrorMessage(message),
     source: 'liquid-lsp',
   });
 }

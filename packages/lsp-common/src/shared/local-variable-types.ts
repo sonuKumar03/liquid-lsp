@@ -87,7 +87,9 @@ export function applyFilterTypeRules(
   return currentType;
 }
 
-function getExpressionText(expr: any): string {
+function getExpressionText(
+  expr: { postfix?: Token[] } | null | undefined,
+): string {
   if (!expr || !expr.postfix || expr.postfix.length === 0) {
     return '';
   }

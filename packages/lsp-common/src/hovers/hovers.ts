@@ -100,7 +100,10 @@ export function formatLiquidType(type: LiquidType): string {
   return '`unknown`';
 }
 
-export function resolveValueForPath(path: string, contextData: any): any {
+export function resolveValueForPath(
+  path: string,
+  contextData: unknown,
+): unknown {
   if (!contextData) return undefined;
 
   // Normalize bracket access (e.g. items[0] or items['key']) to dot notation
@@ -109,7 +112,7 @@ export function resolveValueForPath(path: string, contextData: any): any {
     .replace(/^\.+|\.+$/g, '');
 
   const parts = normalizedPath.split('.');
-  let current = contextData;
+  let current: unknown = contextData;
 
   for (const part of parts) {
     if (current === null || current === undefined) {
@@ -123,7 +126,7 @@ export function resolveValueForPath(path: string, contextData: any): any {
       }
     }
     if (typeof current === 'object') {
-      current = current[part];
+      current = (current as Record<string, unknown>)[part];
     } else {
       return undefined;
     }
@@ -136,7 +139,7 @@ export function handleHover(
   documents: TextDocuments<TextDocument>,
   params: TextDocumentPositionParams,
   schema?: Map<string, LiquidType>,
-  contextData?: any,
+  contextData?: unknown,
 ): Hover | null {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;

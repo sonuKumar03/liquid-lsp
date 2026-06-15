@@ -622,7 +622,7 @@ function resolveBaseExpressionType(
   return currentType;
 }
 
-function extractVariables(token: any, variables: string[]): void {
+function extractVariables(token: unknown, variables: string[]): void {
   if (token instanceof PropertyAccessToken) {
     if (token.props && token.props.length > 0) {
       const base = token.props[0];

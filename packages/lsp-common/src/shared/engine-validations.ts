@@ -7,9 +7,15 @@ import {
   type Liquid,
   type Token,
   type TagTemplate,
+  type ValueTemplate,
   parseAssign,
   checkValidJSON,
   checkAtleastOneDynamicTableAssignPresent,
+  Tag,
+  IfTag,
+  UnlessTag,
+  ForTag,
+  ComputeColumnTag,
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from './diagnostic-codes.js';
 
@@ -147,7 +153,8 @@ function findTagTokenForTemplate(
   }
   const line = (tagToken as { line?: number }).line;
   if (typeof line === 'number') {
-    return findTagTokenOnLine(tokens, line, new Set([(template as any).name]));
+    const name = template instanceof Tag ? template.name : '';
+    return findTagTokenOnLine(tokens, line, new Set([name]));
   }
   return undefined;
 }
@@ -163,7 +170,9 @@ function reportUseBeforeAssign(
   const range = token
     ? rangeForIdentifierInTagToken(doc, token, varName)
     : { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
-  const message = `Variable "${varName}" used before assignment in expression "${(template.token as any).args}" on line ${(template.token as any).line}`;
+  const args = token ? token.args : '';
+  const line = token ? token.line : 0;
+  const message = `Variable "${varName}" used before assignment in expression "${args}" on line ${line}`;
 
   pushUniqueDiagnostic(diagnostics, {
     severity: DiagnosticSeverity.Error,
@@ -199,7 +208,7 @@ function handleAssignTemplate(
   }
 }
 
-function getVariablesFromValue(value: any): string[] {
+function getVariablesFromValue(value: ValueTemplate): string[] {
   if (!value || !value.initial || !value.initial.postfix) {
     return [];
   }
@@ -223,9 +232,8 @@ function walkTagTemplate(
 ): void {
   const currentSet = new Set(assignedVars);
 
-  if ((template as any).name === 'if' || (template as any).name === 'unless') {
-    const impl = template as any;
-    for (const branch of impl.branches ?? []) {
+  if (template instanceof IfTag || template instanceof UnlessTag) {
+    for (const branch of template.branches ?? []) {
       const branchSet = new Set(currentSet);
       if (branch.value) {
         const condVars = getVariablesFromValue(branch.value);
@@ -246,7 +254,7 @@ function walkTagTemplate(
     walkTemplates(
       doc,
       engine,
-      impl.elseTemplates ?? [],
+      template.elseTemplates ?? [],
       new Set(currentSet),
       diagnostics,
       tokens,
@@ -255,16 +263,15 @@ function walkTagTemplate(
     return;
   }
 
-  if ((template as any).name === 'for') {
-    const impl = template as any;
+  if (template instanceof ForTag) {
     const loopSet = new Set(currentSet);
-    if (impl.variable) {
-      loopSet.add(impl.variable);
+    if (template.variable) {
+      loopSet.add(template.variable);
     }
     walkTemplates(
       doc,
       engine,
-      impl.templates ?? [],
+      template.templates ?? [],
       loopSet,
       diagnostics,
       tokens,
@@ -273,7 +280,7 @@ function walkTagTemplate(
     walkTemplates(
       doc,
       engine,
-      impl.elseTemplates ?? [],
+      template.elseTemplates ?? [],
       currentSet,
       diagnostics,
       tokens,
@@ -282,7 +289,7 @@ function walkTagTemplate(
     return;
   }
 
-  if (ASSIGN_DEPENDENCY_TAG_NAMES.has((template as any).name)) {
+  if (template instanceof Tag && ASSIGN_DEPENDENCY_TAG_NAMES.has(template.name)) {
     handleAssignTemplate(
       doc,
       engine,
@@ -326,22 +333,19 @@ function findComputeColumnOpenLine(
   metadata: { tableName?: string; columnName?: string },
 ): number | undefined {
   try {
-    const templates = engine.parse(text) as TagTemplate[];
+    const templates = engine.parse(text);
     for (const template of templates) {
-      if (
-        !(template.token instanceof TagTokenClass) ||
-        (template as any).name !== 'computeColumn'
-      ) {
+      if (!(template instanceof ComputeColumnTag)) {
         continue;
       }
-      const impl = template as any;
-      const tableName = impl.table?.content;
-      const columnName = impl.column?.content;
+      const args = template.token.args.trim().split(/\s+/);
+      const tableName = args[0];
+      const columnName = args[1];
       if (
         tableName === metadata.tableName &&
         columnName === metadata.columnName
       ) {
-        const line = (template.token as { line?: number }).line;
+        const line = template.token.line;
         if (typeof line === 'number') {
           return line;
         }

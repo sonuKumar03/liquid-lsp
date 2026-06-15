@@ -8,6 +8,11 @@ export {
   parseAssign,
   checkValidJSON,
   checkAtleastOneDynamicTableAssignPresent,
+  Tag,
+  IfTag,
+  UnlessTag,
+  ForTag,
+  ComputeColumnTag,
 } from './engine.js';
 
 export { lexical } from './lexical.js';

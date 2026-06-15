@@ -12,6 +12,11 @@ export {
   parseAssign,
   checkValidJSON,
   checkAtleastOneDynamicTableAssignPresent,
+  Tag,
+  IfTag,
+  UnlessTag,
+  ForTag,
+  ComputeColumnTag,
 } from 'liquidjs';
 
 /** Creates the shared LiquidJS engine used across LSP features. */

@@ -7,7 +7,7 @@ import {
   parseOutputValue,
   LIQUID_FILTER_METAS,
 } from 'liquid-core';
-import { PropertyAccessToken, Tokenizer } from 'liquidjs';
+import { PropertyAccessToken, Tokenizer, LiteralToken, NumberToken, QuotedToken } from 'liquidjs';
 import {
   MATH_FILTERS,
   STRING_FILTERS,
@@ -360,16 +360,15 @@ export function inferArgumentType(
   activeVars: Map<string, ActiveVar>,
 ): string {
   if (argToken && typeof argToken === 'object') {
-    const constructorName = argToken.constructor?.name;
-    if (constructorName === 'LiteralToken') {
-      const txt = (argToken as { getText?: () => string }).getText?.();
+    if (argToken instanceof LiteralToken) {
+      const txt = argToken.getText();
       if (txt === 'true' || txt === 'false') return 'boolean';
-    } else if (constructorName === 'NumberToken') {
+    } else if (argToken instanceof NumberToken) {
       return 'number';
-    } else if (constructorName === 'QuotedToken') {
+    } else if (argToken instanceof QuotedToken) {
       return 'string';
-    } else if (constructorName === 'PropertyAccessToken') {
-      const varName = (argToken as { getText?: () => string }).getText?.();
+    } else if (argToken instanceof PropertyAccessToken) {
+      const varName = argToken.getText();
       if (varName && activeVars.has(varName)) {
         const t = activeVars.get(varName)!.type;
         return typeof t === 'object' && t.kind === 'primitive'
@@ -560,7 +559,7 @@ export function applyFilterTypeWarnings(
               );
 
               diagnostics.push({
-                severity: DiagnosticSeverity.Warning,
+                severity: DiagnosticSeverity.Error,
                 range: Range.create(argStart, argEnd),
                 message: `"${filterName}" expects a ${expectedType} argument, got a ${actualType} literal "${valToken.getText()}".`,
                 code: DIAGNOSTIC_CODES.FILTER_ARGUMENT_TYPE_MISMATCH,
@@ -573,11 +572,36 @@ export function applyFilterTypeWarnings(
       }
     }
 
+    if (filterName === 'divided_by') {
+      for (const arg of filter.args) {
+        const valToken = Array.isArray(arg) ? arg[1] : arg;
+        if (valToken) {
+          const rawVal = valToken.getText().trim();
+          if (rawVal === '0' || Number(rawVal) === 0) {
+            const argOffset = tokenText.indexOf(valToken.getText(), filterOffsetInToken);
+            const argStart = doc.positionAt(token.begin + (argOffset !== -1 ? argOffset : 0));
+            const argEnd = doc.positionAt(
+              token.begin +
+                (argOffset !== -1 ? argOffset + valToken.getText().length : tokenText.length),
+            );
+
+            diagnostics.push({
+              severity: DiagnosticSeverity.Error,
+              range: Range.create(argStart, argEnd),
+              message: 'Division by zero is not allowed.',
+              code: DIAGNOSTIC_CODES.DIVISION_BY_ZERO,
+              source: 'liquid-lsp-linter',
+            });
+          }
+        }
+      }
+    }
+
     if (filterName === 'date') {
       for (const arg of filter.args) {
         const valToken = Array.isArray(arg) ? arg[1] : arg;
-        if (valToken && valToken.constructor?.name === 'QuotedToken') {
-          const rawVal = (valToken as { getText?: () => string }).getText?.() ?? '';
+        if (valToken && valToken instanceof QuotedToken) {
+          const rawVal = valToken.getText() ?? '';
           const val = rawVal.slice(1, -1);
           if (val && !val.includes('%')) {
             const argOffset = tokenText.indexOf(rawVal, filterOffsetInToken);

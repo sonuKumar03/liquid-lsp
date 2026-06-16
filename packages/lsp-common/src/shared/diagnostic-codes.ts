@@ -16,6 +16,7 @@ export const DIAGNOSTIC_CODES = {
   NIL_PROPAGATION: 'liquid.linter.nil_propagation',
   BRANCH_TYPE_MISMATCH: 'liquid.linter.branch_type_mismatch',
   FILTER_ARGUMENT_TYPE_MISMATCH: 'liquid.linter.filter_argument_type_mismatch',
+  DIVISION_BY_ZERO: 'liquid.linter.division_by_zero',
   ...SCHEMA_ERROR_CODES,
 } as const;
 

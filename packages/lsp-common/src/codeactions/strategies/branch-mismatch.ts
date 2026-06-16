@@ -29,7 +29,7 @@ export const BranchMismatchStrategy: CodeActionStrategy = {
           ['assign', 'assignVar', 'parseAssign'].includes(t.name),
       );
 
-      if (mismatchedToken && mismatchedToken.constructor?.name === 'TagTokenClass') {
+      if (mismatchedToken) {
         const tagToken = mismatchedToken as TagTokenClass;
         const tokenText = tagToken.getText();
         const argsOffset = tokenText.indexOf(tagToken.args);

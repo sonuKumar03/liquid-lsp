@@ -92,6 +92,25 @@ test('Sanity Check: Filter Argument Validation', () => {
   const argDiags = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.FILTER_ARGUMENT_TYPE_MISMATCH);
   expect(argDiags.length).toBe(1);
   expect(argDiags[0]!.message).toContain("expects a number argument");
+  expect(argDiags[0]!.severity).toBe(1); // Error
+});
+
+test('Sanity Check: Division by Zero Validation', () => {
+  const engine = createLiquidEngine();
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `{{ 100 | divided_by: 0 }}`
+  );
+
+  const diagnostics: Diagnostic[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine);
+
+  const divZeroDiags = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.DIVISION_BY_ZERO);
+  expect(divZeroDiags.length).toBe(1);
+  expect(divZeroDiags[0]!.message).toContain("Division by zero is not allowed");
+  expect(divZeroDiags[0]!.severity).toBe(1); // Error
 });
 
 test('Sanity Check: Rename Guards (Schema Collision)', () => {

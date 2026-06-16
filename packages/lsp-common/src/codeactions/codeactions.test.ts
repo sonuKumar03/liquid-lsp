@@ -680,7 +680,7 @@ test('Liquid Code Actions for unclosed delimiter on non-block tag', () =>
         expect(endAssignAction).toBeUndefined();
 
         // 2. Should propose closing tag delimiter with "%}"
-        const closeTagAction = actions.find((a: any) => a.title.includes('Close tag with "%}"'));
+        const closeTagAction = actions.find((a: any) => a.title.includes('Close with %}'));
         expect(closeTagAction).toBeDefined();
         expect(closeTagAction.edit.changes['file:///t.liquid'][0].newText).toBe('%}');
 

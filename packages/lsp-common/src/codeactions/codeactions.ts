@@ -193,7 +193,7 @@ export function handleCodeAction(
             },
           };
           const action = CodeAction.create(
-            `Close tag with "%}"`,
+            `Close with %}`,
             edit,
             CodeActionKind.QuickFix,
           );
@@ -216,7 +216,7 @@ export function handleCodeAction(
             },
           };
           const action = CodeAction.create(
-            `Close output with "}}"`,
+            `Close with }}`,
             edit,
             CodeActionKind.QuickFix,
           );

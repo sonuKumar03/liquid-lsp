@@ -619,3 +619,83 @@ test('Liquid quoted filter name quick fix', () =>
       }),
     );
   }));
+
+test('Liquid Code Actions for unclosed delimiter on non-block tag', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+    let diagnostic: any = null;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{% assign name = "sonu"}',
+              },
+            },
+          }),
+        );
+        step = 1;
+      } else if (
+        step === 1 &&
+        res.method === 'textDocument/publishDiagnostics'
+      ) {
+        expect(res.params.diagnostics.length).toBeGreaterThan(0);
+        diagnostic = res.params.diagnostics[0];
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/codeAction',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              range: diagnostic.range,
+              context: { diagnostics: [diagnostic] },
+            },
+          }),
+        );
+        step = 2;
+      } else if (step === 2 && res.id === 2) {
+        const actions = res.result;
+        
+        // 1. Should NOT propose inserting {% endassign %}
+        const endAssignAction = actions.find((a: any) => a.title.includes('endassign'));
+        expect(endAssignAction).toBeUndefined();
+
+        // 2. Should propose closing tag delimiter with "%}"
+        const closeTagAction = actions.find((a: any) => a.title.includes('Close tag with "%}"'));
+        expect(closeTagAction).toBeDefined();
+        expect(closeTagAction.edit.changes['file:///t.liquid'][0].newText).toBe('%}');
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { capabilities: {} },
+      }),
+    );
+  }));
+

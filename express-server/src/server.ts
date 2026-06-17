@@ -25,51 +25,72 @@ const wss = new WebSocketServer({ noServer: true });
  * this parser keeps raw bytes inside a Buffer instead of parsing strings.
  */
 class LSPStreamParser {
-  private buffer = Buffer.alloc(0);
+  private chunks: Buffer[] = [];
+  private totalLength = 0;
 
   constructor(private onMessage: (msg: string) => void) {}
 
   public append(chunk: Buffer) {
-    this.buffer = Buffer.concat([this.buffer, chunk]);
+    this.chunks.push(chunk);
+    this.totalLength += chunk.length;
     this.processBuffer();
   }
 
   private processBuffer() {
+    if (this.chunks.length > 1) {
+      this.chunks = [Buffer.concat(this.chunks, this.totalLength)];
+    }
+    let buffer = this.chunks[0] || Buffer.alloc(0);
+
     while (true) {
       // Find the header delimiter \r\n\r\n (sequence: 13, 10, 13, 10)
-      const delimiterIndex = this.buffer.indexOf('\r\n\r\n');
+      const delimiterIndex = buffer.indexOf('\r\n\r\n');
       if (delimiterIndex === -1) break;
 
-      const headerPart = this.buffer
+      const headerPart = buffer
         .subarray(0, delimiterIndex)
         .toString('utf8');
       const contentLengthMatch = headerPart.match(/Content-Length:\s*(\d+)/i);
 
       if (!contentLengthMatch || !contentLengthMatch[1]) {
-        // Skip invalid header
-        this.buffer = this.buffer.subarray(delimiterIndex + 4);
+        // Stream is corrupted. Discard up to next Content-Length header to resynchronize.
+        const str = buffer.toString('utf8');
+        const nextHeaderMatch = str.slice(delimiterIndex + 4).match(/Content-Length:/i);
+        if (nextHeaderMatch && nextHeaderMatch.index !== undefined) {
+          buffer = buffer.subarray(delimiterIndex + 4 + nextHeaderMatch.index);
+        } else {
+          buffer = Buffer.alloc(0);
+        }
         continue;
       }
 
       const contentLength = parseInt(contentLengthMatch[1], 10);
       const bodyStart = delimiterIndex + 4;
 
-      if (this.buffer.length < bodyStart + contentLength) {
+      if (buffer.length < bodyStart + contentLength) {
         // Wait for more data to complete the body
         break;
       }
 
       // Extract the body buffer and convert to string
-      const bodyBuffer = this.buffer.subarray(
+      const bodyBuffer = buffer.subarray(
         bodyStart,
         bodyStart + contentLength,
       );
       const bodyPart = bodyBuffer.toString('utf8');
 
       // Update the remaining buffer
-      this.buffer = this.buffer.subarray(bodyStart + contentLength);
+      buffer = buffer.subarray(bodyStart + contentLength);
 
       this.onMessage(bodyPart);
+    }
+
+    if (buffer.length === 0) {
+      this.chunks = [];
+      this.totalLength = 0;
+    } else {
+      this.chunks = [buffer];
+      this.totalLength = buffer.length;
     }
   }
 }
@@ -159,8 +180,37 @@ wss.on('connection', (ws) => {
   }
 
   // Forward WebSocket client -> LSP stdin
+  const MAX_MESSAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+
   ws.on('message', (message) => {
-    const payload = message.toString();
+    const byteLength = Buffer.isBuffer(message)
+      ? message.length
+      : Array.isArray(message)
+      ? message.reduce((acc, chunk) => acc + (chunk as Buffer).length, 0)
+      : message instanceof ArrayBuffer
+      ? message.byteLength
+      : 0;
+
+    if (byteLength > MAX_MESSAGE_SIZE) {
+      console.error(`Rejected message of size ${byteLength} exceeding limit of ${MAX_MESSAGE_SIZE}`);
+      ws.close(1009, 'Message size exceeds limit');
+      return;
+    }
+
+    let payload: string;
+    try {
+      if (Buffer.isBuffer(message)) {
+        payload = message.toString('utf8');
+      } else {
+        payload = Buffer.from(message as ArrayBuffer).toString('utf8');
+      }
+      JSON.parse(payload);
+    } catch (err) {
+      console.error('Invalid non-JSON or malformed WebSocket message received:', err);
+      ws.close(1007, 'Invalid UTF-8 or malformed JSON-RPC message');
+      return;
+    }
+
     const lspMessage = formatLSPMessage(payload);
     if (lspProcess.stdin && lspProcess.stdin.writable) {
       lspProcess.stdin.write(lspMessage);

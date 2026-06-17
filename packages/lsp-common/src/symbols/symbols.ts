@@ -19,7 +19,7 @@ const BLOCK_START_TAGS = [
   'comment',
 ];
 
-const ASSIGN_TAG_NAMES = new Set(['assign', 'assignVar', 'parseAssign']);
+import { ASSIGN_TAG_NAMES } from '../shared/constants.js';
 
 function pushVariableSymbol(
   symbols: DocumentSymbol[],

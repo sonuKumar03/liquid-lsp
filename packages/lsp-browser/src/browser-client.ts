@@ -59,12 +59,16 @@ export function connectBrowserLspWorker(
       reject(new Error('LSP worker did not become ready'));
     }, readyTimeoutMs);
 
-    worker.onerror = () => {
+    worker.onerror = (e: Event) => {
       if (settled) return;
       settled = true;
       clearTimeout(readyTimeout);
       dispose();
-      reject(new Error('LSP worker failed to load'));
+      const err = e as unknown as Record<string, unknown>;
+      const message = typeof err?.message === 'string' ? err.message : 'LSP worker failed to load';
+      const filename = typeof err?.filename === 'string' ? err.filename : 'unknown';
+      const lineno = typeof err?.lineno === 'number' ? err.lineno : 0;
+      reject(new Error(`${message} @ ${filename}:${lineno}`));
     };
 
     worker.onmessage = (event: MessageEvent) => {

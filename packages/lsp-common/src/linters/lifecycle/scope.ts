@@ -7,6 +7,7 @@ import {
   type BlockStackEntry,
   type LinterVariableType,
 } from '../../shared/linter-types.js';
+import { DIAGNOSTIC_CODES } from '../../shared/diagnostic-codes.js';
 
 export class ScopeTracker {
   public activeVars = new Map<string, ActiveVar>();
@@ -94,6 +95,7 @@ export class ScopeTracker {
         severity: DiagnosticSeverity.Warning,
         range: prev.declRange,
         message: `You assigned a value to "${varName}" but never used it before overwriting it.`,
+        code: DIAGNOSTIC_CODES.OVERWRITTEN_BEFORE_READ,
         source: 'liquid-lsp-linter',
       });
     }

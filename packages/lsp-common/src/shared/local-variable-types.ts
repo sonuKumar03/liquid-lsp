@@ -21,7 +21,7 @@ import {
 } from 'liquid-core';
 import { collectVariableNamesFromTokens } from '../shared/token-variables.js';
 
-const ASSIGN_TAG_NAMES = new Set(['assign', 'assignVar', 'parseAssign']);
+import { ASSIGN_TAG_NAMES } from './constants.js';
 
 export const STRING_FILTERS = new Set([
   'upcase',

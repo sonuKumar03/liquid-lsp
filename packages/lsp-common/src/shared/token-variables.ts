@@ -5,7 +5,7 @@ import {
   parseForLoopVariable,
 } from 'liquid-core';
 
-const ASSIGN_TAG_NAMES = new Set(['assign', 'assignVar', 'parseAssign']);
+import { ASSIGN_TAG_NAMES } from './constants.js';
 
 export function collectVariableNamesFromTokens(tokens: Token[]): string[] {
   const names: string[] = [];

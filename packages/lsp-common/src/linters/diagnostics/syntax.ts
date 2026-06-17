@@ -10,6 +10,7 @@ import {
   getEnhancedErrorMessage,
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from '../../shared/diagnostic-codes.js';
+import { pushUniqueDiagnostic } from '../../shared/diagnostic-utils.js';
 
 export function collectSyntaxDiagnostics(
   textDocument: TextDocument,
@@ -287,17 +288,4 @@ function getLineText(textDocument: TextDocument, line: number): string {
   });
 }
 
-function pushUniqueDiagnostic(
-  diagnostics: Diagnostic[],
-  diag: Diagnostic,
-): void {
-  const isDuplicate = diagnostics.some(
-    (d) =>
-      d.range.start.line === diag.range.start.line &&
-      d.range.start.character === diag.range.start.character &&
-      d.message === diag.message,
-  );
-  if (!isDuplicate) {
-    diagnostics.push(diag);
-  }
-}
+// Replaced by shared pushUniqueDiagnostic from diagnostic-utils.js

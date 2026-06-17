@@ -224,6 +224,7 @@ function checkUnusedVariables(
         severity: DiagnosticSeverity.Warning,
         range: decl.range,
         message: `You created "${name}" but never read it anywhere. If it isn't needed, you can delete this line.`,
+        code: DIAGNOSTIC_CODES.UNUSED_VARIABLE,
         source: 'liquid-lsp-linter',
       });
     }

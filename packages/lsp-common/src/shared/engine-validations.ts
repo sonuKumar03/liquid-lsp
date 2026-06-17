@@ -18,6 +18,8 @@ import {
   ComputeColumnTag,
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from './diagnostic-codes.js';
+import { ASSIGN_TAG_NAMES } from './constants.js';
+import { pushUniqueDiagnostic } from './diagnostic-utils.js';
 
 export type EngineValidationFns = {
   checkValidJSON: (
@@ -52,11 +54,7 @@ function getValidationFns(): EngineValidationFns {
 
 const PARSE_ASSIGN_LINE_RE = /at line (\d+)/;
 
-const ASSIGN_DEPENDENCY_TAG_NAMES = new Set([
-  'assign',
-  'assignVar',
-  'parseAssign',
-]);
+// Replaced by shared ASSIGN_TAG_NAMES from constants.js
 
 function findTagTokenOnLine(
   tokens: TopLevelToken[],
@@ -128,20 +126,7 @@ function isVariableAssigned(
   return false;
 }
 
-function pushUniqueDiagnostic(
-  diagnostics: Diagnostic[],
-  diagnostic: Diagnostic,
-): void {
-  const duplicate = diagnostics.some(
-    (d) =>
-      d.range.start.line === diagnostic.range.start.line &&
-      d.range.start.character === diagnostic.range.start.character &&
-      d.message === diagnostic.message,
-  );
-  if (!duplicate) {
-    diagnostics.push(diagnostic);
-  }
-}
+// Replaced by shared pushUniqueDiagnostic from diagnostic-utils.js
 
 function findTagTokenForTemplate(
   tokens: TopLevelToken[],
@@ -289,7 +274,7 @@ function walkTagTemplate(
 
   if (
     template instanceof Tag &&
-    ASSIGN_DEPENDENCY_TAG_NAMES.has(template.name)
+    ASSIGN_TAG_NAMES.has(template.name)
   ) {
     handleAssignTemplate(
       doc,
@@ -410,7 +395,13 @@ function collectAssignDependencyDiagnostics(
   parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   const assignedVars = new Set<string>(schemaVarNames);
-  const { templates } = engine.parser.parseResilient(doc.getText());
+  let templates: TagTemplate[];
+  try {
+    templates = engine.parser.parseTokens(tokens) as TagTemplate[];
+  } catch {
+    const res = engine.parser.parseResilient(doc.getText());
+    templates = res.templates as TagTemplate[];
+  }
   walkTemplates(
     doc,
     engine,

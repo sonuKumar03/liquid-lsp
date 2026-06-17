@@ -47,6 +47,7 @@ export function validateDropdownValue(
     severity: DiagnosticSeverity.Warning,
     range: Range.create(doc.positionAt(tokenBegin), doc.positionAt(tokenEnd)),
     message: `"${strVal}" is not one of the choices for "${varName}". Valid choices are: ${prev.type.options.map((o) => `"${o}"`).join(', ')}.`,
+    code: DIAGNOSTIC_CODES.INVALID_DROPDOWN_VALUE,
     source: 'liquid-lsp-linter',
   });
 }
@@ -532,6 +533,7 @@ export function applyFilterTypeWarnings(
             severity: DiagnosticSeverity.Warning,
             range: { start, end },
             message: `"${filterName}" only works on text. The value is a number, not text.`,
+            code: DIAGNOSTIC_CODES.INVALID_FILTER_TYPE,
             source: 'liquid-lsp-linter',
           });
         }

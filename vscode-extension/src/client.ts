@@ -9,7 +9,7 @@ import type {
 } from 'vscode-languageclient/node';
 
 const DEFAULT_REMOTE_LSP_PORT = 6009;
-const DEFAULT_LSP_INSPECT_PORT = 6009;
+const DEFAULT_LSP_INSPECT_PORT = 6010;
 
 let client: LanguageClient;
 
@@ -32,6 +32,9 @@ export function activate(context: ExtensionContext) {
     console.log(`Connecting to remote LSP server at ${host}:${port}`);
     serverOptions = () => {
       const socket = net.connect({ host, port });
+      socket.on('error', (err) => {
+        console.error(`LSP remote connection error: ${err.message}`);
+      });
       return Promise.resolve({
         writer: socket,
         reader: socket,

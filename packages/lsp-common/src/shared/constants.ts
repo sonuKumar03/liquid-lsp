@@ -57,3 +57,6 @@ export const LIQUID_FILTERS: CompletionItem[] = LIQUID_FILTER_METAS.map(
 );
 
 export { getTagDocumentation, getFilterDocumentation };
+
+export const ASSIGN_TAG_NAMES = new Set(['assign', 'assignVar', 'parseAssign']);
+

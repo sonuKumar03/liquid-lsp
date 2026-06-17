@@ -15,6 +15,11 @@ self.addEventListener('message', (event: MessageEvent) => {
     return;
   }
 
-  startWorkerServer(data.port);
-  self.postMessage(WORKER_READY_SIGNAL);
+  try {
+    startWorkerServer(data.port);
+    self.postMessage(WORKER_READY_SIGNAL);
+  } catch (err) {
+    console.error('LSP worker failed to start server:', err);
+    throw err;
+  }
 });

@@ -17,6 +17,10 @@ export const DIAGNOSTIC_CODES = {
   BRANCH_TYPE_MISMATCH: 'liquid.linter.branch_type_mismatch',
   FILTER_ARGUMENT_TYPE_MISMATCH: 'liquid.linter.filter_argument_type_mismatch',
   DIVISION_BY_ZERO: 'liquid.linter.division_by_zero',
+  OVERWRITTEN_BEFORE_READ: 'liquid.linter.overwritten_before_read',
+  INVALID_FILTER_TYPE: 'liquid.linter.invalid_filter_type',
+  INVALID_DROPDOWN_VALUE: 'liquid.linter.invalid_dropdown_value',
+  UNUSED_VARIABLE: 'liquid.linter.unused_variable',
   ...SCHEMA_ERROR_CODES,
 } as const;
 

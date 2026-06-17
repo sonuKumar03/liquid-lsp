@@ -19,6 +19,9 @@ export function getWorkerConnection(
 
 /** Start the full Liquid LSP inside a Web Worker (no filesystem schema loader). */
 export function startWorkerServer(port: BrowserLspPort): void {
+  if ('start' in port && typeof port.start === 'function') {
+    port.start();
+  }
   startServer(getWorkerConnection(port));
 }
 

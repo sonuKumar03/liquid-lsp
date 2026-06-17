@@ -29,6 +29,11 @@ export function connectBrowserLspWorker(
   return new Promise((resolve, reject) => {
     const channel = new MessageChannel();
     const worker = new Worker(workerScriptUrl, { type: 'module' });
+
+    // Explicitly start both MessagePorts to enable JSON-RPC messaging
+    channel.port1.start();
+    channel.port2.start();
+
     const reader = new BrowserMessageReader(channel.port2);
     const writer = new BrowserMessageWriter(channel.port2);
     const connection = createProtocolConnection(reader, writer);

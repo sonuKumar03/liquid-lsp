@@ -3,7 +3,6 @@ import {
   BrowserMessageWriter,
 } from 'vscode-jsonrpc/browser';
 import { createProtocolConnection } from 'vscode-languageserver-protocol/browser';
-import { PublishDiagnosticsNotification } from 'vscode-languageserver-protocol';
 import {
   WORKER_INIT_MESSAGE_TYPE,
   WORKER_READY_SIGNAL,
@@ -13,7 +12,7 @@ import {
 export type BrowserLspWorkerClient = {
   sendRequest(method: string, params?: object): Promise<unknown>;
   sendNotification(method: string, params?: object): void;
-  onNotification(handler: (method: string, params: unknown) => void): void;
+  onNotification(handler: (method: string, params: unknown) => void): () => void;
   dispose(): void;
 };
 
@@ -37,9 +36,15 @@ export function connectBrowserLspWorker(
       (method: string, params: unknown) => void
     > = [];
 
-    connection.onNotification(PublishDiagnosticsNotification.type, (params) => {
+    (
+      connection as unknown as {
+        onNotification(
+          handler: (method: string, params: unknown) => void,
+        ): void;
+      }
+    ).onNotification((method, params) => {
       for (const handler of notificationHandlers) {
-        handler(PublishDiagnosticsNotification.method, params);
+        handler(method, params);
       }
     });
 
@@ -81,12 +86,18 @@ export function connectBrowserLspWorker(
 
       resolve({
         sendRequest: (method, params) =>
-          connection.sendRequest(method as never, params as never),
+          connection.sendRequest(method, params),
         sendNotification: (method, params) => {
-          connection.sendNotification(method as never, params as never);
+          connection.sendNotification(method, params);
         },
         onNotification: (handler) => {
           notificationHandlers.push(handler);
+          return () => {
+            const idx = notificationHandlers.indexOf(handler);
+            if (idx !== -1) {
+              notificationHandlers.splice(idx, 1);
+            }
+          };
         },
         dispose,
       });

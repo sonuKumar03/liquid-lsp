@@ -6,11 +6,11 @@ import type { WorkspaceSchemaLoader } from 'lsp-common';
 export const nodeWorkspaceSchemaLoader: WorkspaceSchemaLoader = {
   load(rootPath: string): unknown | null {
     const configPath = path.join(rootPath, '.liquid-schema.json');
-    if (!fs.existsSync(configPath)) {
+    try {
+      const rawData = fs.readFileSync(configPath, 'utf8');
+      return JSON.parse(rawData);
+    } catch {
       return null;
     }
-
-    const rawData = fs.readFileSync(configPath, 'utf8');
-    return JSON.parse(rawData);
   },
 };

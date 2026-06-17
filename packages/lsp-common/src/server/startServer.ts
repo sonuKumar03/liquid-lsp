@@ -133,7 +133,7 @@ export function startServer(
   });
 
   connection.onCodeAction((params) => {
-    return handleCodeAction(documentManager.documents, params);
+    return handleCodeAction(documentManager.documents, params, documentManager, liquidEngine);
   });
 
   connection.onDocumentSymbol((params) => {

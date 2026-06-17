@@ -343,6 +343,89 @@ test('Liquid single-equals conversion to double-equals code action', () =>
     );
   }));
 
+test('Liquid computation code actions for helper filters and math-like expressions', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+    let mathDiagnostic: any = null;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{% assign monthly_payment = invoice_total + term_months %}',
+              },
+            },
+          }),
+        );
+        step = 1;
+      } else if (
+        step === 1 &&
+        res.method === 'textDocument/publishDiagnostics'
+      ) {
+        const diagnostics = res.params.diagnostics;
+        mathDiagnostic = diagnostics.find((d: any) =>
+          d.message.includes('inline mathematical operators'),
+        );
+        expect(mathDiagnostic).toBeDefined();
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/codeAction',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              range: mathDiagnostic.range,
+              context: { diagnostics: [mathDiagnostic] },
+            },
+          }),
+        );
+        step = 2;
+      } else if (step === 2 && res.id === 2) {
+        const actions = res.result;
+        expect(actions.length).toBeGreaterThan(0);
+
+        const mathAction = actions.find((a: any) =>
+          a.title.includes('Replace operator with filter | plus'),
+        );
+        expect(mathAction).toBeDefined();
+        expect(mathAction.kind).toBe('quickfix');
+        expect(mathAction.edit.changes['file:///t.liquid'][0].newText).toBe(
+          '{% assign monthly_payment = invoice_total | plus: term_months %}',
+        );
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { capabilities: {} },
+      }),
+    );
+  }));
+
 test('Liquid spelling correction for unknown tag assignment', () =>
   new Promise<void>((resolve) => {
     const child = startLspServer();

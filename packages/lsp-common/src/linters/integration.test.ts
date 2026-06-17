@@ -236,6 +236,95 @@ test('Liquid custom parseAssign tag validation and coercion', () =>
     );
   }));
 
+test('Liquid computation filters render cleanly for legal-tech totals', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: [
+                  '{% assign invoice_total = 1500.5 %}',
+                  '{% assign term_months = 12 %}',
+                  '{% assign monthly_payment = invoice_total | divided_by: term_months %}',
+                  '{% assign line_items_total = sd_line_items | sumArray: "price" %}',
+                  'Monthly Payment: {{ monthly_payment | toCurrency: "USD" }}',
+                  'Line Items Total: {{ line_items_total | toCurrency: "USD" }}',
+                  'Invoice Total: {{ invoice_total | toCurrency: "USD" }}',
+                  'Term Length: {{ term_months | toDuration: "MONTHS" }}',
+                ].join('\n'),
+              },
+            },
+          }),
+        );
+        step = 1;
+      } else if (
+        step === 1 &&
+        res.method === 'textDocument/publishDiagnostics'
+      ) {
+        const diagnostics = res.params.diagnostics;
+        expect(diagnostics.length).toBe(0);
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/hover',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 4, character: 45 },
+            },
+          }),
+        );
+        step = 2;
+      } else if (step === 2 && res.id === 2) {
+        expect(res.result).toBeDefined();
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          capabilities: {},
+          initializationOptions: {
+            schema: {
+              sd_line_items: {
+                type: 'composite',
+                fields: {
+                  price: 'number',
+                },
+              },
+            },
+          },
+        },
+      }),
+    );
+  }));
+
 test('Liquid SpotDraft-specific custom filters and assignVar linter validation', () =>
   new Promise<void>((resolve) => {
     const child = startLspServer();

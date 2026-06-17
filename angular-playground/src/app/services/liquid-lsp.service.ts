@@ -6,7 +6,7 @@ import {
 import {
   WORKER_INIT_MESSAGE_TYPE,
   WORKER_READY_SIGNAL,
-} from 'lsp-browser';
+} from 'lsp-browser/protocol';
 
 export interface LSPDiagnostic {
   severity: number;

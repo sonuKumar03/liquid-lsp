@@ -233,7 +233,7 @@ test('Liquid inline math conversion code action', () =>
         expect(actions.length).toBeGreaterThan(0);
 
         const mathAction = actions.find((a: any) =>
-          a.title.includes('Convert inline math'),
+          a.title.includes('Replace operator with filter | plus'),
         );
         expect(mathAction).toBeDefined();
         expect(mathAction.kind).toBe('quickfix');

@@ -23,12 +23,22 @@ export const InlineMathStrategy: CodeActionStrategy = {
         start: { line: startLine, character: 0 },
         end: { line: startLine, character: lineText.length },
       };
+      const replacementText = convertedText.replace(/\r?\n/g, '');
+      let filterName = 'plus';
+      if (replacementText.includes('divided_by:')) {
+        filterName = 'divided_by';
+      } else if (replacementText.includes('times:')) {
+        filterName = 'times';
+      } else if (replacementText.includes('minus:')) {
+        filterName = 'minus';
+      }
+
       return [
         createQuickFix(
-          `Convert inline math to Liquid filter`,
+          `Replace operator with filter | ${filterName}`,
           params.textDocument.uri,
           range,
-          convertedText.replace(/\r?\n/g, ''),
+          replacementText,
           diagnostic,
         ),
       ];

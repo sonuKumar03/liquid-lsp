@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'url';
 import type { Connection, SemanticTokensParams } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { createLiquidEngine } from 'liquid-core';
@@ -63,10 +64,10 @@ export function startServer(
   connection.onInitialize((params) => {
     connection.console.log('LSP server: onInitialize handshake started.');
 
-    if (params.initializationOptions) {
-      const rawVars =
-        params.initializationOptions.variables ||
-        params.initializationOptions.schema;
+    const initOptions = params.initializationOptions;
+    if (initOptions && typeof initOptions === 'object') {
+      const optionsRecord = initOptions as Record<string, unknown>;
+      const rawVars = optionsRecord.variables ?? optionsRecord.schema;
       if (rawVars) {
         const normalized = Array.isArray(rawVars)
           ? { variables: rawVars }
@@ -75,8 +76,27 @@ export function startServer(
       }
     }
 
-    const rootPath = params.rootPath;
-    typeSystem.setWorkspaceRoot(rootPath ?? null);
+    let rootPath: string | null = null;
+    const workspaceFolder = params.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const uri = workspaceFolder.uri;
+      try {
+        rootPath = fileURLToPath(uri);
+      } catch {
+        if (uri.startsWith('file://')) {
+          rootPath = decodeURIComponent(uri.slice(7));
+          if (/^\/[a-zA-Z]:\//.test(rootPath)) {
+            rootPath = rootPath.slice(1);
+          }
+        } else {
+          rootPath = uri;
+        }
+      }
+    } else {
+      rootPath = params.rootPath ?? null;
+    }
+
+    typeSystem.setWorkspaceRoot(rootPath);
     if (rootPath) {
       typeSystem.loadWorkspaceSchemaFile(rootPath);
       diagnosticsScheduler.validateAll(documentManager.documents.all());

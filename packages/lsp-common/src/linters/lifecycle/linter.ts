@@ -20,6 +20,7 @@ import {
   type ActiveVar,
   type LinterVariableType,
   isOptionalType,
+  formatLinterType,
 } from '../../shared/linter-types.js';
 import { ScopeTracker } from './scope.js';
 import {
@@ -299,18 +300,7 @@ export function collectLifecycleDiagnostics(
                   const lines = assignedBranches.map((b) => b.info!.line);
                   const ranges = assignedBranches.map((b) => b.info!.range);
 
-                  const formatType = (t: LinterVariableType): string => {
-                    if (typeof t === 'string') return t;
-                    if (t && typeof t === 'object') {
-                      if (t.kind === 'branch_mismatch') return 'branch_mismatch';
-                      if (t.kind === 'primitive') return t.type + (t.optional ? '?' : '');
-                      if (t.kind === 'dropdown') return 'dropdown';
-                      if (t.kind === 'composite') return 'composite';
-                    }
-                    return 'unknown';
-                  };
-
-                  const typeStrings = types.map(formatType);
+                  const typeStrings = types.map(formatLinterType);
 
                   for (let j = 0; j < assignedBranches.length; j++) {
                     const info = assignedBranches[j]!.info!;

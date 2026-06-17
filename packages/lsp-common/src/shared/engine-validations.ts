@@ -128,6 +128,11 @@ function isVariableAssigned(
 
 // Replaced by shared pushUniqueDiagnostic from diagnostic-utils.js
 
+/**
+ * Resolves the Token for a given TagTemplate, checking if the token
+ * is already a TagTokenClass or performing a line-based lookup if it
+ * is a plain token from the parser.
+ */
 function findTagTokenForTemplate(
   tokens: TopLevelToken[],
   template: TagTemplate,
@@ -136,10 +141,13 @@ function findTagTokenForTemplate(
   if (tagToken instanceof TagTokenClass) {
     return tagToken;
   }
-  const line = (tagToken as { line?: number }).line;
+  const line =
+    tagToken && typeof tagToken === 'object' && 'line' in tagToken
+      ? (tagToken as { line: unknown }).line
+      : undefined;
   if (typeof line === 'number') {
     const name = template instanceof Tag ? template.name : '';
-    return findTagTokenOnLine(tokens, line, new Set([name]));
+    return findTagTokenOnLine(tokens, line, name ? new Set([name]) : undefined);
   }
   return undefined;
 }
@@ -288,17 +296,26 @@ function walkTagTemplate(
   }
 }
 
+function isTagTemplate(template: unknown): template is TagTemplate {
+  return (
+    typeof template === 'object' &&
+    template !== null &&
+    'token' in template &&
+    (template as { token: unknown }).token instanceof TagTokenClass
+  );
+}
+
 function walkTemplates(
   doc: TextDocument,
   engine: Liquid,
-  templates: TagTemplate[],
+  templates: unknown[],
   assignedVars: Set<string>,
   diagnostics: Diagnostic[],
   tokens: TopLevelToken[],
   parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   for (const template of templates) {
-    if (!(template.token instanceof TagTokenClass)) {
+    if (!isTagTemplate(template)) {
       continue;
     }
     walkTagTemplate(
@@ -399,7 +416,7 @@ function collectAssignDependencyDiagnostics(
   walkTemplates(
     doc,
     engine,
-    templates as TagTemplate[],
+    templates,
     assignedVars,
     diagnostics,
     tokens,

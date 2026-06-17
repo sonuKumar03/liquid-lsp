@@ -44,3 +44,18 @@ export function isOptionalType(type: LinterVariableType): boolean {
   }
   return false;
 }
+
+/**
+ * Formats a LinterVariableType into a user-readable string.
+ */
+export function formatLinterType(t: LinterVariableType): string {
+  if (typeof t === 'string') return t;
+  if (t && typeof t === 'object') {
+    if (t.kind === 'branch_mismatch') return 'branch_mismatch';
+    if (t.kind === 'primitive') return t.type + (t.optional ? '?' : '');
+    if (t.kind === 'dropdown') return 'dropdown';
+    if (t.kind === 'composite') return 'composite';
+  }
+  return 'unknown';
+}
+

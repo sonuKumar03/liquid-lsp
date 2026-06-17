@@ -9,11 +9,22 @@ import {
   type WorkerInitMessage,
 } from './worker-protocol.js';
 
-self.addEventListener('message', (event: MessageEvent) => {
-  const data = event.data as WorkerInitMessage;
-  if (data?.type !== WORKER_INIT_MESSAGE_TYPE || !data.port) {
+function isWorkerInitMessage(data: unknown): data is WorkerInitMessage {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    (data as Record<string, unknown>).type === WORKER_INIT_MESSAGE_TYPE &&
+    (data as Record<string, unknown>).port instanceof MessagePort
+  );
+}
+
+self.addEventListener('message', function handler(event: MessageEvent) {
+  const data = event.data as unknown;
+  if (!isWorkerInitMessage(data)) {
     return;
   }
+
+  self.removeEventListener('message', handler);
 
   try {
     startWorkerServer(data.port);

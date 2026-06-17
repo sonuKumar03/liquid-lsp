@@ -121,7 +121,15 @@ export function unquoteString(str: string): string {
     const char = str[i];
     if (char === '\\') {
       const nextChar = str[i + 1];
-      if (
+      if (nextChar === 'u') {
+        const hex = str.slice(i + 2, i + 6);
+        if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+          result += String.fromCharCode(parseInt(hex, 16));
+          i += 5;
+        } else {
+          result += char;
+        }
+      } else if (
         nextChar === quote ||
         nextChar === '\\' ||
         nextChar === '/' ||

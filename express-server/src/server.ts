@@ -124,7 +124,11 @@ wss.on('connection', (ws) => {
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
-  console.log(`Spawned LSP engine child process PID: ${lspProcess.pid ?? 'unknown'}`);
+  if (lspProcess.pid !== undefined) {
+    console.log(`Spawned LSP engine child process PID: ${lspProcess.pid}`);
+  } else {
+    console.log('Spawned LSP engine child process with unknown PID');
+  }
 
   lspProcess.on('error', (err) => {
     console.error('Failed to spawn LSP process:', err);

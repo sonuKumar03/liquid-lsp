@@ -395,13 +395,7 @@ function collectAssignDependencyDiagnostics(
   parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   const assignedVars = new Set<string>(schemaVarNames);
-  let templates: TagTemplate[];
-  try {
-    templates = engine.parser.parseTokens(tokens) as TagTemplate[];
-  } catch {
-    const res = engine.parser.parseResilient(doc.getText());
-    templates = res.templates as TagTemplate[];
-  }
+  const { templates } = engine.parser.parseResilient(doc.getText());
   walkTemplates(
     doc,
     engine,
@@ -424,9 +418,6 @@ export function collectEngineValidationDiagnostics(
   schemaVarNames?: Set<string>,
 ): void {
   const fns = getValidationFns();
-  if (!fns) {
-    return;
-  }
 
   const text = doc.getText();
 

@@ -8,7 +8,8 @@ import {
   signal,
   computed,
   effect,
-  inject
+  inject,
+  isDevMode,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -26,12 +27,25 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 
-import { LiquidLspService, LSPDiagnostic } from '../../services/liquid-lsp.service';
-import { Liquid } from 'liquidjs';
+import { LiquidLspService, type LSPDiagnostic } from '../../services/liquid-lsp.service';
+import { LiquidEngineService } from '../../services/liquid-engine.service';
+import { MonacoSetupService } from '../../services/monaco-setup.service';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { MonacoLanguageClient } from 'monaco-languageclient';
-import { initServices } from 'monaco-languageclient/vscode/services';
 import { createModelReference } from 'vscode/monaco';
+
+/** URI of the virtual document in the Monaco / LSP workspace. */
+const MODEL_URI = 'file:///playground/playground.liquid';
+
+/** Severity mapping from Monaco MarkerSeverity → LSP DiagnosticSeverity. */
+const MARKER_SEVERITY_MAP: Record<number, number> = {
+  8: 1, // Error
+  4: 2, // Warning
+  2: 3, // Info
+  1: 4, // Hint
+};
+
+type ModelRef = { dispose(): void; object: { textEditorModel: monaco.editor.ITextModel | null } };
 
 @Component({
   selector: 'app-playground',
@@ -51,495 +65,293 @@ import { createModelReference } from 'vscode/monaco';
     MatTooltipModule,
     MatDividerModule,
     MatProgressBarModule,
-    MatChipsModule
+    MatChipsModule,
   ],
   templateUrl: './playground.component.html',
-  styleUrls: ['./playground.component.scss']
+  styleUrls: ['./playground.component.scss'],
 })
 export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
-  public lspService = inject(LiquidLspService);
-
   @ViewChild('editorContainer', { static: true }) editorContainer!: ElementRef;
 
+  // ─── Injected services ──────────────────────────────────────────────────────
+  private readonly lspService = inject(LiquidLspService);
+  private readonly liquidEngine = inject(LiquidEngineService);
+  private readonly monacoSetup = inject(MonacoSetupService);
+
+  // ─── Monaco / LSP internals ─────────────────────────────────────────────────
   private editor?: monaco.editor.IStandaloneCodeEditor;
   private editorModel?: monaco.editor.ITextModel;
-  private modelRef?: { dispose(): void; object: { textEditorModel: monaco.editor.ITextModel | null } };
-  private liquidEngine!: Liquid;
+  private modelRef?: ModelRef;
   private languageClient?: MonacoLanguageClient;
+  private markerListener?: monaco.IDisposable;
+  /** Guard against double-initialization in Angular strict/dev mode. */
+  private monacoInitialized = false;
 
-  // Guard: prevent double initialization (Angular strict mode / dev mode)
-  private _monacoInitialized = false;
-  // Disposable for the global marker change listener
-  private _markerListener?: monaco.IDisposable;
+  // ─── Public signals (template-bound) ───────────────────────────────────────
+  public readonly editorValue = signal<string>('');
+  public readonly mockContext = signal<string>('');
+  public readonly variableSchema = signal<string>('');
+  public readonly renderedOutput = signal<string>('');
+  public readonly renderError = signal<string>('');
 
-  // Signals
-  public editorValue = signal<string>('');
-  public mockContext = signal<string>('');
-  public variableSchema = signal<string>('');
-  public theme = signal<'vs-dark' | 'vs-light'>('vs-light');
+  // ─── Computed state ─────────────────────────────────────────────────────────
+  public readonly lspReady = computed(() => this.lspService.isReady());
 
-  // Computed values
-  public lspReady = computed(() => this.lspService.isReady());
-  
-  public currentDiagnostics = computed<LSPDiagnostic[]>(() => {
-    const list = this.lspService.diagnostics();
-    const uri = 'file:///playground/playground.liquid';
-    return list[uri] || [];
+  public readonly currentDiagnostics = computed<LSPDiagnostic[]>(() => {
+    return this.lspService.diagnostics()[MODEL_URI] ?? [];
   });
 
-  public renderedOutput = signal<string>('');
-  public renderError = signal<string>('');
-
   constructor() {
-    // Instantiate Liquid engine with ESM/CJS interop support
-    const LiquidClass = (Liquid as any).Liquid || Liquid;
-    this.liquidEngine = new LiquidClass();
-
-    // Register custom filters
-    this.registerCustomFilters();
-
-    // Effect to update schema and context in LSP whenever variables or context change
+    // Re-sync LSP schema whenever schema/context signals change and LSP is ready.
     effect(() => {
       if (this.lspReady()) {
-        this.updateLspSchemaAndContext();
+        this.syncLspSchemaAndContext();
       }
     });
 
-    // Effect to run live rendering of template whenever code or context changes
-    effect(() => {
-      const code = this.editorValue();
-      const contextStr = this.mockContext();
-      this.runLiquidRender(code, contextStr);
-    }, { allowSignalWrites: true });
+    // Re-render Liquid template whenever code or context changes.
+    effect(
+      () => {
+        const code = this.editorValue();
+        const contextStr = this.mockContext();
+        void this.renderTemplate(code, contextStr);
+      },
+      { allowSignalWrites: true },
+    );
   }
 
+  // ─── Lifecycle ──────────────────────────────────────────────────────────────
+
   ngOnInit(): void {
-    // Setup initial template text
-    const defaultTemplate = [
-      '{% comment %}',
-      '  Liquid LSP Angular Playground',
-      '  Intentional errors — verify squiggles, hovers, completions, and quick-fixes:',
-      '  E1: Assigning in if condition: {% if sd_term_type = "Fixed" %}',
-      '  E2: Invalid dropdown option:   {% assignVar sd_term_type = "Yearly" %}',
-      '  E3: Math filter on string:     {{ sd_company_name | plus: 1 }}',
-      '  E4: Inline math:               {% assign x = 1 + 2 %}',
-      '  E5: Unknown sub-property:      {{ sd_registered_address.zipcode }}',
-      '{% endcomment %}',
-      '',
-      '{% if sd_term_type == "Fixed" %}',
-      '  Term Length is: {{ sd_term_length | toDuration: "MONTHS" }}',
-      '{% else %}',
-      '  Company Name is: {{ sd_company_name }}',
-      '{% endif %}',
-      '',
-      'Line Items Count: {{ sd_line_items | sumArray }}',
-      'Total Payment: {{ sd_payment | toCurrency: "USD" }}'
-    ].join('\n');
+    this.editorValue.set(DEFAULT_TEMPLATE);
+    this.mockContext.set(JSON.stringify(DEFAULT_CONTEXT, null, 2));
 
-    this.editorValue.set(defaultTemplate);
-
-    // Setup initial mock context
-    const defaultContext = {
-      sd_payment: 1500.50,
-      sd_term_type: 'Fixed',
-      sd_term_length: 12,
-      effective_execution_same: true,
-      sd_company_name: 'Acme Corporate Inc.',
-      sd_registered_address: {
-        street: '100 Pine Street',
-        city_name: 'San Francisco',
-        state_name: 'CA'
-      },
-      sd_line_items: [
-        { item: 'License A', price: 500 },
-        { item: 'Setup Fee', price: 1000 }
-      ]
-    };
-    this.mockContext.set(JSON.stringify(defaultContext, null, 2));
-
-    // Load default variables asynchronously
     fetch('/playground-variables.json')
-      .then(res => res.json())
-      .then(vars => {
-        this.variableSchema.set(JSON.stringify(vars, null, 2));
-      })
-      .catch(() => {
-        this.variableSchema.set(JSON.stringify({ variables: [] }, null, 2));
-      });
+      .then((res) => res.json())
+      .then((vars: unknown) => this.variableSchema.set(JSON.stringify(vars, null, 2)))
+      .catch(() => this.variableSchema.set(JSON.stringify({ variables: [] }, null, 2)));
   }
 
   ngAfterViewInit(): void {
-    this.initMonaco().catch(err => {
+    this.initMonaco().catch((err: unknown) => {
       console.error('Failed to initialize Monaco and Language Client:', err);
     });
   }
 
-  private async initMonaco(): Promise<void> {
-    // BUG FIX #4: Guard against double-initialization (Angular strict/dev mode)
-    if (this._monacoInitialized) return;
-    this._monacoInitialized = true;
-    (window as any).monaco = monaco;
+  ngOnDestroy(): void {
+    // Tear down in reverse creation order.
+    if (this.languageClient?.isRunning()) {
+      this.languageClient.stop();
+    }
+    this.markerListener?.dispose();
+    this.modelRef?.dispose();
+    this.editorModel?.dispose();
+    this.editor?.dispose();
+  }
 
-    // Wait for the LSP Web Worker service to be fully ready
+  // ─── Public actions (template event handlers) ───────────────────────────────
+
+  public jumpToLine(diag: LSPDiagnostic): void {
+    if (!this.editor) return;
+    this.editor.revealLineInCenter(diag.range.start.line + 1);
+    this.editor.setPosition({
+      lineNumber: diag.range.start.line + 1,
+      column: diag.range.start.character + 1,
+    });
+    this.editor.focus();
+  }
+
+  public formatCode(): void {
+    this.editor?.getAction('editor.action.formatDocument')?.run().then(() => {
+      this.editor?.focus();
+    });
+  }
+
+  // ─── Private: Monaco bootstrap ──────────────────────────────────────────────
+
+  private async initMonaco(): Promise<void> {
+    if (this.monacoInitialized) return;
+    this.monacoInitialized = true;
+
+    // Expose monaco globally (required by some monaco-languageclient internals).
+    (window as unknown as Record<string, unknown>)['monaco'] = monaco;
+
     await this.lspService.whenReady();
 
-    // BUG FIX #5: MonacoEnvironment should be set before initServices.
-    // We do it here (idempotent) rather than in main.ts to avoid
-    // a hard dependency on the asset path at app bootstrap.
-    if (!(window as any).MonacoEnvironment) {
-      (window as any).MonacoEnvironment = {
-        getWorkerUrl: (_moduleId: string, _label: string): string => {
-          return '/assets/monaco/vs/base/worker/workerMain.js';
-        }
-      };
-    }
+    this.monacoSetup.ensureWorkerEnvironment();
+    await this.monacoSetup.initVscodeServices();
+    this.monacoSetup.registerLiquidLanguage();
 
-    // 1. Initialize Monaco Services (idempotent — vscodeApiInitialised guard is built in)
-    // BUG FIX #1: Pass a proper InitServicesInstruction with workspaceConfig.
-    // BUG FIX #6: Do not swallow errors; only skip if already initialized.
-    const env = (window as any).MonacoEnvironment as Record<string, unknown> | undefined;
-    if (!env?.['vscodeApiInitialised']) {
-      await initServices({
-        serviceConfig: {
-          userServices: {},
-          workspaceConfig: {
-            workspaceProvider: {
-              workspace: {
-                folderUri: monaco.Uri.parse('file:///playground')
-              },
-              trusted: true,
-              open: async () => true
-            }
-          },
-          debugLogging: true
-        },
-        caller: 'liquid-playground'
-      });
-    }
+    await this.startLanguageClient();
+    await this.createEditorModel();
+    this.registerMarkerListener();
+    this.syncInitialMarkers();
+    this.createEditor();
+    this.syncLspSchemaAndContext();
+  }
 
-    // 2. Register language
-    monaco.languages.register({
-      id: 'liquid',
-      extensions: ['.liquid']
-    });
-
-    monaco.languages.setLanguageConfiguration('liquid', {
-      comments: {
-        blockComment: ['{% comment %}', '{% endcomment %}']
-      },
-      brackets: [
-        ['{', '}'],
-        ['[', ']'],
-        ['(', ')']
-      ],
-      autoClosingPairs: [
-        { open: '{', close: '}' },
-        { open: '[', close: ']' },
-        { open: '(', close: ')' },
-        { open: '"', close: '"' },
-        { open: "'", close: "'" },
-        { open: '{%', close: ' %}' },
-        { open: '{{', close: ' }}' }
-      ],
-      surroundingPairs: [
-        { open: '{', close: '}' },
-        { open: '[', close: ']' },
-        { open: '(', close: ')' },
-        { open: '"', close: '"' },
-        { open: "'", close: "'" },
-        { open: '{%', close: '%}' },
-        { open: '{{', close: '}}' }
-      ]
-    });
-
-    // Register Monarch Tokenizer for basic syntax highlighting (tags, operators, comments, strings)
-    monaco.languages.setMonarchTokensProvider('liquid', {
-      defaultToken: '',
-      tokenPostfix: '.liquid',
-      keywords: [
-        'if', 'else', 'elsif', 'endif', 'unless', 'endunless',
-        'case', 'when', 'endcase', 'for', 'endfor', 'in', 'reversed',
-        'tablerow', 'endtablerow', 'assign', 'assignVar', 'parseAssign',
-        'capture', 'endcapture', 'increment', 'decrement', 'comment', 'endcomment',
-        'raw', 'endraw', 'computeColumn'
-      ],
-      operators: [
-        '==', '!=', '<', '>', '<=', '>=', 'contains'
-      ],
-      tokenizer: {
-        root: [
-          // Comments
-          [/{%\s*comment\s*%}/, { token: 'comment', next: '@comment' }],
-          [/{#/, { token: 'comment', next: '@commentHash' }],
-          
-          // Tags and Outputs
-          [/{%/, { token: 'delimiter.tag', next: '@tag' }],
-          [/{{/, { token: 'delimiter.output', next: '@output' }],
-          
-          // HTML Markup fallback
-          [/./, '']
-        ],
-        comment: [
-          [/{%\s*endcomment\s*%}/, { token: 'comment', next: '@pop' }],
-          [/./, 'comment']
-        ],
-        commentHash: [
-          [/#}/, { token: 'comment', next: '@pop' }],
-          [/./, 'comment']
-        ],
-        tag: [
-          [/%}/, { token: 'delimiter.tag', next: '@pop' }],
-          [/"([^"\\]|\\.)*"/, 'string'],
-          [/'([^'\\]|\\.)*'/, 'string'],
-          [/[\w\-]+/, {
-            cases: {
-              '@keywords': 'keyword',
-              '@operators': 'operator',
-              '@default': 'identifier'
-            }
-          }],
-          [/[{}()\[\]]/, 'delimiter'],
-          [/[:|]/, 'operator'],
-          [/[ \t\r\n]+/, '']
-        ],
-        output: [
-          [/}}/, { token: 'delimiter.output', next: '@pop' }],
-          [/"([^"\\]|\\.)*"/, 'string'],
-          [/'([^'\\]|\\.)*'/, 'string'],
-          [/[\w\-]+/, {
-            cases: {
-              '@operators': 'operator',
-              '@default': 'identifier'
-            }
-          }],
-          [/[:|]/, 'operator'],
-          [/[ \t\r\n]+/, '']
-        ]
-      }
-    });
-
-    // Map Monaco MarkerSeverity back to LSP DiagnosticSeverity values
-    const severityMap: Record<number, number> = {
-      8: 1, // Error
-      4: 2, // Warning
-      2: 3, // Info
-      1: 4  // Hint
-    };
-
-    const modelUriStr = 'file:///playground/playground.liquid';
-
-    // 3. Setup Monaco Language Client using transports from service
-    const languageClient = new MonacoLanguageClient({
+  private async startLanguageClient(): Promise<void> {
+    this.languageClient = new MonacoLanguageClient({
       name: 'Liquid Language Client',
       clientOptions: {
         documentSelector: ['liquid'],
-        initializationOptions: {
-          schema: {}
-        }
+        initializationOptions: { schema: {} },
       },
       connectionProvider: {
-        get: (_encoding: string) => Promise.resolve(this.lspService.getTransports())
-      }
+        get: (_encoding: string) => Promise.resolve(this.lspService.getTransports()),
+      },
     });
+    await this.languageClient.start();
+  }
 
-    await languageClient.start();
-    this.languageClient = languageClient;
-
-    // 4. Create model reference AFTER languageClient starts to ensure that VS Code workspace onDidOpenTextDocument is registered
+  private async createEditorModel(): Promise<void> {
     const initialCode = this.editorValue();
-    this.modelRef = await createModelReference(
-      monaco.Uri.parse(modelUriStr),
-      initialCode
-    );
-    this.editorModel = this.modelRef!.object.textEditorModel!;
+    this.modelRef = await createModelReference(monaco.Uri.parse(MODEL_URI), initialCode);
+    this.editorModel = this.modelRef.object.textEditorModel!;
     monaco.editor.setModelLanguage(this.editorModel, 'liquid');
 
-    // Register marker change listener
-    this._markerListener = monaco.editor.onDidChangeMarkers(([uri]) => {
-      console.log('[PlaygroundComponent] Monaco markers changed for uri:', uri?.toString());
-      if (uri && uri.toString() === modelUriStr) {
-        const markers = monaco.editor.getModelMarkers({ resource: uri });
-        console.log('[PlaygroundComponent] Found model markers:', markers);
-        const diags = markers.map(m => ({
-          severity: severityMap[m.severity] || m.severity,
-          message: m.message,
-          range: {
-            start: { line: m.startLineNumber - 1, character: m.startColumn - 1 },
-            end: { line: m.endLineNumber - 1, character: m.endColumn - 1 }
-          },
-          code: typeof m.code === 'object' ? m.code.value : m.code,
-          source: m.source
-        }));
-        this.lspService.diagnostics.update(current => ({
-          ...current,
-          [uri.toString()]: diags
-        }));
-      }
+    // Keep the signal in sync with Monaco model changes.
+    this.editorModel.onDidChangeContent(() => {
+      this.editorValue.set(this.editorModel!.getValue());
     });
+  }
 
-    // Sync any markers that might have been populated instantly on creation
-    const initialMarkers = monaco.editor.getModelMarkers({ resource: this.editorModel.uri });
-    if (initialMarkers.length > 0) {
-      const diags = initialMarkers.map(m => ({
-        severity: severityMap[m.severity] || m.severity,
-        message: m.message,
-        range: {
-          start: { line: m.startLineNumber - 1, character: m.startColumn - 1 },
-          end: { line: m.endLineNumber - 1, character: m.endColumn - 1 }
-        },
-        code: typeof m.code === 'object' ? m.code.value : m.code,
-        source: m.source
-      }));
-      this.lspService.diagnostics.update(current => ({
+  private registerMarkerListener(): void {
+    this.markerListener = monaco.editor.onDidChangeMarkers(([uri]) => {
+      if (!uri || uri.toString() !== MODEL_URI) return;
+      const markers = monaco.editor.getModelMarkers({ resource: uri });
+      const diags = markers.map((m) => this.mapMarkerToDiagnostic(m));
+      this.lspService.diagnostics.update((current) => ({
         ...current,
-        [modelUriStr]: diags
+        [uri.toString()]: diags,
       }));
-    }
+    });
+  }
 
-    // 5. Instantiate Editor
+  private syncInitialMarkers(): void {
+    if (!this.editorModel) return;
+    const markers = monaco.editor.getModelMarkers({ resource: this.editorModel.uri });
+    if (markers.length === 0) return;
+    const diags = markers.map((m) => this.mapMarkerToDiagnostic(m));
+    this.lspService.diagnostics.update((current) => ({ ...current, [MODEL_URI]: diags }));
+  }
+
+  private createEditor(): void {
     this.editor = monaco.editor.create(this.editorContainer.nativeElement, {
       model: this.editorModel,
-      theme: this.theme(),
+      theme: 'vs-light',
       fontSize: 14,
       fontFamily: "'Outfit', 'Fira Code', monospace",
       minimap: { enabled: false },
       automaticLayout: true,
       lineHeight: 22,
       tabSize: 2,
-      wordWrap: 'on'
+      wordWrap: 'on',
     });
-
-    // 6. Listen to changes
-    this.editorModel.onDidChangeContent(() => {
-      this.editorValue.set(this.editorModel!.getValue());
-    });
-
-    // Send schema/context notification AFTER the model is created and client started.
-    this.updateLspSchemaAndContext();
   }
 
-  private updateLspSchemaAndContext(): void {
-    if (!this.languageClient || !this.languageClient.isRunning()) {
-      return;
-    }
-    try {
-      let varsList: any[] = [];
-      try {
-        const parsed = JSON.parse(this.variableSchema());
-        varsList = parsed.variables || [];
-      } catch {}
+  // ─── Private: helpers ───────────────────────────────────────────────────────
 
-      let contextObj: any = {};
-      try {
-        contextObj = JSON.parse(this.mockContext());
-      } catch {}
+  /** Converts a Monaco IMarkerData to an LSPDiagnostic. */
+  private mapMarkerToDiagnostic(m: monaco.editor.IMarkerData): LSPDiagnostic {
+    return {
+      severity: MARKER_SEVERITY_MAP[m.severity] ?? m.severity,
+      message: m.message,
+      range: {
+        start: { line: m.startLineNumber - 1, character: m.startColumn - 1 },
+        end: { line: m.endLineNumber - 1, character: m.endColumn - 1 },
+      },
+      code: typeof m.code === 'object' ? m.code?.value : m.code,
+      source: m.source,
+    };
+  }
+
+  private syncLspSchemaAndContext(): void {
+    if (!this.languageClient?.isRunning()) return;
+
+    try {
+      const schemaRaw = this.safeParseJson<{ variables?: unknown[] }>(this.variableSchema());
+      const varsList = schemaRaw?.variables ?? [];
+
+      const contextObj = this.safeParseJson<Record<string, unknown>>(this.mockContext()) ?? {};
 
       this.languageClient.sendNotification('workspace/updateSchema', {
         schema: { variables: varsList },
-        contextData: contextObj
+        contextData: contextObj,
       });
-    } catch (err) {
-      console.warn('LSP schema update failed:', err);
+    } catch (err: unknown) {
+      if (isDevMode()) {
+        console.warn('LSP schema update failed:', err);
+      }
     }
   }
 
-  private registerCustomFilters(): void {
-    // 1. sumArray
-    this.liquidEngine.registerFilter('sumArray', (arr: any, key: any) => {
-      if (!Array.isArray(arr)) return 0;
-      return arr.reduce((sum, item) => {
-        const val = Number(item && key ? item[key] : item);
-        return sum + (isNaN(val) ? 0 : val);
-      }, 0);
-    });
-
-    // 2. toCurrency
-    this.liquidEngine.registerFilter('toCurrency', (val: any, currency = 'USD') => {
-      const num = Number(val);
-      if (isNaN(num)) return val;
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency
-      }).format(num);
-    });
-
-    // 3. toDuration
-    this.liquidEngine.registerFilter('toDuration', (val: any, unit = 'DAYS') => {
-      const num = Number(val);
-      if (isNaN(num)) return val;
-      const unitStr = unit.toLowerCase();
-      return `${num} ${num === 1 ? unitStr.replace(/s$/, '') : unitStr}`;
-    });
-
-    // 4. updateAttribute
-    this.liquidEngine.registerFilter('updateAttribute', (obj: any, attr: any, val: any) => {
-      if (obj && typeof obj === 'object') {
-        const copy = { ...obj };
-        copy[attr] = val;
-        return copy;
-      }
-      return obj;
-    });
-
-    // 5. updateTypeAttribute
-    this.liquidEngine.registerFilter('updateTypeAttribute', (val: any) => val);
+  private safeParseJson<T>(raw: string): T | null {
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
   }
 
-  private async runLiquidRender(code: string, contextStr: string): Promise<void> {
+  private async renderTemplate(code: string, contextStr: string): Promise<void> {
     if (!code || !contextStr) {
       this.renderedOutput.set('');
       this.renderError.set('');
       return;
     }
+    const context = this.safeParseJson<Record<string, unknown>>(contextStr);
+    if (!context) {
+      this.renderError.set('Invalid JSON in Mock Context');
+      return;
+    }
     try {
-      const context = JSON.parse(contextStr);
       this.renderError.set('');
-      const html = await this.liquidEngine.parseAndRender(code, context);
-      console.log('Liquid template rendered successfully:', html);
+      const html = await this.liquidEngine.render(code, context);
       this.renderedOutput.set(html);
-    } catch (err: any) {
-      console.error('Liquid template rendering failed:', err);
-      this.renderError.set(err.message || 'Render error');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Render error';
+      this.renderError.set(message);
     }
-  }
-
-  public jumpToLine(diag: LSPDiagnostic): void {
-    if (this.editor) {
-      this.editor.revealLineInCenter(diag.range.start.line + 1);
-      this.editor.setPosition({
-        lineNumber: diag.range.start.line + 1,
-        column: diag.range.start.character + 1
-      });
-      this.editor.focus();
-    }
-  }
-
-  public formatCode(): void {
-    if (this.editor) {
-      this.editor.getAction('editor.action.formatDocument')?.run().then(() => {
-        this.editor?.focus();
-      });
-    }
-  }
-
-
-
-  ngOnDestroy(): void {
-    // BUG FIX #3: Properly clean up all resources in reverse creation order.
-
-    // 1. Stop language client — sends textDocument/didClose + shutdown/exit to server
-    if (this.languageClient?.isRunning()) {
-      this.languageClient.stop();
-    }
-
-    // 2. Dispose global marker listener
-    this._markerListener?.dispose();
-
-    // 3. Dispose model reference and model
-    this.modelRef?.dispose();
-    this.editorModel?.dispose();
-
-    // 4. Dispose editor last
-    this.editor?.dispose();
   }
 }
+
+// ─── Default fixtures (kept out of class to reduce noise) ───────────────────
+
+const DEFAULT_TEMPLATE = [
+  '{% comment %}',
+  '  Liquid LSP Angular Playground',
+  '  Intentional errors — verify squiggles, hovers, completions, and quick-fixes:',
+  '  E1: Assigning in if condition: {% if sd_term_type = "Fixed" %}',
+  '  E2: Invalid dropdown option:   {% assignVar sd_term_type = "Yearly" %}',
+  '  E3: Math filter on string:     {{ sd_company_name | plus: 1 }}',
+  '  E4: Inline math:               {% assign x = 1 + 2 %}',
+  '  E5: Unknown sub-property:      {{ sd_registered_address.zipcode }}',
+  '{% endcomment %}',
+  '',
+  '{% if sd_term_type == "Fixed" %}',
+  '  Term Length is: {{ sd_term_length | toDuration: "MONTHS" }}',
+  '{% else %}',
+  '  Company Name is: {{ sd_company_name }}',
+  '{% endif %}',
+  '',
+  'Line Items Count: {{ sd_line_items | sumArray }}',
+  'Total Payment: {{ sd_payment | toCurrency: "USD" }}',
+].join('\n');
+
+const DEFAULT_CONTEXT = {
+  sd_payment: 1500.5,
+  sd_term_type: 'Fixed',
+  sd_term_length: 12,
+  effective_execution_same: true,
+  sd_company_name: 'Acme Corporate Inc.',
+  sd_registered_address: {
+    street: '100 Pine Street',
+    city_name: 'San Francisco',
+    state_name: 'CA',
+  },
+  sd_line_items: [
+    { item: 'License A', price: 500 },
+    { item: 'Setup Fee', price: 1000 },
+  ],
+};

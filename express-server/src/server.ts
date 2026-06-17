@@ -124,7 +124,14 @@ wss.on('connection', (ws) => {
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
-  console.log(`Spawned LSP engine child process PID: ${lspProcess.pid}`);
+  console.log(`Spawned LSP engine child process PID: ${lspProcess.pid ?? 'unknown'}`);
+
+  lspProcess.on('error', (err) => {
+    console.error('Failed to spawn LSP process:', err);
+    if (ws.readyState === ws.OPEN) {
+      ws.close(1011, 'LSP server spawn error');
+    }
+  });
 
   // Setup parser to parse stdout of LSP server
   const parser = new LSPStreamParser((jsonPayload) => {
@@ -134,20 +141,24 @@ wss.on('connection', (ws) => {
   });
 
   // Forward LSP stdout -> WebSocket client
-  lspProcess.stdout.on('data', (chunk) => {
-    parser.append(chunk);
-  });
+  if (lspProcess.stdout) {
+    lspProcess.stdout.on('data', (chunk) => {
+      parser.append(chunk);
+    });
+  }
 
   // Forward LSP stderr -> Server console (for debugging)
-  lspProcess.stderr.on('data', (chunk) => {
-    console.error(`LSP Server Error Log: ${chunk.toString('utf8').trim()}`);
-  });
+  if (lspProcess.stderr) {
+    lspProcess.stderr.on('data', (chunk) => {
+      console.error(`LSP Server Error Log: ${chunk.toString('utf8').trim()}`);
+    });
+  }
 
   // Forward WebSocket client -> LSP stdin
   ws.on('message', (message) => {
     const payload = message.toString();
     const lspMessage = formatLSPMessage(payload);
-    if (lspProcess.stdin.writable) {
+    if (lspProcess.stdin && lspProcess.stdin.writable) {
       lspProcess.stdin.write(lspMessage);
     }
   });

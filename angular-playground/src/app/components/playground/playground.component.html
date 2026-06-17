@@ -72,28 +72,10 @@
         </div>
       </div>
 
-      <!-- Right: Preview and Info Tabs -->
+      <!-- Right: Output Tabs -->
       <div class="output-pane">
         <mat-tab-group animationDuration="200ms" class="fill-tabs">
-          <!-- Tab 1: Rendered Output -->
-          <mat-tab>
-            <ng-template matTabLabel>
-              <mat-icon class="tab-icon">visibility</mat-icon>
-              <span>Rendered HTML</span>
-            </ng-template>
-            <div class="tab-content">
-              @if (renderError()) {
-                <div class="render-error-container">
-                  <mat-icon color="warn">error_outline</mat-icon>
-                  <pre class="error-text">{{ renderError() }}</pre>
-                </div>
-              } @else {
-                <div class="rendered-html-host" [innerHTML]="renderedOutput()"></div>
-              }
-            </div>
-          </mat-tab>
-
-          <!-- Tab 2: Mock Context Config -->
+          <!-- Tab 1: Mock Context Config -->
           <mat-tab>
             <ng-template matTabLabel>
               <mat-icon class="tab-icon">data_object</mat-icon>
@@ -102,16 +84,16 @@
             <div class="tab-content fill-content">
               <mat-form-field appearance="outline" class="w-100 fill-textarea-field">
                 <mat-label>Context JSON</mat-label>
-                <textarea matInput 
-                          [ngModel]="mockContext()" 
+                <textarea matInput
+                          [ngModel]="mockContext()"
                           (ngModelChange)="mockContext.set($event)"
-                          placeholder="Enter context JSON variables..." 
+                          placeholder="Enter context JSON variables..."
                           class="code-textarea fill-height"></textarea>
               </mat-form-field>
             </div>
           </mat-tab>
 
-          <!-- Tab 3: Diagnostics Panel -->
+          <!-- Tab 2: Diagnostics Panel -->
           <mat-tab>
             <ng-template matTabLabel>
               <span [class.badge-count]="currentDiagnostics().length > 0">

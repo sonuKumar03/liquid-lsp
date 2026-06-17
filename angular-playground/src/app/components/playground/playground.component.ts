@@ -28,7 +28,6 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 
 import { LiquidLspService, type LSPDiagnostic } from '../../services/liquid-lsp.service';
-import { LiquidEngineService } from '../../services/liquid-engine.service';
 import { MonacoSetupService } from '../../services/monaco-setup.service';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { MonacoLanguageClient } from 'monaco-languageclient';
@@ -73,12 +72,9 @@ type ModelRef = { dispose(): void; object: { textEditorModel: monaco.editor.ITex
 export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('editorContainer', { static: true }) editorContainer!: ElementRef;
 
-  // ─── Injected services ──────────────────────────────────────────────────────
   private readonly lspService = inject(LiquidLspService);
-  private readonly liquidEngine = inject(LiquidEngineService);
   private readonly monacoSetup = inject(MonacoSetupService);
 
-  // ─── Monaco / LSP internals ─────────────────────────────────────────────────
   private editor?: monaco.editor.IStandaloneCodeEditor;
   private editorModel?: monaco.editor.ITextModel;
   private modelRef?: ModelRef;
@@ -87,14 +83,10 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Guard against double-initialization in Angular strict/dev mode. */
   private monacoInitialized = false;
 
-  // ─── Public signals (template-bound) ───────────────────────────────────────
   public readonly editorValue = signal<string>('');
   public readonly mockContext = signal<string>('');
   public readonly variableSchema = signal<string>('');
-  public readonly renderedOutput = signal<string>('');
-  public readonly renderError = signal<string>('');
 
-  // ─── Computed state ─────────────────────────────────────────────────────────
   public readonly lspReady = computed(() => this.lspService.isReady());
 
   public readonly currentDiagnostics = computed<LSPDiagnostic[]>(() => {
@@ -108,16 +100,6 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
         this.syncLspSchemaAndContext();
       }
     });
-
-    // Re-render Liquid template whenever code or context changes.
-    effect(
-      () => {
-        const code = this.editorValue();
-        const contextStr = this.mockContext();
-        void this.renderTemplate(code, contextStr);
-      },
-      { allowSignalWrites: true },
-    );
   }
 
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
@@ -139,7 +121,6 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Tear down in reverse creation order.
     if (this.languageClient?.isRunning()) {
       this.languageClient.stop();
     }
@@ -149,7 +130,7 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
     this.editor?.dispose();
   }
 
-  // ─── Public actions (template event handlers) ───────────────────────────────
+  // ─── Public actions ─────────────────────────────────────────────────────────
 
   public jumpToLine(diag: LSPDiagnostic): void {
     if (!this.editor) return;
@@ -173,7 +154,6 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.monacoInitialized) return;
     this.monacoInitialized = true;
 
-    // Expose monaco globally (required by some monaco-languageclient internals).
     (window as unknown as Record<string, unknown>)['monaco'] = monaco;
 
     await this.lspService.whenReady();
@@ -210,7 +190,6 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
     this.editorModel = this.modelRef.object.textEditorModel!;
     monaco.editor.setModelLanguage(this.editorModel, 'liquid');
 
-    // Keep the signal in sync with Monaco model changes.
     this.editorModel.onDidChangeContent(() => {
       this.editorValue.set(this.editorModel!.getValue());
     });
@@ -268,13 +247,10 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private syncLspSchemaAndContext(): void {
     if (!this.languageClient?.isRunning()) return;
-
     try {
       const schemaRaw = this.safeParseJson<{ variables?: unknown[] }>(this.variableSchema());
       const varsList = schemaRaw?.variables ?? [];
-
       const contextObj = this.safeParseJson<Record<string, unknown>>(this.mockContext()) ?? {};
-
       this.languageClient.sendNotification('workspace/updateSchema', {
         schema: { variables: varsList },
         contextData: contextObj,
@@ -293,30 +269,9 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
       return null;
     }
   }
-
-  private async renderTemplate(code: string, contextStr: string): Promise<void> {
-    if (!code || !contextStr) {
-      this.renderedOutput.set('');
-      this.renderError.set('');
-      return;
-    }
-    const context = this.safeParseJson<Record<string, unknown>>(contextStr);
-    if (!context) {
-      this.renderError.set('Invalid JSON in Mock Context');
-      return;
-    }
-    try {
-      this.renderError.set('');
-      const html = await this.liquidEngine.render(code, context);
-      this.renderedOutput.set(html);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Render error';
-      this.renderError.set(message);
-    }
-  }
 }
 
-// ─── Default fixtures (kept out of class to reduce noise) ───────────────────
+// ─── Default fixtures ────────────────────────────────────────────────────────
 
 const DEFAULT_TEMPLATE = [
   '{% comment %}',

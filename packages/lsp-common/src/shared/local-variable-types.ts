@@ -44,7 +44,6 @@ export const MATH_FILTERS = new Set([
   'times',
   'divided_by',
   'modulo',
-  'size',
   'sumArray',
 ]);
 

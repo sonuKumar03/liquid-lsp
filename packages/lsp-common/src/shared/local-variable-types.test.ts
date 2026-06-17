@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { createLiquidEngine, tokenizeTopLevel } from 'liquid-core';
-import { extractLocalVariableTypes } from './local-variable-types.js';
+import { extractLocalVariableTypes, unquoteString } from './local-variable-types.js';
 import { findVariableDeclarationsFromTokens } from './variable-declarations.js';
 
 describe('extractLocalVariableTypes', () => {
@@ -23,6 +23,50 @@ describe('extractLocalVariableTypes', () => {
 
     expect(types.get('y')).toBe('number');
   });
+
+  it('infers type for parseAssign with JSON array string', () => {
+    const engine = createLiquidEngine();
+    const text = `{% parseAssign local_items = '[{"title": "License", "cost": 450}]' %}`;
+    const tokens = tokenizeTopLevel(text, engine);
+    const types = extractLocalVariableTypes(undefined, tokens, engine);
+
+    const localItemsType = types.get('local_items');
+    expect(localItemsType).toBeDefined();
+    expect(typeof localItemsType).toBe('object');
+    if (typeof localItemsType === 'object' && localItemsType.kind === 'composite') {
+      expect(localItemsType.fields.get('title')).toBe('string');
+      expect(localItemsType.fields.get('cost')).toBe('number');
+    }
+  });
+
+  it('infers type for parseAssign with JSON object string', () => {
+    const engine = createLiquidEngine();
+    const text = `{% parseAssign item = '{"title": "License", "cost": 450}' %}`;
+    const tokens = tokenizeTopLevel(text, engine);
+    const types = extractLocalVariableTypes(undefined, tokens, engine);
+
+    const itemType = types.get('item');
+    expect(itemType).toBeDefined();
+    expect(typeof itemType).toBe('object');
+    if (typeof itemType === 'object' && itemType.kind === 'composite') {
+      expect(itemType.fields.get('title')).toBe('string');
+      expect(itemType.fields.get('cost')).toBe('number');
+    }
+  });
+
+  it('infers type for parseAssign with raw JSON literal', () => {
+    const engine = createLiquidEngine();
+    const text = `{% parseAssign local_items = [{"title": "License"}] %}`;
+    const tokens = tokenizeTopLevel(text, engine);
+    const types = extractLocalVariableTypes(undefined, tokens, engine);
+
+    const localItemsType = types.get('local_items');
+    expect(localItemsType).toBeDefined();
+    expect(typeof localItemsType).toBe('object');
+    if (typeof localItemsType === 'object' && localItemsType.kind === 'composite') {
+      expect(localItemsType.fields.get('title')).toBe('string');
+    }
+  });
 });
 
 describe('findVariableDeclarations', () => {
@@ -34,5 +78,30 @@ describe('findVariableDeclarations', () => {
     const declarations = findVariableDeclarationsFromTokens(doc, tokens);
 
     expect(declarations.map((d) => d.name)).toEqual(['a', 'b']);
+  });
+});
+
+describe('unquoteString', () => {
+  it('unquotes double quoted strings', () => {
+    expect(unquoteString('"hello"')).toBe('hello');
+  });
+
+  it('unquotes single quoted strings', () => {
+    expect(unquoteString("'hello'")).toBe('hello');
+  });
+
+  it('handles standard escape sequences', () => {
+    expect(unquoteString('"line1\\nline2"')).toBe('line1\nline2');
+    expect(unquoteString('"tab\\tchar"')).toBe('tab\tchar');
+  });
+
+  it('handles Unicode escape sequences', () => {
+    expect(unquoteString('"\\u0041"')).toBe('A');
+    expect(unquoteString('"\\u0031\\u0032"')).toBe('12');
+  });
+
+  it('gracefully handles malformed Unicode escape sequences', () => {
+    expect(unquoteString('"\\u00"')).toBe('\\u00');
+    expect(unquoteString('"\\u00XYZ"')).toBe('\\u00XYZ');
   });
 });

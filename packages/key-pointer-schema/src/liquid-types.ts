@@ -10,7 +10,12 @@ export type LiquidType =
       optional?: boolean;
     }
   | { kind: 'dropdown'; options: string[]; optional?: boolean }
-  | { kind: 'composite'; fields: Map<string, LiquidType>; optional?: boolean }
+  | {
+      kind: 'composite';
+      fields: Map<string, LiquidType>;
+      optional?: boolean;
+      open?: boolean;
+    }
   | 'unknown';
 
 export function parseType(value: unknown): LiquidType {
@@ -51,6 +56,7 @@ export function parseType(value: unknown): LiquidType {
         kind: 'composite',
         fields,
         ...(optional ? { optional } : {}),
+        ...(valObj.open === true ? { open: true } : {}),
       };
     }
     if (

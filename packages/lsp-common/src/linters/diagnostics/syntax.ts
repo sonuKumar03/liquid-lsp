@@ -1,0 +1,303 @@
+import { DiagnosticSeverity } from 'vscode-languageserver';
+import type { Diagnostic } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import {
+  type Liquid,
+  type TopLevelToken,
+  TokenKind,
+  TagTokenClass,
+  tokenizeTopLevel,
+  getEnhancedErrorMessage,
+} from 'liquid-core';
+import { DIAGNOSTIC_CODES } from '../../shared/diagnostic-codes.js';
+import { pushUniqueDiagnostic } from '../../shared/diagnostic-utils.js';
+
+export function collectSyntaxDiagnostics(
+  textDocument: TextDocument,
+  diagnostics: Diagnostic[],
+  liquidEngine: Liquid,
+  precomputedTokens?: TopLevelToken[],
+): void {
+  let tokens: TopLevelToken[];
+  if (precomputedTokens !== undefined) {
+    tokens = precomputedTokens;
+  } else {
+    try {
+      tokens = tokenizeTopLevel(textDocument.getText(), liquidEngine);
+    } catch {
+      tokens = [];
+    }
+  }
+
+  // 1. Run manual syntax checks (single equals and inline math) on all tokens unconditionally
+  for (const token of tokens) {
+    if (token.kind !== TokenKind.Tag && token.kind !== TokenKind.Output)
+      continue;
+
+    if (token instanceof TagTokenClass) {
+      const tagName = token.name;
+      if (tagName.startsWith('end')) continue;
+      if (tagName === 'else' || tagName === 'elsif' || tagName === 'when')
+        continue;
+    }
+
+    const tokenText = token.getText();
+    const textWithoutQuotes = tokenText.replace(/'[^']*'|"[^"]*"/g, '');
+    const isConditionalAssignment =
+      token instanceof TagTokenClass &&
+      isConditionalTagText(token.name) &&
+      textWithoutQuotes.search(/(?<![=!<>])=(?![=<>])/) !== -1;
+    const isInlineMath =
+      textWithoutQuotes.search(/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//) !== -1;
+    const isUnclosedQuote =
+      textWithoutQuotes.includes('"') || textWithoutQuotes.includes("'");
+    const manualError = isConditionalAssignment || isInlineMath || isUnclosedQuote;
+
+    if (manualError) {
+      const start = textDocument.positionAt(token.begin);
+      const end = textDocument.positionAt(token.end);
+      
+      let message = '';
+      let code: string = '';
+      if (isConditionalAssignment) {
+        message = 'Assignments are not allowed inside conditional statements. Did you mean "=="?';
+        code = DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT;
+      } else if (isInlineMath) {
+        message = 'Liquid does not support inline mathematical operators. Use filters instead, e.g. "| plus: 2".';
+        code = DIAGNOSTIC_CODES.INLINE_MATH;
+      } else {
+        message = 'Unclosed string literal. Matching quote is missing.';
+        code = DIAGNOSTIC_CODES.UNCLOSED_QUOTE;
+      }
+
+      pushUniqueDiagnostic(diagnostics, {
+        severity: DiagnosticSeverity.Error,
+        range: { start, end },
+        message: getEnhancedErrorMessage(
+          message,
+          getLineText(textDocument, start.line),
+        ),
+        code,
+        source: 'liquid-lsp',
+      });
+    }
+  }
+
+  // 2. Run standard parsing error checks
+  try {
+    const { errors } = liquidEngine.parser.parseResilient(textDocument.getText());
+    for (const error of errors) {
+      const token = error.token;
+      let start = token
+        ? textDocument.positionAt(token.begin)
+        : { line: 0, character: 0 };
+      let end = token
+        ? textDocument.positionAt(token.end)
+        : { line: 0, character: 0 };
+
+      let errMessage = error.originalError?.message ?? error.message;
+
+      if (errMessage.toLowerCase().includes('expected filter name')) {
+        continue;
+      }
+
+      if (errMessage.includes('invalid value expression') && errMessage.includes('=')) {
+        errMessage = 'Invalid assignment expression. Did you mean "=" instead of "=="?';
+      }
+
+      // Extract exact error position from error message if available (e.g. ", line:11, col:32")
+      const lineColMatch = errMessage.match(/,\s*line:(\d+),\s*col:(\d+)/);
+      if (lineColMatch) {
+        const exactLine = parseInt(lineColMatch[1]!, 10) - 1; // 0-indexed
+        const exactCol = parseInt(lineColMatch[2]!, 10) - 1;  // 0-indexed
+
+        // Find matching token at exactLine to get proper token boundaries
+        const matchingToken = tokens.find((t) => {
+          const pos = textDocument.positionAt(t.begin);
+          return pos.line === exactLine;
+        });
+
+        if (matchingToken) {
+          start = textDocument.positionAt(matchingToken.begin);
+          end = textDocument.positionAt(matchingToken.end);
+        } else {
+          start = { line: exactLine, character: exactCol };
+          const lineText = getLineText(textDocument, exactLine);
+          end = { line: exactLine, character: Math.max(exactCol + 1, lineText.length) };
+        }
+
+        // Clean up the redundant line/col information from message
+        errMessage = errMessage.replace(/,\s*line:\d+,\s*col:\d+/, '');
+      }
+
+      // Skip tokens that already have manual errors to avoid double diagnostics
+      if (token) {
+        const tokenText = token.getText();
+        const textWithoutQuotes = tokenText.replace(/'[^']*'|"[^"]*"/g, '');
+        const isConditionalAssignment =
+          token instanceof TagTokenClass &&
+          isConditionalTagText(token.name) &&
+          textWithoutQuotes.search(/(?<![=!<>])=(?![=<>])/) !== -1;
+        const isInlineMath =
+          textWithoutQuotes.search(/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//) !== -1;
+        const isUnclosedQuote =
+          textWithoutQuotes.includes('"') || textWithoutQuotes.includes("'");
+        if (isConditionalAssignment || isInlineMath || isUnclosedQuote) {
+          continue;
+        }
+      }
+
+      const isDuplicate = diagnostics.some(
+        (d) =>
+          d.range.start.line === start.line &&
+          d.range.start.character === start.character,
+      );
+      if (isDuplicate) {
+        continue;
+      }
+
+      let code: string | undefined = undefined;
+      let data: unknown = undefined;
+
+      const notClosedMatch = errMessage.match(
+        /^(tag|output)\s+(.+?)\s+not closed(?:,|$)/,
+      );
+      if (notClosedMatch) {
+        code = DIAGNOSTIC_CODES.UNCLOSED_DELIMITER;
+        if (notClosedMatch[1] === 'tag') {
+          const rawTag = token ? token.getText() : notClosedMatch[2];
+          data = {
+            tagName:
+              (token instanceof TagTokenClass ? token.name : undefined) ??
+              errMessage.match(/tag\s+\{%\s*(\w+)/)?.[1],
+            rawTag,
+          };
+        }
+      } else {
+        const tagMatch = errMessage.match(
+          /tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/,
+        );
+        if (tagMatch && tagMatch[1]) {
+          code = DIAGNOSTIC_CODES.UNKNOWN_TAG;
+          data = { tagName: tagMatch[1] };
+        }
+      }
+
+      const diagnostic: Diagnostic = {
+        severity: DiagnosticSeverity.Error,
+        range: { start, end },
+        message: getEnhancedErrorMessage(
+          errMessage,
+          getLineText(textDocument, start.line),
+        ),
+        source: 'liquid-lsp',
+      };
+      if (code) {
+        diagnostic.code = code;
+      }
+      if (data) {
+        diagnostic.data = data;
+      }
+      diagnostics.push(diagnostic);
+    }
+  } catch (mainErr: unknown) {
+    emitMainCompilerDiagnostic(textDocument, diagnostics, mainErr);
+  }
+}
+
+function isConditionalTagText(name: string): boolean {
+  return (
+    name === 'if' || name === 'unless' || name === 'elsif' || name === 'when'
+  );
+}
+
+function emitMainCompilerDiagnostic(
+  textDocument: TextDocument,
+  diagnostics: Diagnostic[],
+  mainErr: unknown,
+): void {
+  const err =
+    typeof mainErr === 'object' && mainErr !== null
+      ? (mainErr as Record<string, unknown>)
+      : {};
+  const errToken =
+    typeof err.token === 'object' && err.token !== null
+      ? (err.token as Record<string, unknown>)
+      : {};
+  let start = { line: 0, character: 0 };
+  let end = { line: 0, character: 0 };
+  if (typeof errToken.begin === 'number' && typeof errToken.end === 'number') {
+    start = textDocument.positionAt(errToken.begin);
+    end = textDocument.positionAt(errToken.end);
+  }
+
+  const isDuplicate = diagnostics.some(
+    (d) =>
+      d.range.start.line === start.line &&
+      d.range.start.character === start.character,
+  );
+  if (isDuplicate) return;
+
+  let message = typeof err.message === 'string' ? err.message : '';
+  if (message.includes('invalid value expression') && message.includes('=')) {
+    message = 'Invalid assignment expression. Did you mean "=" instead of "=="?';
+  }
+  const notClosedMatch = message.match(
+    /^(tag|output)\s+(.+?)\s+not closed(?:,|$)/,
+  );
+  let code: string | undefined = notClosedMatch
+    ? DIAGNOSTIC_CODES.UNCLOSED_DELIMITER
+    : undefined;
+
+  let data: unknown = undefined;
+  if (notClosedMatch && notClosedMatch[1] === 'tag') {
+    const rawTag =
+      typeof errToken.getText === 'function'
+        ? (errToken.getText as () => string)()
+        : notClosedMatch[2];
+    data = {
+      tagName:
+        (typeof errToken.name === 'string' ? errToken.name : undefined) ??
+        message.match(/tag\s+\{%\s*(\w+)/)?.[1],
+      rawTag,
+    };
+  }
+
+  if (!code) {
+    const tagMatch = message.match(
+      /tag\s+["']?([a-zA-Z0-9_-]+)["']?\s+not found/,
+    );
+    if (tagMatch && tagMatch[1]) {
+      code = DIAGNOSTIC_CODES.UNKNOWN_TAG;
+      data = { tagName: tagMatch[1] };
+    }
+  }
+
+  const diagnostic: Diagnostic = {
+    severity: DiagnosticSeverity.Error,
+    range: { start, end },
+    message: getEnhancedErrorMessage(
+      message,
+      getLineText(textDocument, start.line),
+    ),
+    source: 'liquid-lsp',
+  };
+
+  if (code) {
+    diagnostic.code = code;
+  }
+  if (data) {
+    diagnostic.data = data;
+  }
+
+  diagnostics.push(diagnostic);
+}
+
+function getLineText(textDocument: TextDocument, line: number): string {
+  return textDocument.getText({
+    start: { line, character: 0 },
+    end: { line: line + 1, character: 0 },
+  });
+}
+
+// Replaced by shared pushUniqueDiagnostic from diagnostic-utils.js

@@ -348,6 +348,76 @@ test('Liquid hover documentation with variable values', () =>
     );
   }));
 
+test('Liquid hover documentation for computation filters', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: [
+                  '{{ invoice_total | divided_by: term_months }}',
+                  '{{ invoice_total | toCurrency: "USD" }}',
+                  '{{ term_months | toDuration: "MONTHS" }}',
+                ].join('\n'),
+              },
+            },
+          }),
+        );
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/hover',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 0, character: 21 },
+            },
+          }),
+        );
+
+        step = 1;
+      } else if (step === 1 && res.id === 2) {
+        expect(res.result).toBeDefined();
+        expect(res.result.contents.value).toContain('divided_by');
+        expect(res.result.contents.value).toContain(
+          'Divide a number by another value.',
+        );
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {},
+      }),
+    );
+  }));
+
 test('Liquid hover documentation for local variables', () =>
   new Promise<void>((resolve) => {
     const child = startLspServer();

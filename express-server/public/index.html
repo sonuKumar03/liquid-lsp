@@ -510,6 +510,13 @@
         margin: 16px;
         white-space: pre-wrap;
       }
+
+      /* Override Monaco Editor Quick Fix action widget width to prevent text truncation */
+      .monaco-editor .action-widget {
+        width: auto !important;
+        min-width: 300px !important;
+        max-width: 600px !important;
+      }
     </style>
   </head>
   <body class="light-theme">
@@ -604,25 +611,14 @@
             <button class="preview-tab-btn active" data-tab="rendered">
               Rendered HTML
             </button>
-            <button class="preview-tab-btn" data-tab="raw">Raw Text</button>
             <button class="preview-tab-btn" data-tab="context">
               Mock Context
             </button>
           </div>
-          <div
-            class="preview-title"
-            style="
-              font-size: 0.75rem;
-              color: var(--text-muted);
-              margin-left: 8px;
-            "
-          >
-            Values only — types from playground-variables.json
-          </div>
         </header>
         <div class="preview-content">
           <div id="preview-rendered" class="preview-pane active"></div>
-          <pre id="preview-raw" class="preview-pane"></pre>
+          <pre id="preview-raw" class="preview-pane" style="display: none;"></pre>
           <div
             id="preview-context-pane"
             class="preview-pane"
@@ -676,6 +672,7 @@
           '  E6  parseAssign line_items = [1, 2,] → invalid JSON',
           '  E7  assign x = 1 + 2             → inline math',
           '  E8  sd_registered_address.zipcode → unknown address field',
+          '  E9  row.non_existent_field        → loop type checking warning',
           '{% endcomment %}',
           '',
           '{% comment %} E1: quick-fix conditional comparison {% endcomment %}',
@@ -714,6 +711,8 @@
           '{% parseAssign local_items = \'[{"title": "License", "cost": 450}, {"title": "Support", "cost": 50}]\' %}',
           '{% for row in local_items %}',
           '  - {{ row.title }}: {{ row.cost | toCurrency: "USD" }}<br>',
+          '  {% comment %} E9: invalid property access on loop variable {% endcomment %}',
+          '  {{ row.non_existent_field }}',
           '{% endfor %}',
         ].join('\n');
 

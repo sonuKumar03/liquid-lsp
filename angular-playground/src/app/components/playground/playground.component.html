@@ -1,0 +1,140 @@
+<mat-toolbar color="primary" class="toolbar shadow-sm">
+  <div class="brand">
+    <mat-icon class="brand-icon">code</mat-icon>
+    <span>Liquid LSP Playground</span>
+  </div>
+
+  <span class="spacer"></span>
+
+  <div class="status-indicator">
+    @if (lspReady()) {
+      <div class="status-chip connected" matTooltip="LSP Worker is connected and analyzing">
+        <mat-icon>power</mat-icon>
+        <span>Connected</span>
+      </div>
+    } @else {
+      <div class="status-chip disconnected" matTooltip="LSP Worker is starting or disconnected">
+        <mat-icon>power_off</mat-icon>
+        <span>Connecting...</span>
+      </div>
+    }
+  </div>
+  <button mat-icon-button (click)="sidenav.toggle()" matTooltip="Toggle Variable Schema Editor">
+    <mat-icon>schema</mat-icon>
+  </button>
+</mat-toolbar>
+
+<mat-sidenav-container class="sidenav-container">
+  <!-- Sidenav: Variable Schema Editor -->
+  <mat-sidenav #sidenav mode="side" opened="false" class="sidenav-pane border-right">
+    <mat-card class="schema-card">
+      <mat-card-header>
+        <mat-card-title>Variable Schema</mat-card-title>
+        <mat-card-subtitle>Configure variables & types for autocomplete/linting</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content class="card-content-fill">
+        <mat-form-field appearance="outline" class="w-100 schema-editor">
+          <mat-label>Schema JSON</mat-label>
+          <textarea matInput 
+                    [ngModel]="variableSchema()" 
+                    (ngModelChange)="variableSchema.set($event)"
+                    rows="25" 
+                    placeholder="Enter schema JSON..." 
+                    class="code-textarea"></textarea>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+  </mat-sidenav>
+
+  <!-- Main Content: Monaco Editor & Output Panels -->
+  <mat-sidenav-content class="sidenav-content">
+    <div class="playground-layout">
+      <!-- Left: Editor Container -->
+      <div class="editor-pane">
+        <div class="pane-header">
+          <mat-icon class="pane-header-icon text-muted">edit</mat-icon>
+          <span class="pane-title">Template Editor</span>
+          <span class="pane-header-spacer"></span>
+          <button
+            mat-stroked-button
+            class="format-btn"
+            id="format-code-btn"
+            (click)="formatCode()"
+            matTooltip="Format document (Shift+Alt+F)"
+            [disabled]="!lspReady()"
+          >
+            <mat-icon class="format-btn-icon">auto_fix_high</mat-icon>
+            <span>Format Code</span>
+          </button>
+        </div>
+        <div class="editor-wrapper">
+          <div #editorContainer class="monaco-host"></div>
+        </div>
+      </div>
+
+      <!-- Right: Output Tabs -->
+      <div class="output-pane">
+        <mat-tab-group animationDuration="200ms" class="fill-tabs">
+          <!-- Tab 1: Mock Context Config -->
+          <mat-tab>
+            <ng-template matTabLabel>
+              <mat-icon class="tab-icon">data_object</mat-icon>
+              <span>Mock Context</span>
+            </ng-template>
+            <div class="tab-content fill-content">
+              <mat-form-field appearance="outline" class="w-100 fill-textarea-field">
+                <mat-label>Context JSON</mat-label>
+                <textarea matInput
+                          [ngModel]="mockContext()"
+                          (ngModelChange)="mockContext.set($event)"
+                          placeholder="Enter context JSON variables..."
+                          class="code-textarea fill-height"></textarea>
+              </mat-form-field>
+            </div>
+          </mat-tab>
+
+          <!-- Tab 2: Diagnostics Panel -->
+          <mat-tab>
+            <ng-template matTabLabel>
+              <span [class.badge-count]="currentDiagnostics().length > 0">
+                <mat-icon class="tab-icon" [color]="currentDiagnostics().length > 0 ? 'warn' : ''">
+                  {{ currentDiagnostics().length > 0 ? 'warning' : 'check_circle' }}
+                </mat-icon>
+                <span>Diagnostics ({{ currentDiagnostics().length }})</span>
+              </span>
+            </ng-template>
+            <div class="tab-content scrollable">
+              @if (currentDiagnostics().length === 0) {
+                <div class="empty-state">
+                  <mat-icon class="empty-icon text-success">check_circle_outline</mat-icon>
+                  <p class="empty-title">No issues found</p>
+                  <p class="empty-subtitle">Template is type-safe and compilation is clean.</p>
+                </div>
+              } @else {
+                <mat-action-list class="diagnostics-list">
+                  @for (diag of currentDiagnostics(); track diag) {
+                    <button mat-list-item class="diagnostic-item" (click)="jumpToLine(diag)">
+                      <div mat-line class="diag-header">
+                        <mat-icon [color]="diag.severity === 1 ? 'warn' : 'accent'" class="diag-icon">
+                          {{ diag.severity === 1 ? 'error' : 'warning' }}
+                        </mat-icon>
+                        <span class="diag-msg">{{ diag.message }}</span>
+                      </div>
+                      <div mat-line class="diag-meta text-muted">
+                        <span>Line {{ diag.range.start.line + 1 }}, Col {{ diag.range.start.character + 1 }}</span>
+                        @if (diag.code) {
+                          <span class="diag-code-badge">{{ diag.code }}</span>
+                        }
+                      </div>
+                    </button>
+                    <mat-divider></mat-divider>
+                  }
+                </mat-action-list>
+              }
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+      </div>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

@@ -311,7 +311,7 @@ test('Liquid unused variables diagnostics', () =>
       ) {
         const diagnostics = res.params.diagnostics;
         const unusedWarnings = diagnostics.filter((d: any) =>
-          d.message.includes('declared but its value is never read'),
+          d.message.includes('never read it anywhere'),
         );
         expect(unusedWarnings.length).toBe(1);
         expect(unusedWarnings[0].message).toContain('val');
@@ -368,13 +368,13 @@ test('Liquid enhanced diagnostics (type mismatch & redefinition)', () =>
       ) {
         const diagnostics = res.params.diagnostics;
         const overwrittenWarning = diagnostics.find((d: any) =>
-          d.message.includes('overwritten'),
+          d.message.includes('overwriting'),
         );
         expect(overwrittenWarning).toBeDefined();
         expect(overwrittenWarning.range.start.line).toBe(0);
 
         const typeMismatchWarning = diagnostics.find((d: any) =>
-          d.message.includes('Type mismatch'),
+          d.message.includes('only works on'),
         );
         expect(typeMismatchWarning).toBeUndefined();
 
@@ -399,7 +399,7 @@ test('Liquid enhanced diagnostics (type mismatch & redefinition)', () =>
       ) {
         const diagnostics = res.params.diagnostics;
         const typeMismatchWarning = diagnostics.find((d: any) =>
-          d.message.includes('Type mismatch'),
+          d.message.includes('only works on'),
         );
         expect(typeMismatchWarning).toBeDefined();
         expect(typeMismatchWarning.range.start.line).toBe(1);
@@ -459,10 +459,10 @@ test('Liquid schema and dropdown options validation', () =>
       ) {
         const diagnostics = res.params.diagnostics;
         const dropdownWarning = diagnostics.find((d: any) =>
-          d.message.includes('not a valid option for dropdown'),
+          d.message.includes('not one of the choices for'),
         );
         expect(dropdownWarning).toBeDefined();
-        expect(dropdownWarning.message).toContain('valid option');
+        expect(dropdownWarning.message).toContain('choices');
         expect(dropdownWarning.message).toContain('Active');
 
         child.kill('SIGINT');
@@ -734,6 +734,61 @@ test('Liquid diagnostics regression test for complex conditional and assignVar/p
       ) {
         const errors = res.params.diagnostics.filter((d: any) => d.severity === 1);
         expect(errors.length).toBe(0);
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { capabilities: {} },
+      }),
+    );
+  }));
+
+test('Liquid assignment typo suggestion (== instead of =)', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{% assign x == 5 %}',
+              },
+            },
+          }),
+        );
+        step = 1;
+      } else if (
+        step === 1 &&
+        res.method === 'textDocument/publishDiagnostics'
+      ) {
+        const diagnostics = res.params.diagnostics;
+        const typoError = diagnostics.find(
+          (d: any) => d.message.includes('Did you mean "=" instead of "=="?'),
+        );
+        expect(typoError).toBeDefined();
         child.kill('SIGINT');
         resolve();
       }

@@ -6,16 +6,26 @@ This document explains how developers or scripts can parse and tokenize Liquid c
 
 ## 1. Quick Start
 
-We have created a helper script inside `packages/liquid-core/run-parser-demo.js`. You can use it to test and print the tokenization and parsing results of any Liquid code snippet.
+The `run-parser-demo.js` helper script has been removed. To inspect tokenization and parsing results, run the existing unit tests in `packages/liquid-core/src`:
 
-To run it:
 ```bash
-# Make sure the packages are built first
-rtk proxy pnpm run build
+# From the repo root
+pnpm --filter liquid-core test
+```
 
-# Run the demo script using Node
+To write a one-off exploration script, import directly from the built package:
+
+```bash
+# Build first
+pnpm run build
+
+# Then run a temporary script via node
 cd packages/liquid-core
-node run-parser-demo.js
+node --input-type=module <<'EOF'
+import { createLiquidEngine, tokenizeTopLevel } from './dist/index.js';
+const tokens = tokenizeTopLevel('{% assign x = 1 %}{{ x }}');
+tokens.forEach(t => console.log(`Kind: ${t.kind}, Text: "${t.getText()}"`));
+EOF
 ```
 
 ---

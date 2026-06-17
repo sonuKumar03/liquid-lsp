@@ -1,4 +1,5 @@
-import type { Connection } from 'vscode-languageserver';
+import { fileURLToPath } from 'url';
+import type { Connection, SemanticTokensParams } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { createLiquidEngine } from 'liquid-core';
 import { handleCodeAction } from '../codeactions/codeactions.js';
@@ -15,6 +16,8 @@ import { handleHover } from '../hovers/hovers.js';
 import { validateTextDocument } from '../linters/diagnostics.js';
 import { handleSignatureHelp } from '../signatures/signatures.js';
 import { handleDocumentSymbol } from '../symbols/symbols.js';
+import { handleRename } from '../rename/rename.js';
+import { handleSemanticTokens } from '../semanticTokens/semanticTokens.js';
 import { SERVER_CAPABILITIES } from './capabilities.js';
 import { DocumentManager } from './document-manager.js';
 import { DiagnosticsScheduler } from './diagnostics-scheduler.js';
@@ -61,10 +64,10 @@ export function startServer(
   connection.onInitialize((params) => {
     connection.console.log('LSP server: onInitialize handshake started.');
 
-    if (params.initializationOptions) {
-      const rawVars =
-        params.initializationOptions.variables ||
-        params.initializationOptions.schema;
+    const initOptions = params.initializationOptions;
+    if (initOptions && typeof initOptions === 'object') {
+      const optionsRecord = initOptions as Record<string, unknown>;
+      const rawVars = optionsRecord.variables ?? optionsRecord.schema;
       if (rawVars) {
         const normalized = Array.isArray(rawVars)
           ? { variables: rawVars }
@@ -73,8 +76,27 @@ export function startServer(
       }
     }
 
-    const rootPath = params.rootPath;
-    typeSystem.setWorkspaceRoot(rootPath ?? null);
+    let rootPath: string | null = null;
+    const workspaceFolder = params.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const uri = workspaceFolder.uri;
+      try {
+        rootPath = fileURLToPath(uri);
+      } catch {
+        if (uri.startsWith('file://')) {
+          rootPath = decodeURIComponent(uri.slice(7));
+          if (/^\/[a-zA-Z]:\//.test(rootPath)) {
+            rootPath = rootPath.slice(1);
+          }
+        } else {
+          rootPath = uri;
+        }
+      }
+    } else {
+      rootPath = params.rootPath ?? null;
+    }
+
+    typeSystem.setWorkspaceRoot(rootPath);
     if (rootPath) {
       typeSystem.loadWorkspaceSchemaFile(rootPath);
       diagnosticsScheduler.validateAll(documentManager.documents.all());
@@ -131,11 +153,27 @@ export function startServer(
   });
 
   connection.onCodeAction((params) => {
-    return handleCodeAction(documentManager.documents, params);
+    return handleCodeAction(documentManager.documents, params, documentManager, liquidEngine);
   });
 
   connection.onDocumentSymbol((params) => {
     return handleDocumentSymbol(documentManager, liquidEngine, params);
+  });
+
+  connection.onRenameRequest((params) => {
+    return handleRename(
+      documentManager,
+      params,
+      typeSystem.getLiquidSchema(),
+    );
+  });
+
+  connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
+    return handleSemanticTokens(
+      documentManager,
+      params,
+      typeSystem.getLiquidSchema(),
+    );
   });
 
   connection.onNotification(

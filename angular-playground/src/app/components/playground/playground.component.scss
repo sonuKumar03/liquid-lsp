@@ -1,0 +1,425 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  --bg-main: #f3f4f6;
+  --bg-panel: #ffffff;
+  --bg-sidebar: #fafafa;
+  --border-color: #e5e7eb;
+  --text-main: #1f2937;
+  --text-muted: #6b7280;
+  --bg-hover: #f3f4f6;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
+
+.toolbar {
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 56px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed); // Violet-indigo gradient
+  color: white;
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 1.15rem;
+    letter-spacing: -0.2px;
+
+    .brand-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .spacer {
+    flex: 1 1 auto;
+  }
+
+  .status-indicator {
+    margin-right: 16px;
+
+    .status-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+
+      &.connected {
+        background-color: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+        border-color: rgba(52, 211, 153, 0.3);
+      }
+
+      &.disconnected {
+        background-color: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+        border-color: rgba(251, 191, 36, 0.3);
+      }
+    }
+  }
+}
+
+.sidenav-container {
+  flex: 1;
+  background-color: var(--bg-main);
+
+  .sidenav-pane {
+    width: 380px;
+    background-color: var(--bg-sidebar);
+    padding: 16px;
+    box-sizing: border-box;
+
+    .schema-card {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border-color);
+      box-shadow: none;
+      background-color: var(--bg-panel);
+      color: var(--text-main);
+
+      mat-card-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .card-content-fill {
+        flex: 1;
+        padding: 16px 0 0 0;
+        display: flex;
+        flex-direction: column;
+
+        .schema-editor {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+
+          ::ng-deep .mat-mdc-text-field-wrapper {
+            flex: 1;
+            background-color: rgba(0, 0, 0, 0.02);
+          }
+
+          ::ng-deep .mat-mdc-form-field-flex {
+            height: 100%;
+          }
+
+          ::ng-deep .mat-mdc-form-field-infix {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 8px 0;
+          }
+        }
+      }
+    }
+  }
+}
+
+.playground-layout {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+
+  .editor-pane, .output-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-panel);
+  }
+
+  .editor-pane {
+    border-right: 1px solid var(--border-color);
+
+    .pane-header {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px 0 16px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: rgba(0, 0, 0, 0.02);
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-main);
+
+      .pane-header-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      .pane-header-spacer {
+        flex: 1 1 auto;
+      }
+
+      .format-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 30px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        padding: 0 10px;
+        border-radius: 6px;
+        border-color: #7c3aed;
+        color: #7c3aed;
+        background-color: rgba(124, 58, 237, 0.05);
+        transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+        white-space: nowrap;
+
+        &:not([disabled]):hover {
+          background-color: rgba(124, 58, 237, 0.12);
+          box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        &:not([disabled]):active {
+          transform: scale(0.97);
+        }
+
+        &[disabled] {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+
+        .format-btn-icon {
+          font-size: 15px;
+          width: 15px;
+          height: 15px;
+        }
+      }
+    }
+
+    .editor-wrapper {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+
+      .monaco-host {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+      }
+    }
+  }
+
+  .output-pane {
+    .fill-tabs {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+
+      ::ng-deep .mat-mdc-tab-body-wrapper {
+        flex: 1;
+        background-color: var(--bg-panel);
+      }
+
+      .tab-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        margin-right: 8px;
+      }
+
+      .badge-count {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .tab-content {
+        height: 100%;
+        padding: 16px;
+        box-sizing: border-box;
+        overflow: auto;
+        color: var(--text-main);
+
+        &.scrollable {
+          overflow-y: auto;
+        }
+
+        &.fill-content {
+          display: flex;
+          flex-direction: column;
+          padding: 8px;
+        }
+
+      }
+    }
+
+    .fill-textarea-field {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+
+      ::ng-deep .mat-mdc-text-field-wrapper {
+        flex: 1;
+        background-color: rgba(0, 0, 0, 0.01);
+      }
+
+      ::ng-deep .mat-mdc-form-field-flex {
+        height: 100%;
+      }
+
+      ::ng-deep .mat-mdc-form-field-infix {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        padding: 8px 0;
+      }
+
+      .fill-height {
+        flex: 1;
+        resize: none;
+      }
+    }
+  }
+}
+
+.code-textarea {
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  letter-spacing: -0.1px;
+  line-height: 1.5;
+  background-color: transparent;
+  color: var(--text-main);
+  border: none;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  resize: none;
+}
+
+// Diagnostics list
+.diagnostics-list {
+  padding: 0;
+
+  .diagnostic-item {
+    padding: 12px 16px;
+    height: auto !important;
+    min-height: 64px;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .diag-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      font-size: 0.9rem;
+      line-height: 1.4;
+
+      .diag-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      .diag-msg {
+        white-space: normal;
+        word-break: break-word;
+      }
+    }
+
+    .diag-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: 26px;
+      margin-top: 4px;
+      font-size: 0.8rem;
+
+      .diag-code-badge {
+        background-color: rgba(0, 0, 0, 0.05);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.75rem;
+      }
+    }
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 32px;
+  color: var(--text-muted);
+
+  .empty-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+  }
+
+  .empty-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin: 0 0 6px 0;
+    color: var(--text-main);
+  }
+
+  .empty-subtitle {
+    font-size: 0.85rem;
+    margin: 0;
+  }
+}
+
+.w-100 {
+  width: 100%;
+}
+
+.border-right {
+  border-right: 1px solid var(--border-color);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-success {
+  color: #10b981;
+}
+
+// Override Monaco Widget styles inside our playground component
+::ng-deep .monaco-editor .action-widget {
+  width: auto !important;
+  min-width: 300px !important;
+  max-width: 600px !important;
+}

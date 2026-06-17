@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as net from 'net';
 import type { ExtensionContext } from 'vscode';
-import { workspace } from 'vscode';
+import { workspace, window, type OutputChannel } from 'vscode';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
 import type {
   LanguageClientOptions,
@@ -9,12 +9,14 @@ import type {
 } from 'vscode-languageclient/node';
 
 const DEFAULT_REMOTE_LSP_PORT = 6009;
-const DEFAULT_LSP_INSPECT_PORT = 6009;
+const DEFAULT_LSP_INSPECT_PORT = 6010;
 
 let client: LanguageClient;
+let outputChannel: OutputChannel;
 
 export function activate(context: ExtensionContext) {
-  console.log('Liquid LSP extension activating...');
+  outputChannel = window.createOutputChannel('Liquid LSP');
+  outputChannel.appendLine('Liquid LSP extension activating...');
 
   const config = workspace.getConfiguration('liquid');
   const mode = config.get<'local' | 'remote'>('server.mode') || 'local';
@@ -29,16 +31,19 @@ export function activate(context: ExtensionContext) {
   let serverOptions: ServerOptions;
 
   if (mode === 'remote') {
-    console.log(`Connecting to remote LSP server at ${host}:${port}`);
+    outputChannel.appendLine(`Connecting to remote LSP server at ${host}:${port}`);
     serverOptions = () => {
       const socket = net.connect({ host, port });
+      socket.on('error', (err) => {
+        outputChannel.appendLine(`LSP remote connection error: ${err.message}`);
+      });
       return Promise.resolve({
         writer: socket,
         reader: socket,
       });
     };
   } else {
-    console.log(
+    outputChannel.appendLine(
       'Spawning LSP server process: node ' + serverModule + ' --stdio',
     );
     serverOptions = {
@@ -71,12 +76,18 @@ export function activate(context: ExtensionContext) {
     serverOptions,
     clientOptions,
   );
-  client.start();
+  
+  client.start().catch((err) => {
+    outputChannel.appendLine(`Liquid LSP server failed to start: ${err instanceof Error ? err.message : String(err)}`);
+  });
 
-  console.log('Liquid LSP extension activated successfully.');
+  outputChannel.appendLine('Liquid LSP extension activated successfully.');
 }
 
 export function deactivate(): Thenable<void> | undefined {
+  if (outputChannel) {
+    outputChannel.dispose();
+  }
   if (!client) {
     return undefined;
   }

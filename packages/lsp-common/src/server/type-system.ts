@@ -112,7 +112,7 @@ export class TypeSystem {
       this.logger.log(`LSP server: Loaded workspace schema for ${rootPath}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.log(
+      this.logger.error(
         `LSP server: Error loading workspace schema for ${rootPath}: ${message}`,
       );
       this.schemaLoadErrors = [

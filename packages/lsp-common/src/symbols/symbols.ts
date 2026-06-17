@@ -2,9 +2,9 @@ import { SymbolKind, DocumentSymbol, Range } from 'vscode-languageserver';
 import type { DocumentSymbolParams } from 'vscode-languageserver';
 import {
   TagTokenClass,
-  parseAssignKeyValue,
-  parseCaptureVariable,
-  parseForLoopVariable,
+  parseAssignKeyValueWithOffsets,
+  parseCaptureVariableWithOffsets,
+  parseForLoopVariableWithOffsets,
 } from 'liquid-core';
 import type { Liquid } from 'liquid-core';
 import type { DocumentManager } from '../server/document-manager.js';
@@ -19,20 +19,21 @@ const BLOCK_START_TAGS = [
   'comment',
 ];
 
-const ASSIGN_TAG_NAMES = new Set(['assign', 'assignVar', 'parseAssign']);
+import { ASSIGN_TAG_NAMES } from '../shared/constants.js';
 
 function pushVariableSymbol(
   symbols: DocumentSymbol[],
   stack: { symbol: DocumentSymbol; endTag: string }[],
   varName: string,
   range: Range,
+  selectionRange: Range,
 ): void {
   const symbol = DocumentSymbol.create(
     varName,
     'Variable',
     SymbolKind.Variable,
     range,
-    range,
+    selectionRange,
   );
   const parent = stack[stack.length - 1];
   if (parent) {
@@ -68,6 +69,8 @@ export function handleDocumentSymbol(
     }
 
     const name = token.name;
+    const tokenText = token.getText();
+    const argsOffset = tokenText.indexOf(token.args);
 
     if (BLOCK_START_TAGS.includes(name)) {
       const symbol = DocumentSymbol.create(
@@ -87,6 +90,25 @@ export function handleDocumentSymbol(
         rootSymbols.push(symbol);
       }
       stack.push({ symbol, endTag });
+
+      // Create variable symbols inside capture and for blocks
+      if (name === 'capture') {
+        const parsed = parseCaptureVariableWithOffsets(token.args);
+        if (parsed && argsOffset >= 0) {
+          const absStart = token.begin + argsOffset + parsed.keyStart;
+          const absEnd = token.begin + argsOffset + parsed.keyEnd;
+          const selectionRange = Range.create(doc.positionAt(absStart), doc.positionAt(absEnd));
+          pushVariableSymbol(rootSymbols, stack, parsed.key, range, selectionRange);
+        }
+      } else if (name === 'for') {
+        const parsed = parseForLoopVariableWithOffsets(token.args);
+        if (parsed && argsOffset >= 0) {
+          const absStart = token.begin + argsOffset + parsed.keyStart;
+          const absEnd = token.begin + argsOffset + parsed.keyEnd;
+          const selectionRange = Range.create(doc.positionAt(absStart), doc.positionAt(absEnd));
+          pushVariableSymbol(rootSymbols, stack, parsed.key, range, selectionRange);
+        }
+      }
       continue;
     }
 
@@ -98,25 +120,15 @@ export function handleDocumentSymbol(
     }
 
     if (ASSIGN_TAG_NAMES.has(name)) {
-      const parsed = parseAssignKeyValue(token.args);
+      const parsed = parseAssignKeyValueWithOffsets(token.args);
       if (parsed) {
-        pushVariableSymbol(rootSymbols, stack, parsed.key, range);
-      }
-      continue;
-    }
-
-    if (name === 'capture') {
-      const varName = parseCaptureVariable(token.args);
-      if (varName) {
-        pushVariableSymbol(rootSymbols, stack, varName, range);
-      }
-      continue;
-    }
-
-    if (name === 'for') {
-      const varName = parseForLoopVariable(token.args);
-      if (varName) {
-        pushVariableSymbol(rootSymbols, stack, varName, range);
+        let selectionRange = range;
+        if (argsOffset >= 0) {
+          const absStart = token.begin + argsOffset + parsed.keyStart;
+          const absEnd = token.begin + argsOffset + parsed.keyEnd;
+          selectionRange = Range.create(doc.positionAt(absStart), doc.positionAt(absEnd));
+        }
+        pushVariableSymbol(rootSymbols, stack, parsed.key, range, selectionRange);
       }
     }
   }

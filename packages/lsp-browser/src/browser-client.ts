@@ -3,7 +3,6 @@ import {
   BrowserMessageWriter,
 } from 'vscode-jsonrpc/browser';
 import { createProtocolConnection } from 'vscode-languageserver-protocol/browser';
-import { PublishDiagnosticsNotification } from 'vscode-languageserver-protocol';
 import {
   WORKER_INIT_MESSAGE_TYPE,
   WORKER_READY_SIGNAL,
@@ -13,7 +12,7 @@ import {
 export type BrowserLspWorkerClient = {
   sendRequest(method: string, params?: object): Promise<unknown>;
   sendNotification(method: string, params?: object): void;
-  onNotification(handler: (method: string, params: unknown) => void): void;
+  onNotification(handler: (method: string, params: unknown) => void): () => void;
   dispose(): void;
 };
 
@@ -30,6 +29,11 @@ export function connectBrowserLspWorker(
   return new Promise((resolve, reject) => {
     const channel = new MessageChannel();
     const worker = new Worker(workerScriptUrl, { type: 'module' });
+
+    // Explicitly start both MessagePorts to enable JSON-RPC messaging
+    channel.port1.start();
+    channel.port2.start();
+
     const reader = new BrowserMessageReader(channel.port2);
     const writer = new BrowserMessageWriter(channel.port2);
     const connection = createProtocolConnection(reader, writer);
@@ -37,9 +41,15 @@ export function connectBrowserLspWorker(
       (method: string, params: unknown) => void
     > = [];
 
-    connection.onNotification(PublishDiagnosticsNotification.type, (params) => {
+    (
+      connection as unknown as {
+        onNotification(
+          handler: (method: string, params: unknown) => void,
+        ): void;
+      }
+    ).onNotification((method, params) => {
       for (const handler of notificationHandlers) {
-        handler(PublishDiagnosticsNotification.method, params);
+        handler(method, params);
       }
     });
 
@@ -59,12 +69,16 @@ export function connectBrowserLspWorker(
       reject(new Error('LSP worker did not become ready'));
     }, readyTimeoutMs);
 
-    worker.onerror = () => {
+    worker.onerror = (e: Event) => {
       if (settled) return;
       settled = true;
       clearTimeout(readyTimeout);
       dispose();
-      reject(new Error('LSP worker failed to load'));
+      const err = e as unknown as Record<string, unknown>;
+      const message = typeof err?.message === 'string' ? err.message : 'LSP worker failed to load';
+      const filename = typeof err?.filename === 'string' ? err.filename : 'unknown';
+      const lineno = typeof err?.lineno === 'number' ? err.lineno : 0;
+      reject(new Error(`${message} @ ${filename}:${lineno}`));
     };
 
     worker.onmessage = (event: MessageEvent) => {
@@ -77,12 +91,18 @@ export function connectBrowserLspWorker(
 
       resolve({
         sendRequest: (method, params) =>
-          connection.sendRequest(method as never, params as never),
+          connection.sendRequest(method, params),
         sendNotification: (method, params) => {
-          connection.sendNotification(method as never, params as never);
+          connection.sendNotification(method, params);
         },
         onNotification: (handler) => {
           notificationHandlers.push(handler);
+          return () => {
+            const idx = notificationHandlers.indexOf(handler);
+            if (idx !== -1) {
+              notificationHandlers.splice(idx, 1);
+            }
+          };
         },
         dispose,
       });

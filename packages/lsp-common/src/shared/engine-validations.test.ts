@@ -108,4 +108,26 @@ describe('collectEngineValidationDiagnostics', () => {
       ),
     ).toBe(false);
   });
+
+  it('reports use-before-assign as Warning (severity: 2)', () => {
+    const engine = createLiquidEngine();
+    const text = '{% assignVar y = x | plus: 1 %}';
+    const doc = TextDocument.create('file:///t.liquid', 'liquid', 1, text);
+    const tokens = tokenizeTopLevel(text, engine);
+    const diagnostics: Array<{ message: string; code?: string; severity?: number }> = [];
+
+    collectEngineValidationDiagnostics(
+      doc,
+      engine,
+      diagnostics as never,
+      tokens,
+      new Set(),
+    );
+
+    const useBeforeAssign = diagnostics.find(
+      (d) => d.code === 'liquid.linter.use_before_assign',
+    );
+    expect(useBeforeAssign).toBeDefined();
+    expect(useBeforeAssign?.severity).toBe(2); // 2 = Warning
+  });
 });

@@ -4,9 +4,9 @@ import {
   createLiquidEngine,
   TagTokenClass,
   tokenizeTopLevel,
-  parseAssignKeyValue,
-  parseCaptureVariable,
-  parseForLoopVariable,
+  parseAssignKeyValueWithOffsets,
+  parseCaptureVariableWithOffsets,
+  parseForLoopVariableWithOffsets,
   type Token,
 } from 'liquid-core';
 
@@ -16,20 +16,6 @@ export interface VarDeclaration {
 }
 
 const ASSIGN_TAG_NAMES = new Set(['assign', 'assignVar', 'parseAssign']);
-
-function identifierRangeInTagToken(
-  doc: TextDocument,
-  token: InstanceType<typeof TagTokenClass>,
-  identifier: string,
-): Range {
-  const raw = token.getText();
-  const openIdx = raw.indexOf('%');
-  const searchFrom = openIdx >= 0 ? openIdx + 1 : 0;
-  const idIdx = raw.indexOf(identifier, searchFrom);
-  const nameStart = idIdx >= 0 ? token.begin + idIdx : token.begin;
-  const nameEnd = nameStart + identifier.length;
-  return Range.create(doc.positionAt(nameStart), doc.positionAt(nameEnd));
-}
 
 export function findVariableDeclarationsFromTokens(
   doc: TextDocument,
@@ -44,35 +30,47 @@ export function findVariableDeclarationsFromTokens(
 
     const tagName = token.name;
     const args = token.args;
+    const rawText = token.getText();
+    const argsOffset = rawText.indexOf(args);
+
+    if (argsOffset < 0) {
+      continue;
+    }
 
     if (ASSIGN_TAG_NAMES.has(tagName)) {
-      const parsed = parseAssignKeyValue(args);
+      const parsed = parseAssignKeyValueWithOffsets(args);
       if (parsed) {
+        const absStart = token.begin + argsOffset + parsed.keyStart;
+        const absEnd = token.begin + argsOffset + parsed.keyEnd;
         declarations.push({
           name: parsed.key,
-          range: identifierRangeInTagToken(doc, token, parsed.key),
+          range: Range.create(doc.positionAt(absStart), doc.positionAt(absEnd)),
         });
       }
       continue;
     }
 
     if (tagName === 'capture') {
-      const varName = parseCaptureVariable(args);
-      if (varName) {
+      const parsed = parseCaptureVariableWithOffsets(args);
+      if (parsed) {
+        const absStart = token.begin + argsOffset + parsed.keyStart;
+        const absEnd = token.begin + argsOffset + parsed.keyEnd;
         declarations.push({
-          name: varName,
-          range: identifierRangeInTagToken(doc, token, varName),
+          name: parsed.key,
+          range: Range.create(doc.positionAt(absStart), doc.positionAt(absEnd)),
         });
       }
       continue;
     }
 
     if (tagName === 'for') {
-      const varName = parseForLoopVariable(args);
-      if (varName) {
+      const parsed = parseForLoopVariableWithOffsets(args);
+      if (parsed) {
+        const absStart = token.begin + argsOffset + parsed.keyStart;
+        const absEnd = token.begin + argsOffset + parsed.keyEnd;
         declarations.push({
-          name: varName,
-          range: identifierRangeInTagToken(doc, token, varName),
+          name: parsed.key,
+          range: Range.create(doc.positionAt(absStart), doc.positionAt(absEnd)),
         });
       }
     }

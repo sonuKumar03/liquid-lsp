@@ -18,6 +18,8 @@ import {
   ComputeColumnTag,
 } from 'liquid-core';
 import { DIAGNOSTIC_CODES } from './diagnostic-codes.js';
+import { ASSIGN_TAG_NAMES } from './constants.js';
+import { pushUniqueDiagnostic } from './diagnostic-utils.js';
 
 export type EngineValidationFns = {
   checkValidJSON: (
@@ -52,17 +54,13 @@ function getValidationFns(): EngineValidationFns {
 
 const PARSE_ASSIGN_LINE_RE = /at line (\d+)/;
 
-const ASSIGN_DEPENDENCY_TAG_NAMES = new Set([
-  'assign',
-  'assignVar',
-  'parseAssign',
-]);
+// Replaced by shared ASSIGN_TAG_NAMES from constants.js
 
 function findTagTokenOnLine(
   tokens: TopLevelToken[],
   line: number,
   tagNames?: Set<string>,
-): InstanceType<typeof TagTokenClass> | undefined {
+): TagTokenClass | undefined {
   for (const token of tokens) {
     if (!(token instanceof TagTokenClass)) {
       continue;
@@ -80,7 +78,7 @@ function findTagTokenOnLine(
 
 function rangeForIdentifierInTagToken(
   doc: TextDocument,
-  token: InstanceType<typeof TagTokenClass>,
+  token: TagTokenClass,
   identifier: string,
 ): {
   start: { line: number; character: number };
@@ -100,7 +98,7 @@ function rangeForIdentifierInTagToken(
 
 function rangeForTagToken(
   doc: TextDocument,
-  token: InstanceType<typeof TagTokenClass>,
+  token: TagTokenClass,
 ): {
   start: { line: number; character: number };
   end: { line: number; character: number };
@@ -128,33 +126,28 @@ function isVariableAssigned(
   return false;
 }
 
-function pushUniqueDiagnostic(
-  diagnostics: Diagnostic[],
-  diagnostic: Diagnostic,
-): void {
-  const duplicate = diagnostics.some(
-    (d) =>
-      d.range.start.line === diagnostic.range.start.line &&
-      d.range.start.character === diagnostic.range.start.character &&
-      d.message === diagnostic.message,
-  );
-  if (!duplicate) {
-    diagnostics.push(diagnostic);
-  }
-}
+// Replaced by shared pushUniqueDiagnostic from diagnostic-utils.js
 
+/**
+ * Resolves the Token for a given TagTemplate, checking if the token
+ * is already a TagTokenClass or performing a line-based lookup if it
+ * is a plain token from the parser.
+ */
 function findTagTokenForTemplate(
   tokens: TopLevelToken[],
   template: TagTemplate,
-): InstanceType<typeof TagTokenClass> | undefined {
+): TagTokenClass | undefined {
   const tagToken = template.token;
   if (tagToken instanceof TagTokenClass) {
     return tagToken;
   }
-  const line = (tagToken as { line?: number }).line;
+  const line =
+    tagToken && typeof tagToken === 'object' && 'line' in tagToken
+      ? (tagToken as { line: unknown }).line
+      : undefined;
   if (typeof line === 'number') {
     const name = template instanceof Tag ? template.name : '';
-    return findTagTokenOnLine(tokens, line, new Set([name]));
+    return findTagTokenOnLine(tokens, line, name ? new Set([name]) : undefined);
   }
   return undefined;
 }
@@ -170,12 +163,10 @@ function reportUseBeforeAssign(
   const range = token
     ? rangeForIdentifierInTagToken(doc, token, varName)
     : { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
-  const args = token ? token.args : '';
-  const line = token ? token.line : 0;
-  const message = `Variable "${varName}" used before assignment in expression "${args}" on line ${line}`;
+  const message = `You used "${varName}" before defining it. Move the {% assign ${varName} = ... %} line above this.`;
 
   pushUniqueDiagnostic(diagnostics, {
-    severity: DiagnosticSeverity.Error,
+    severity: DiagnosticSeverity.Warning,
     range,
     message,
     code: DIAGNOSTIC_CODES.USE_BEFORE_ASSIGN,
@@ -291,7 +282,7 @@ function walkTagTemplate(
 
   if (
     template instanceof Tag &&
-    ASSIGN_DEPENDENCY_TAG_NAMES.has(template.name)
+    ASSIGN_TAG_NAMES.has(template.name)
   ) {
     handleAssignTemplate(
       doc,
@@ -305,17 +296,26 @@ function walkTagTemplate(
   }
 }
 
+function isTagTemplate(template: unknown): template is TagTemplate {
+  return (
+    typeof template === 'object' &&
+    template !== null &&
+    'token' in template &&
+    (template as { token: unknown }).token instanceof TagTokenClass
+  );
+}
+
 function walkTemplates(
   doc: TextDocument,
   engine: Liquid,
-  templates: TagTemplate[],
+  templates: unknown[],
   assignedVars: Set<string>,
   diagnostics: Diagnostic[],
   tokens: TopLevelToken[],
   parseAssignFn: EngineValidationFns['parseAssign'],
 ): void {
   for (const template of templates) {
-    if (!(template.token instanceof TagTokenClass)) {
+    if (!isTagTemplate(template)) {
       continue;
     }
     walkTagTemplate(
@@ -416,7 +416,7 @@ function collectAssignDependencyDiagnostics(
   walkTemplates(
     doc,
     engine,
-    templates as TagTemplate[],
+    templates,
     assignedVars,
     diagnostics,
     tokens,
@@ -435,9 +435,6 @@ export function collectEngineValidationDiagnostics(
   schemaVarNames?: Set<string>,
 ): void {
   const fns = getValidationFns();
-  if (!fns) {
-    return;
-  }
 
   const text = doc.getText();
 

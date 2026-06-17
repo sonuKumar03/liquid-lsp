@@ -2,6 +2,7 @@ import { SCHEMA_ERROR_CODES } from 'key-pointer-schema';
 
 export const DIAGNOSTIC_CODES = {
   UNCLOSED_DELIMITER: 'liquid.syntax.unclosed_delimiter',
+  UNCLOSED_QUOTE: 'liquid.syntax.unclosed_quote',
   UNKNOWN_FILTER: 'liquid.filter.unknown',
   EXPECTED_FILTER_NAME: 'liquid.syntax.expected_filter_name',
   CONDITIONAL_ASSIGNMENT: 'liquid.syntax.conditional_assignment',

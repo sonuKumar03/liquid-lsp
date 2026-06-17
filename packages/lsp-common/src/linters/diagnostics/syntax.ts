@@ -49,17 +49,27 @@ export function collectSyntaxDiagnostics(
       textWithoutQuotes.search(/(?<![=!<>])=(?![=<>])/) !== -1;
     const isInlineMath =
       textWithoutQuotes.search(/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//) !== -1;
-    const manualError = isConditionalAssignment || isInlineMath;
+    const isUnclosedQuote =
+      textWithoutQuotes.includes('"') || textWithoutQuotes.includes("'");
+    const manualError = isConditionalAssignment || isInlineMath || isUnclosedQuote;
 
     if (manualError) {
       const start = textDocument.positionAt(token.begin);
       const end = textDocument.positionAt(token.end);
-      const message = isConditionalAssignment
-        ? 'Assignments are not allowed inside conditional statements. Did you mean "=="?'
-        : 'Liquid does not support inline mathematical operators. Use filters instead, e.g. "| plus: 2".';
-      const code = isConditionalAssignment
-        ? DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT
-        : DIAGNOSTIC_CODES.INLINE_MATH;
+      
+      let message = '';
+      let code: string = '';
+      if (isConditionalAssignment) {
+        message = 'Assignments are not allowed inside conditional statements. Did you mean "=="?';
+        code = DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT;
+      } else if (isInlineMath) {
+        message = 'Liquid does not support inline mathematical operators. Use filters instead, e.g. "| plus: 2".';
+        code = DIAGNOSTIC_CODES.INLINE_MATH;
+      } else {
+        message = 'Unclosed string literal. Matching quote is missing.';
+        code = DIAGNOSTIC_CODES.UNCLOSED_QUOTE;
+      }
+
       pushUniqueDiagnostic(diagnostics, {
         severity: DiagnosticSeverity.Error,
         range: { start, end },
@@ -130,7 +140,9 @@ export function collectSyntaxDiagnostics(
           textWithoutQuotes.search(/(?<![=!<>])=(?![=<>])/) !== -1;
         const isInlineMath =
           textWithoutQuotes.search(/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//) !== -1;
-        if (isConditionalAssignment || isInlineMath) {
+        const isUnclosedQuote =
+          textWithoutQuotes.includes('"') || textWithoutQuotes.includes("'");
+        if (isConditionalAssignment || isInlineMath || isUnclosedQuote) {
           continue;
         }
       }

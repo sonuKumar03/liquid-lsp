@@ -253,7 +253,6 @@ export function collectLifecycleDiagnostics(
     for (const token of tokens) {
       const line = textDocument.positionAt(token.begin).line;
       if (token instanceof TagTokenClass) {
-        console.log("LINTER TOKEN:", token.name, token.constructor.name);
         const tagName = token.name;
         if (tagName === 'if' || tagName === 'unless') {
           scopeTracker.enterBlock();
@@ -262,7 +261,6 @@ export function collectLifecycleDiagnostics(
         } else if (tagName === 'endif' || tagName === 'endunless') {
           const block = scopeTracker.exitBlock();
           if (block) {
-            console.log("POP BLOCK:", JSON.stringify(block));
             const allAssignedVars = new Set<string>();
             for (const branch of block.branches) {
               for (const varName of branch.keys()) {
@@ -285,7 +283,6 @@ export function collectLifecycleDiagnostics(
                     break;
                   }
                 }
-                console.log("VARNAME:", varName, "mismatch:", mismatch);
 
                 const existing = scopeTracker.activeVars.get(varName);
                 const hasBeenRead = existing ? existing.hasBeenRead : false;

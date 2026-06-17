@@ -402,7 +402,6 @@ export function applyFilterTypeWarnings(
   const unquotedBase = isStringLiteral ? basePart.slice(1, -1) : basePart;
   const isBaseNumeric = /^\s*-?\d+(\.\d+)?\s*$/.test(unquotedBase);
 
-  console.log("APPLY FILTER currentType:", JSON.stringify(currentType));
   let tempType = currentType;
 
   for (const filter of parsed.filters) {

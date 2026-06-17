@@ -514,6 +514,14 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  public formatCode(): void {
+    if (this.editor) {
+      this.editor.getAction('editor.action.formatDocument')?.run().then(() => {
+        this.editor?.focus();
+      });
+    }
+  }
+
 
 
   ngOnDestroy(): void {

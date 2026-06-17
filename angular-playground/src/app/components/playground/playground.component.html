@@ -54,6 +54,18 @@
         <div class="pane-header">
           <mat-icon class="pane-header-icon text-muted">edit</mat-icon>
           <span class="pane-title">Template Editor</span>
+          <span class="pane-header-spacer"></span>
+          <button
+            mat-stroked-button
+            class="format-btn"
+            id="format-code-btn"
+            (click)="formatCode()"
+            matTooltip="Format document (Shift+Alt+F)"
+            [disabled]="!lspReady()"
+          >
+            <mat-icon class="format-btn-icon">auto_fix_high</mat-icon>
+            <span>Format Code</span>
+          </button>
         </div>
         <div class="editor-wrapper">
           <div #editorContainer class="monaco-host"></div>

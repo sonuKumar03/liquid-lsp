@@ -18,6 +18,7 @@ import { handleSignatureHelp } from '../signatures/signatures.js';
 import { handleDocumentSymbol } from '../symbols/symbols.js';
 import { handleRename } from '../rename/rename.js';
 import { handleReferences } from '../references/references.js';
+import { handleFoldingRanges } from '../foldingRanges/foldingRanges.js';
 import { handleSemanticTokens } from '../semanticTokens/semanticTokens.js';
 import { SERVER_CAPABILITIES } from './capabilities.js';
 import { DocumentManager } from './document-manager.js';
@@ -171,6 +172,10 @@ export function startServer(
 
   connection.onReferences((params) => {
     return handleReferences(documentManager, params);
+  });
+
+  connection.onFoldingRanges((params) => {
+    return handleFoldingRanges(documentManager, params, liquidEngine);
   });
 
   connection.languages.semanticTokens.on((params: SemanticTokensParams) => {

@@ -18,7 +18,6 @@ import { findVariableDeclarations } from '../../shared/variable-declarations.js'
 import { DIAGNOSTIC_CODES } from '../../shared/diagnostic-codes.js';
 import {
   type ActiveVar,
-  type LinterVariableType,
   isOptionalType,
   formatLinterType,
 } from '../../shared/linter-types.js';
@@ -26,6 +25,7 @@ import { ScopeTracker, extractTruthyPaths } from './scope.js';
 import {
   processExpression,
   processParseAssignExpression,
+  validateDropdownComparisons,
   validateDropdownValue,
   validateNonComputableSchemaAssignment,
 } from './type-inferrer.js';
@@ -162,6 +162,15 @@ function collectTagDiagnostics(
     }
   } else if (isConditionalTagLine(name)) {
     processExpression(token.args, token, doc, diagnostics, scopeTracker.activeVars, engine);
+    const argsOffset = tokenText.indexOf(token.args);
+    validateDropdownComparisons(
+      doc,
+      diagnostics,
+      token.args,
+      scopeTracker.activeVars,
+      token.begin,
+      argsOffset >= 0 ? argsOffset : 0,
+    );
   }
 }
 

@@ -20,7 +20,7 @@ import { handleDocumentSymbol } from '../symbols/symbols.js';
 import { handleRename } from '../rename/rename.js';
 import { handleReferences } from '../references/references.js';
 import { handleFoldingRanges } from '../foldingRanges/foldingRanges.js';
-import { handleSemanticTokens } from '../semanticTokens/semanticTokens.js';
+import { handleSemanticTokens, handleSemanticTokensDelta } from '../semanticTokens/semanticTokens.js';
 import { SERVER_CAPABILITIES } from './capabilities.js';
 import { DocumentManager } from './document-manager.js';
 import { DiagnosticsScheduler } from './diagnostics-scheduler.js';
@@ -79,7 +79,7 @@ export function startServer(
       }
     }
 
-    let rootPath: string | null = null;
+    let rootPath: string | null;
     const workspaceFolder = params.workspaceFolders?.[0];
     if (workspaceFolder) {
       const uri = workspaceFolder.uri;
@@ -185,6 +185,14 @@ export function startServer(
 
   connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
     return handleSemanticTokens(
+      documentManager,
+      params,
+      typeSystem.getLiquidSchema(),
+    );
+  });
+
+  connection.languages.semanticTokens.onDelta((params) => {
+    return handleSemanticTokensDelta(
       documentManager,
       params,
       typeSystem.getLiquidSchema(),

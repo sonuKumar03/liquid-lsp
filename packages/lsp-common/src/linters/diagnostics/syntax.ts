@@ -57,8 +57,8 @@ export function collectSyntaxDiagnostics(
       const start = textDocument.positionAt(token.begin);
       const end = textDocument.positionAt(token.end);
       
-      let message = '';
-      let code: string = '';
+      let message: string;
+      let code: string;
       if (isConditionalAssignment) {
         message = 'Assignments are not allowed inside conditional statements. Did you mean "=="?';
         code = DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT;

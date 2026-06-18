@@ -1,7 +1,7 @@
 import { CompletionItemKind } from 'vscode-languageserver';
 import type { CompletionItem } from 'vscode-languageserver';
 import { resolveTypeForPath } from '../../hovers/hovers.js';
-import type { CompletionProvider, CompletionContext } from './provider.js';
+import type { CompletionProvider } from './provider.js';
 
 export const PropertyCompletionProvider: CompletionProvider = {
   matches(lineText) {

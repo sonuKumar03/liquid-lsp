@@ -23,7 +23,7 @@ export class MonacoSetupService {
   ensureWorkerEnvironment(): void {
     if (!(window as unknown as Record<string, unknown>)['MonacoEnvironment']) {
       (window as unknown as Record<string, unknown>)['MonacoEnvironment'] = {
-        getWorkerUrl: (_moduleId: string, _label: string): string => MONACO_WORKER_URL,
+        getWorkerUrl: (): string => MONACO_WORKER_URL,
       };
     }
   }
@@ -126,7 +126,7 @@ export class MonacoSetupService {
           [/%}/, { token: 'delimiter.tag', next: '@pop' }],
           [/"([^"\\]|\\.)*"/, 'string'],
           [/'([^'\\]|\\.)*'/, 'string'],
-          [/[\w\-]+/, { cases: { '@keywords': 'keyword', '@operators': 'operator', '@default': 'identifier' } }],
+          [/[\w-]+/, { cases: { '@keywords': 'keyword', '@operators': 'operator', '@default': 'identifier' } }],
           [/[{}()[\]]/, 'delimiter'],
           [/[:|]/, 'operator'],
           [/[ \t\r\n]+/, ''],
@@ -135,7 +135,7 @@ export class MonacoSetupService {
           [/}}/, { token: 'delimiter.output', next: '@pop' }],
           [/"([^"\\]|\\.)*"/, 'string'],
           [/'([^'\\]|\\.)*'/, 'string'],
-          [/[\w\-]+/, { cases: { '@operators': 'operator', '@default': 'identifier' } }],
+          [/[\w-]+/, { cases: { '@operators': 'operator', '@default': 'identifier' } }],
           [/[:|]/, 'operator'],
           [/[ \t\r\n]+/, ''],
         ],

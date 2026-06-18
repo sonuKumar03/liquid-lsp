@@ -1,7 +1,7 @@
 import { CompletionItemKind } from 'vscode-languageserver';
 import type { CompletionItem, CompletionParams } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import type { Liquid, Token } from 'liquid-core';
+import type { Token } from 'liquid-core';
 import type { LiquidType } from '../../shared/schema.js';
 import { collectVariableNamesFromTokens } from '../../shared/token-variables.js';
 

@@ -29,6 +29,8 @@ export const SERVER_CAPABILITIES: ServerCapabilities = {
       tokenTypes: SEMANTIC_TOKEN_TYPES,
       tokenModifiers: SEMANTIC_TOKEN_MODIFIERS,
     },
-    full: true,
+    full: {
+      delta: true,
+    },
   },
 };

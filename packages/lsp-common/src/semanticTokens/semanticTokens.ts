@@ -1,4 +1,10 @@
-import type { SemanticTokensParams, SemanticTokens } from 'vscode-languageserver';
+import type {
+  SemanticTokensParams,
+  SemanticTokens,
+  SemanticTokensDeltaParams,
+  SemanticTokensDelta,
+  SemanticTokensEdit,
+} from 'vscode-languageserver';
 import { createLiquidEngine, tokenizeTopLevelSafe, TagTokenClass, TokenKind } from 'liquid-core';
 import { findVariableDeclarationsFromTokens } from '../shared/variable-declarations.js';
 import type { DocumentManager } from '../server/document-manager.js';
@@ -6,6 +12,19 @@ import type { LiquidType } from '../shared/schema.js';
 
 export const SEMANTIC_TOKEN_TYPES = ['source', 'intermediate', 'output'];
 export const SEMANTIC_TOKEN_MODIFIERS = ['dead'];
+
+interface CachedTokens {
+  resultId: string;
+  data: number[];
+}
+
+export const tokenCache = new Map<string, CachedTokens>();
+
+let resultIdCounter = 0;
+function nextResultId(): string {
+  resultIdCounter++;
+  return `sem-tokens-id-${resultIdCounter}`;
+}
 
 interface TokenOccurrence {
   line: number;
@@ -118,5 +137,69 @@ export function handleSemanticTokens(
     lastChar = occ.char;
   }
 
-  return { data };
+  const resultId = nextResultId();
+  const result: SemanticTokens = { resultId, data };
+  tokenCache.set(doc.uri, { resultId, data });
+  return result;
+}
+
+export function handleSemanticTokensDelta(
+  documentManager: DocumentManager,
+  params: SemanticTokensDeltaParams,
+  globalSchema?: Map<string, LiquidType>,
+): SemanticTokens | SemanticTokensDelta | null {
+  const doc = documentManager.documents.get(params.textDocument.uri);
+  if (!doc) return null;
+
+  // Retrieve the previous cache BEFORE calling handleSemanticTokens
+  const previousCached = tokenCache.get(doc.uri);
+
+  // Generate current full tokens and update cache
+  const currentResult = handleSemanticTokens(documentManager, { textDocument: params.textDocument }, globalSchema);
+  if (!currentResult) return null;
+
+  if (previousCached && previousCached.resultId === params.previousResultId) {
+    const edits = computeSemanticTokensEdits(previousCached.data, currentResult.data);
+    const resultDelta: SemanticTokensDelta = currentResult.resultId !== undefined
+      ? { resultId: currentResult.resultId, edits }
+      : { edits };
+    return resultDelta;
+  }
+
+  // Fallback to full result if previousResultId doesn't match or cache is missing
+  return currentResult;
+}
+
+export function computeSemanticTokensEdits(
+  prev: number[],
+  curr: number[],
+): SemanticTokensEdit[] {
+  let prefixLen = 0;
+  while (prefixLen < prev.length && prefixLen < curr.length && prev[prefixLen] === curr[prefixLen]) {
+    prefixLen++;
+  }
+
+  let suffixLen = 0;
+  while (
+    suffixLen < prev.length - prefixLen &&
+    suffixLen < curr.length - prefixLen &&
+    prev[prev.length - 1 - suffixLen] === curr[curr.length - 1 - suffixLen]
+  ) {
+    suffixLen++;
+  }
+
+  const deleteCount = prev.length - prefixLen - suffixLen;
+  const insertData = curr.slice(prefixLen, curr.length - suffixLen);
+
+  if (deleteCount === 0 && insertData.length === 0) {
+    return [];
+  }
+
+  return [
+    {
+      start: prefixLen,
+      deleteCount,
+      data: insertData,
+    },
+  ];
 }

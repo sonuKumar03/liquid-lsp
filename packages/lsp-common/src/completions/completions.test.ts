@@ -721,6 +721,169 @@ test('Liquid dropdown comparison completions', () =>
     );
   }));
 
+test('Liquid filter argument value completions', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///filter-args.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{{ amount | toCurrency: \n{{ days | toDuration: ',
+              },
+            },
+          }),
+        );
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/completion',
+            params: {
+              textDocument: { uri: 'file:///filter-args.liquid' },
+              position: { line: 0, character: 23 },
+            },
+          }),
+        );
+
+        step = 1;
+      } else if (step === 1 && res.id === 2) {
+        const items = res.result;
+        expect(items.some((item: any) => item.label === '"USD"')).toBe(true);
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 3,
+            method: 'textDocument/completion',
+            params: {
+              textDocument: { uri: 'file:///filter-args.liquid' },
+              position: { line: 1, character: 24 },
+            },
+          }),
+        );
+
+        step = 2;
+      } else if (step === 2 && res.id === 3) {
+        const items = res.result;
+        expect(items.some((item: any) => item.label === '"DAYS"')).toBe(true);
+        expect(items.some((item: any) => item.label === '"MONTHS"')).toBe(true);
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { capabilities: {} },
+      }),
+    );
+  }));
+
+test('Liquid branch-aware dropdown comparison completions prioritize current branch value', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///branch-dropdown.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: [
+                  '{% if user.status == "active" %}',
+                  '  {% if user.status == %}',
+                  '{% endif %}',
+                ].join('\n'),
+              },
+            },
+          }),
+        );
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/completion',
+            params: {
+              textDocument: { uri: 'file:///branch-dropdown.liquid' },
+              position: { line: 1, character: 23 },
+            },
+          }),
+        );
+
+        step = 1;
+      } else if (step === 1 && res.id === 2) {
+        const items = res.result;
+        expect(items[0]?.label).toBe('"active"');
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          capabilities: {},
+          initializationOptions: {
+            schema: {
+              user: {
+                type: 'composite',
+                fields: {
+                  status: {
+                    type: 'dropdown',
+                    options: ['inactive', 'active'],
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    );
+  }));
+
 test('completions return schema-aware dynamic details and docs', () =>
   new Promise<void>((resolve) => {
     const child = startLspServer();

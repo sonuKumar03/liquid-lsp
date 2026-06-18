@@ -178,7 +178,7 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
         initializationOptions: { schema: {} },
       },
       connectionProvider: {
-        get: (_encoding: string) => Promise.resolve(this.lspService.getTransports()),
+        get: () => Promise.resolve(this.lspService.getTransports()),
       },
     });
     await this.languageClient.start();

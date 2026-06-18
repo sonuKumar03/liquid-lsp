@@ -3,6 +3,12 @@ import { resolveTypeForPath } from '../../hovers/hovers.js';
 import type { LiquidType } from '../../shared/schema.js';
 import type { CompletionProvider } from './provider.js';
 import { resolveSchemaAwareDoc, resolveSchemaAwareDetail } from '../../hovers/filter-documentation.js';
+import { CompletionItemKind } from 'vscode-languageserver';
+
+const FILTER_ARGUMENT_VALUE_SUGGESTIONS: Record<string, string[]> = {
+  toCurrency: ['USD'],
+  toDuration: ['DAYS', 'MONTHS'],
+};
 
 export const FilterCompletionProvider: CompletionProvider = {
   matches(lineText) {
@@ -17,6 +23,26 @@ export const FilterCompletionProvider: CompletionProvider = {
 
   getCompletionItems(context) {
     const { lineText, localSchema } = context;
+    const argMatch = lineText.match(/\|\s*([a-zA-Z0-9_-]+)\s*:\s*([^|]*)$/);
+    if (argMatch?.[1]) {
+      const filterName = argMatch[1];
+      const rawArg = argMatch[2] ?? '';
+      const suggestionValues = FILTER_ARGUMENT_VALUE_SUGGESTIONS[filterName];
+      if (suggestionValues) {
+        const normalizedArg = rawArg.trim().replace(/^['"]/, '').toLowerCase();
+        return suggestionValues
+          .filter((value) => value.toLowerCase().startsWith(normalizedArg))
+          .map((value) => ({
+            label: `"${value}"`,
+            kind: CompletionItemKind.EnumMember,
+            detail: `${filterName} argument`,
+            documentation: `Suggested value for \`${filterName}\`.`,
+            insertText: `"${value}"`,
+            data: `filter-arg-${filterName}-${value}`,
+          }));
+      }
+    }
+
     const lastPipe = lineText.lastIndexOf('|');
 
     const exprBeforePipe = lineText.substring(0, lastPipe);

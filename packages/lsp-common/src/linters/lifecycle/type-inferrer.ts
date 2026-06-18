@@ -53,6 +53,71 @@ export function validateDropdownValue(
   });
 }
 
+export function validateDropdownComparisons(
+  doc: TextDocument,
+  diagnostics: Diagnostic[],
+  conditionText: string,
+  activeVars: Map<string, ActiveVar>,
+  tokenBegin: number,
+  tokenArgsBegin: number,
+): void {
+  const activeVarTypes = new Map<string, LiquidType>();
+  for (const [name, activeVar] of activeVars.entries()) {
+    const activeType = activeVar.type;
+    if (
+      activeType &&
+      typeof activeType === 'object' &&
+      activeType.kind === 'branch_mismatch'
+    ) {
+      activeVarTypes.set(name, activeType.types[0] || 'unknown');
+    } else {
+      activeVarTypes.set(name, activeType);
+    }
+  }
+
+  const comparisonRegex =
+    /([a-zA-Z_][a-zA-Z0-9_.[\]'"-]*)\s*(==|!=)\s*("([^"\\]|\\.)*"|'([^'\\]|\\.)*')/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = comparisonRegex.exec(conditionText)) !== null) {
+    const path = match[1]?.trim();
+    const rawValue = match[3];
+    if (!path || !rawValue) {
+      continue;
+    }
+
+    const resolvedType = resolveTypeForPath(path, activeVarTypes);
+    if (
+      typeof resolvedType !== 'object' ||
+      resolvedType.kind !== 'dropdown'
+    ) {
+      continue;
+    }
+
+    const value = rawValue.slice(1, -1);
+    if (resolvedType.options.includes(value)) {
+      continue;
+    }
+
+    const matchStart = tokenArgsBegin + match.index + match[0].lastIndexOf(rawValue);
+    const start = doc.positionAt(tokenBegin + matchStart);
+    const end = doc.positionAt(tokenBegin + matchStart + rawValue.length);
+
+    diagnostics.push({
+      severity: DiagnosticSeverity.Warning,
+      range: Range.create(start, end),
+      message: `"${value}" is not a valid option for "${path}". Valid choices are: ${resolvedType.options.map((option) => `"${option}"`).join(', ')}.`,
+      code: DIAGNOSTIC_CODES.INVALID_DROPDOWN_VALUE,
+      data: {
+        path,
+        invalidValue: value,
+        options: resolvedType.options,
+      },
+      source: 'liquid-lsp-linter',
+    });
+  }
+}
+
 export function validateNonComputableSchemaAssignment(
   doc: TextDocument,
   diagnostics: Diagnostic[],

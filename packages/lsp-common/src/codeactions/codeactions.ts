@@ -13,6 +13,7 @@ import { QuotedFilterStrategy } from './strategies/quoted-filter.js';
 import { InlineMathStrategy } from './strategies/inline-math.js';
 import { ConditionalAssignmentStrategy } from './strategies/conditional-assignment.js';
 import { UnknownTagStrategy } from './strategies/unknown-tag.js';
+import { InvalidDropdownValueStrategy } from './strategies/invalid-dropdown-value.js';
 
 // ==========================================
 // Strategy Registry
@@ -28,6 +29,7 @@ const STRATEGY_LIST: CodeActionStrategy[] = [
   InlineMathStrategy,
   ConditionalAssignmentStrategy,
   UnknownTagStrategy,
+  InvalidDropdownValueStrategy,
 ];
 
 const registerStrategy = (strategy: CodeActionStrategy, ...codes: string[]) => {
@@ -48,6 +50,10 @@ registerStrategy(QuotedFilterStrategy, DIAGNOSTIC_CODES.EXPECTED_FILTER_NAME);
 registerStrategy(InlineMathStrategy, DIAGNOSTIC_CODES.INLINE_MATH);
 registerStrategy(ConditionalAssignmentStrategy, DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT);
 registerStrategy(UnknownTagStrategy, DIAGNOSTIC_CODES.UNKNOWN_TAG);
+registerStrategy(
+  InvalidDropdownValueStrategy,
+  DIAGNOSTIC_CODES.INVALID_DROPDOWN_VALUE,
+);
 
 // ==========================================
 // Main Dispatcher Handler

@@ -343,6 +343,102 @@ test('Liquid single-equals conversion to double-equals code action', () =>
     );
   }));
 
+test('Liquid dropdown comparison replacement code action', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+    let diagnostic: any = null;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///dropdown-fix.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{% if user.status == "draft" %}{{ user.status }}{% endif %}',
+              },
+            },
+          }),
+        );
+        step = 1;
+      } else if (
+        step === 1 &&
+        res.method === 'textDocument/publishDiagnostics'
+      ) {
+        diagnostic = res.params.diagnostics.find((d: any) =>
+          d.message.includes('not a valid option for'),
+        );
+        expect(diagnostic).toBeDefined();
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/codeAction',
+            params: {
+              textDocument: { uri: 'file:///dropdown-fix.liquid' },
+              range: diagnostic.range,
+              context: { diagnostics: [diagnostic] },
+            },
+          }),
+        );
+        step = 2;
+      } else if (step === 2 && res.id === 2) {
+        const actions = res.result;
+        const activeAction = actions.find((a: any) =>
+          a.title.includes('Replace with "active"'),
+        );
+        expect(activeAction).toBeDefined();
+        expect(activeAction.kind).toBe('quickfix');
+
+        const editChange =
+          activeAction.edit.changes['file:///dropdown-fix.liquid'][0];
+        expect(editChange.newText).toBe('"active"');
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          capabilities: {},
+          initializationOptions: {
+            schema: {
+              user: {
+                type: 'composite',
+                fields: {
+                  status: {
+                    type: 'dropdown',
+                    options: ['active', 'inactive'],
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    );
+  }));
+
 test('Liquid computation code actions for helper filters and math-like expressions', () =>
   new Promise<void>((resolve) => {
     const child = startLspServer();
@@ -781,4 +877,3 @@ test('Liquid Code Actions for unclosed delimiter on non-block tag', () =>
       }),
     );
   }));
-

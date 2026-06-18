@@ -165,6 +165,86 @@ test('Liquid document formatting', () =>
     );
   }));
 
+test('Liquid range formatting only edits the selected range', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///range.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: [
+                  'UNCHANGED',
+                  '{%assign  x=10%}',
+                  '{{name|upcase}}',
+                  'UNCHANGED',
+                ].join('\n'),
+              },
+            },
+          }),
+        );
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/rangeFormatting',
+            params: {
+              textDocument: { uri: 'file:///range.liquid' },
+              range: {
+                start: { line: 1, character: 0 },
+                end: { line: 3, character: 0 },
+              },
+              options: { tabSize: 2, insertSpaces: true },
+            },
+          }),
+        );
+
+        step = 1;
+      } else if (step === 1 && res.id === 2) {
+        const edits = res.result;
+        expect(edits).toBeDefined();
+        expect(edits.length).toBe(1);
+        expect(edits[0].range).toEqual({
+          start: { line: 1, character: 0 },
+          end: { line: 3, character: 0 },
+        });
+        expect(edits[0].newText).toBe(
+          '{% assign x = 10 %}\n{{ name | upcase }}\n',
+        );
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {},
+      }),
+    );
+  }));
+
 test('Liquid strict formatting (nesting and quotes)', () =>
   new Promise<void>((resolve) => {
     const child = startLspServer();
@@ -345,4 +425,3 @@ test('formatLiquid splits and indents consecutive logic tags inside blocks', () 
   ].join('\n');
   expect(formatLiquid(input)).toBe(expected);
 });
-

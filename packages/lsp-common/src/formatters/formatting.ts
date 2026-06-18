@@ -1,6 +1,7 @@
 import type {
   DocumentOnTypeFormattingParams,
   DocumentFormattingParams,
+  DocumentRangeFormattingParams,
   TextEdit,
 } from 'vscode-languageserver';
 import { TextDocuments } from 'vscode-languageserver';
@@ -76,6 +77,29 @@ export function handleDocumentFormatting(
   return [
     {
       range: { start, end },
+      newText: formattedText,
+    },
+  ];
+}
+
+export function handleDocumentRangeFormatting(
+  documents: TextDocuments<TextDocument>,
+  params: DocumentRangeFormattingParams,
+): TextEdit[] | null {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+
+  const originalText = doc.getText(params.range);
+  const splitConsecutiveTags = params.options.splitConsecutiveTags !== false;
+  const formattedText = formatLiquid(originalText, splitConsecutiveTags);
+
+  if (originalText === formattedText) {
+    return [];
+  }
+
+  return [
+    {
+      range: params.range,
       newText: formattedText,
     },
   ];

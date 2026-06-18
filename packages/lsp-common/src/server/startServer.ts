@@ -11,6 +11,7 @@ import { handleDefinition } from '../definitions/definitions.js';
 import {
   handleOnTypeFormatting,
   handleDocumentFormatting,
+  handleDocumentRangeFormatting,
 } from '../formatters/formatting.js';
 import { handleHover } from '../hovers/hovers.js';
 import { validateTextDocument } from '../linters/diagnostics.js';
@@ -143,6 +144,10 @@ export function startServer(
 
   connection.onDocumentFormatting((params) => {
     return handleDocumentFormatting(documentManager.documents, params);
+  });
+
+  connection.onDocumentRangeFormatting((params) => {
+    return handleDocumentRangeFormatting(documentManager.documents, params);
   });
 
   connection.onDefinition((params) => {

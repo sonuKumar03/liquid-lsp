@@ -17,6 +17,7 @@ export const SERVER_CAPABILITIES: ServerCapabilities = {
     triggerCharacters: [':', ','],
   },
   documentFormattingProvider: true,
+  documentRangeFormattingProvider: true,
   definitionProvider: true,
   codeActionProvider: true,
   documentSymbolProvider: true,

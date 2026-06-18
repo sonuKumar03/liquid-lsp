@@ -1,11 +1,24 @@
 import { TextDocuments } from 'vscode-languageserver';
-import type { SignatureHelp, SignatureHelpParams } from 'vscode-languageserver';
+import type {
+  ParameterInformation,
+  SignatureHelp,
+  SignatureHelpParams,
+  SignatureInformation,
+} from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import {
+  getFilterDocumentation,
+  LIQUID_FILTER_METAS,
+  type LiquidFilterMeta,
+} from 'liquid-core';
 
-const FILTER_SIGNATURES: Record<
-  string,
-  { label: string; parameters: { label: string }[]; documentation?: string }
-> = {
+interface FilterSignatureInfo {
+  label: string;
+  parameters: ParameterInformation[];
+  documentation?: string;
+}
+
+const SIGNATURE_OVERRIDES: Record<string, FilterSignatureInfo> = {
   truncate: {
     label: 'truncate(length: number, truncate_string: string = "...")',
     parameters: [{ label: 'length' }, { label: 'truncate_string' }],
@@ -73,6 +86,70 @@ const FILTER_SIGNATURES: Record<
   },
 };
 
+function extractSnippetParameterNames(meta: LiquidFilterMeta): string[] {
+  const insertText = meta.insertText;
+  if (!insertText) {
+    return [];
+  }
+
+  const namesByIndex = new Map<number, string>();
+  const placeholderRegex = /\$\{(\d+):([^}]*)\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = placeholderRegex.exec(insertText)) !== null) {
+    const rawIndex = match[1];
+    const rawName = match[2];
+    if (!rawIndex || rawName === undefined) {
+      continue;
+    }
+
+    const index = Number(rawIndex);
+    const name = rawName.trim().replace(/^['"]|['"]$/g, '');
+    if (name) {
+      namesByIndex.set(index, name);
+    }
+  }
+
+  return Array.from(namesByIndex.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([, name]) => name);
+}
+
+function buildMetadataSignature(meta: LiquidFilterMeta): FilterSignatureInfo {
+  const argTypes = meta.argTypes ?? [];
+  const snippetNames = extractSnippetParameterNames(meta);
+  const parameters = argTypes.map((type, index) => {
+    const label = snippetNames[index] ?? `arg${index + 1}`;
+    return { label };
+  });
+  const renderedParams = argTypes.map((type, index) => {
+    const label = parameters[index]?.label ?? `arg${index + 1}`;
+    return `${label}: ${type}`;
+  });
+
+  const info: FilterSignatureInfo = {
+    label: `${meta.name}(${renderedParams.join(', ')})`,
+    parameters,
+  };
+  const documentation = getFilterDocumentation(meta.name);
+  if (documentation) {
+    info.documentation = documentation;
+  }
+  return info;
+}
+
+const FILTER_SIGNATURES: Record<string, FilterSignatureInfo> = Object.fromEntries(
+  LIQUID_FILTER_METAS.flatMap((meta) => {
+    const override = SIGNATURE_OVERRIDES[meta.name];
+    if (override) {
+      return [[meta.name, override]];
+    }
+    if (!meta.argTypes || meta.argTypes.length === 0) {
+      return [];
+    }
+    return [[meta.name, buildMetadataSignature(meta)]];
+  }),
+);
+
 export function handleSignatureHelp(
   documents: TextDocuments<TextDocument>,
   params: SignatureHelpParams,
@@ -102,7 +179,7 @@ export function handleSignatureHelp(
   const commaCount = (argsText.match(/,/g) || []).length;
   const activeParameter = Math.min(commaCount, sigInfo.parameters.length - 1);
 
-  const sigObj: any = {
+  const sigObj: SignatureInformation = {
     label: sigInfo.label,
     parameters: sigInfo.parameters,
   };

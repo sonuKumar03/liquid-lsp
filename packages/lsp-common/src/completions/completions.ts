@@ -12,6 +12,7 @@ import type { CompletionContext } from './providers/provider.js';
 import { extractDeclaredVariables } from './providers/provider.js';
 import { PropertyCompletionProvider } from './providers/property.js';
 import { FilterCompletionProvider } from './providers/filter.js';
+import { ComparisonCompletionProvider } from './providers/comparison.js';
 import { TagCompletionProvider } from './providers/tag.js';
 import { OutputCompletionProvider } from './providers/output.js';
 
@@ -21,6 +22,7 @@ export { extractDeclaredVariables };
 const providers = [
   PropertyCompletionProvider,
   FilterCompletionProvider,
+  ComparisonCompletionProvider,
   TagCompletionProvider,
   OutputCompletionProvider,
 ];
@@ -112,4 +114,3 @@ export function handleCompletionResolve(item: CompletionItem): CompletionItem {
 
   return item;
 }
-

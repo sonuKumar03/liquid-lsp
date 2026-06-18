@@ -243,6 +243,31 @@ test('collectLifecycleDiagnostics nil propagation (Feature 3)', () => {
   expect(diagnostics.some((d: any) => d.code === 'liquid.linter.nil_propagation')).toBe(true);
 });
 
+test('collectLifecycleDiagnostics nil propagation from optional filter arguments (Feature 3)', () => {
+  const engine = createLiquidEngine();
+  const schema = new Map<string, any>();
+  schema.set('base_price', { kind: 'primitive', type: 'number' });
+  schema.set('contract', {
+    kind: 'composite',
+    fields: new Map<string, any>([
+      ['tax_rate', { kind: 'primitive', type: 'number', optional: true }]
+    ]),
+  });
+
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `{% assign tax = base_price | times: contract.tax_rate %}
+    {{ tax }}`,
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine, schema);
+
+  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.nil_propagation')).toBe(true);
+});
+
 test('collectLifecycleDiagnostics branch consistency (Feature 5)', () => {
   const engine = createLiquidEngine();
   const doc = TextDocument.create(

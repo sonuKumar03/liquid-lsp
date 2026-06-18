@@ -76,6 +76,10 @@ export function handleCompletion(
 }
 
 export function handleCompletionResolve(item: CompletionItem): CompletionItem {
+  if (item.detail && item.documentation) {
+    return item;
+  }
+
   const data = item.data as string;
 
   if (data.startsWith('tag-')) {

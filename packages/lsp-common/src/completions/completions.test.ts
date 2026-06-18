@@ -572,3 +572,79 @@ test('Liquid loop variable field completions', () =>
       }),
     );
   }));
+
+test('completions return schema-aware dynamic details and docs', () =>
+  new Promise<void>((resolve) => {
+    const child = startLspServer();
+    let step = 0;
+
+    new LSPMessageReader(child.stdout!, (res) => {
+      if (res.method === 'window/logMessage') return;
+
+      if (step === 0 && res.id === 1) {
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'initialized',
+            params: {},
+          }),
+        );
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
+            params: {
+              textDocument: {
+                uri: 'file:///t.liquid',
+                languageId: 'liquid',
+                version: 1,
+                text: '{{ base_salary | t',
+              },
+            },
+          }),
+        );
+
+        child.stdin?.write(
+          formatLSPMessage({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'textDocument/completion',
+            params: {
+              textDocument: { uri: 'file:///t.liquid' },
+              position: { line: 0, character: 18 },
+            },
+          }),
+        );
+
+        step = 1;
+      } else if (step === 1 && res.id === 2) {
+        const items = res.result;
+        expect(items.length).toBeGreaterThan(0);
+        const timesItem = items.find((item: any) => item.label === 'times');
+        expect(timesItem).toBeDefined();
+        // The dynamic detail should substitute base_salary and strip braces
+        expect(timesItem.detail).toContain('base_salary | times: 1.3');
+        expect(timesItem.documentation.value).toContain('base_salary');
+
+        child.kill('SIGINT');
+        resolve();
+      }
+    });
+
+    child.stdin?.write(
+      formatLSPMessage({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          capabilities: {},
+          initializationOptions: {
+            schema: {
+              base_salary: 'number',
+            },
+          },
+        },
+      }),
+    );
+  }));
+

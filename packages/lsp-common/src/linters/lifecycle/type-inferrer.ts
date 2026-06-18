@@ -15,6 +15,7 @@ import {
   unquoteString,
 } from '../../shared/local-variable-types.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { resolveTypeForPath } from '../../hovers/hovers.js';
 import type { LiquidType } from '../../shared/schema.js';
 import type { VariableDeclaration } from 'key-pointer-schema';
 import { supportsKeyPointerComputation } from 'key-pointer-schema';
@@ -383,6 +384,30 @@ export function inferArgumentType(
   return 'unknown';
 }
 
+function isArgumentOptional(argToken: unknown, activeVars: Map<string, ActiveVar>): boolean {
+  if (argToken && typeof argToken === 'object') {
+    if (argToken instanceof PropertyAccessToken) {
+      const path = argToken.getText();
+      if (path) {
+        const activeVarsTypes = new Map<string, LiquidType>();
+        for (const [k, v] of activeVars.entries()) {
+          const t = v.type;
+          if (t && typeof t === 'object' && t.kind === 'branch_mismatch') {
+            activeVarsTypes.set(k, t.types[0] || 'unknown');
+          } else {
+            activeVarsTypes.set(k, t);
+          }
+        }
+        const resolved = resolveTypeForPath(path, activeVarsTypes);
+        if (resolved && isOptionalType(resolved)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 export function applyFilterTypeWarnings(
   expr: string,
   token: Token,
@@ -404,6 +429,7 @@ export function applyFilterTypeWarnings(
   const isBaseNumeric = /^\s*-?\d+(\.\d+)?\s*$/.test(unquotedBase);
 
   let tempType = currentType;
+  let isOptional = isOptionalType(currentType);
 
   for (const filter of parsed.filters) {
     const filterName = filter.name;
@@ -623,12 +649,23 @@ export function applyFilterTypeWarnings(
       }
     }
 
+    let anyArgOptional = false;
+    for (const arg of filter.args) {
+      const valToken = Array.isArray(arg) ? arg[1] : arg;
+      if (valToken && isArgumentOptional(valToken, activeVars)) {
+        anyArgOptional = true;
+        break;
+      }
+    }
+
     if (filterName === 'default') {
+      isOptional = false;
       if (typeof tempType === 'object' && tempType.kind !== 'branch_mismatch') {
         tempType = { ...tempType, optional: false };
       }
     } else {
-      if (isOptionalType(currentType)) {
+      isOptional = isOptional || anyArgOptional;
+      if (isOptional) {
         if (typeof tempType === 'string') {
           if (tempType === 'unknown') {
             // Keep it unknown

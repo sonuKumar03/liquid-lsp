@@ -8,7 +8,7 @@ import {
   type LiquidFilterMeta,
 } from 'liquid-core';
 
-const FILTER_PREVIEWS: Record<string, string> = {
+export const FILTER_PREVIEWS: Record<string, string> = {
   upcase: '"hello" | upcase  →  "HELLO"',
   downcase: '"HELLO" | downcase  →  "hello"',
   times: '50 | times: 1.5  →  75.0',

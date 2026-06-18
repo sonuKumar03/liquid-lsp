@@ -68,3 +68,76 @@ test('handleRename rejects renaming to an existing variable name (collision)', (
     ),
   ).toThrowError(/Naming collision/);
 });
+
+test('handleRename allows renaming in sibling scopes but blocks shadowing', () => {
+  const doc = TextDocument.create(
+    'file:///sibling.liquid',
+    'liquid',
+    1,
+    `{% if cond_a %}
+  {% assign temp = 10 %}
+{% endif %}
+{% if cond_b %}
+  {% assign local_val = 20 %}
+{% endif %}`,
+  );
+  documentsMock.set(doc.uri, doc);
+
+  const documentManagerWithTokens = {
+    documents: {
+      get: (uri: string) => documentsMock.get(uri),
+    },
+    getTokens: () => {
+      return tokenizeTopLevelSafe(doc.getText(), createLiquidEngine());
+    }
+  } as unknown as DocumentManager;
+
+  // Renaming 'local_val' to 'temp' should be allowed because they are in disjoint sibling scopes
+  const edit = handleRename(
+    documentManagerWithTokens,
+    {
+      textDocument: { uri: doc.uri },
+      position: { line: 4, character: 15 }, // 'local_val'
+      newName: 'temp',
+    },
+    new Map(),
+  );
+
+  expect(edit).not.toBeNull();
+  expect(edit?.changes?.[doc.uri]).toBeDefined();
+
+  // Now let's test shadowing a global variable
+  const docShadow = TextDocument.create(
+    'file:///shadow.liquid',
+    'liquid',
+    1,
+    `{% assign global_var = 100 %}
+{% for item in items %}
+  {% assign temp = item.price %}
+{% endfor %}`,
+  );
+  documentsMock.set(docShadow.uri, docShadow);
+
+  const documentManagerShadow = {
+    documents: {
+      get: (uri: string) => documentsMock.get(uri),
+    },
+    getTokens: () => {
+      return tokenizeTopLevelSafe(docShadow.getText(), createLiquidEngine());
+    }
+  } as unknown as DocumentManager;
+
+  // Renaming 'temp' to 'global_var' should be blocked because 'global_var' is in the parent scope (shadowing)
+  expect(() =>
+    handleRename(
+      documentManagerShadow,
+      {
+        textDocument: { uri: docShadow.uri },
+        position: { line: 2, character: 15 }, // 'temp'
+        newName: 'global_var',
+      },
+      new Map(),
+    ),
+  ).toThrowError(/Naming collision/);
+});
+

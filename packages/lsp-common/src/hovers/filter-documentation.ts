@@ -1,4 +1,4 @@
-import { getFilterDocumentation } from '../shared/constants.js';
+import { getFilterDocumentation, FILTER_PREVIEWS } from '../shared/constants.js';
 import type { LiquidType } from '../shared/schema.js';
 
 export interface FilterHoverDetails {
@@ -137,4 +137,59 @@ export function resolveSchemaAwareDoc(
   }
 
   return doc;
+}
+
+export function resolveSchemaAwareDetail(
+  filterName: string,
+  schema?: Map<string, LiquidType>
+): string | undefined {
+  const details = FILTER_HOVER_CARDS[filterName];
+  const preview = FILTER_PREVIEWS[filterName];
+  if (!details || !schema) {
+    return preview;
+  }
+
+  let chosenExample = details.examples[0];
+  if (!chosenExample) {
+    return preview;
+  }
+
+  if (details.placeholders) {
+    const placeholderKeys = Object.keys(details.placeholders);
+    for (const ex of details.examples) {
+      if (placeholderKeys.some((key) => ex.includes(key))) {
+        chosenExample = ex;
+        break;
+      }
+    }
+  }
+
+  const replacements: Record<string, string> = {};
+  if (details.placeholders) {
+    for (const [placeholder, expectedType] of Object.entries(details.placeholders)) {
+      const realVarName = findVarOfType(schema, expectedType);
+      if (realVarName) {
+        replacements[placeholder] = realVarName;
+      }
+    }
+  }
+
+  let substituted = chosenExample;
+  for (const [placeholder, realVarName] of Object.entries(replacements)) {
+    substituted = substituted.replace(
+      new RegExp(`\\b${placeholder}\\b`, 'g'),
+      realVarName
+    );
+  }
+
+  const match = substituted.match(/^\{\{\s*(.*?)\s*\}\}(.*)$/);
+  if (match) {
+    const val = match[1];
+    const rest = match[2];
+    if (val !== undefined && rest !== undefined) {
+      return (val + rest).trim();
+    }
+  }
+
+  return substituted.replace(/^\{\{\s*/, '').replace(/\s*\}\}$/, '');
 }

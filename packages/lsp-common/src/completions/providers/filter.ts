@@ -2,6 +2,7 @@ import { LIQUID_FILTERS } from '../../shared/constants.js';
 import { resolveTypeForPath } from '../../hovers/hovers.js';
 import type { LiquidType } from '../../shared/schema.js';
 import type { CompletionProvider } from './provider.js';
+import { resolveSchemaAwareDoc, resolveSchemaAwareDetail } from '../../hovers/filter-documentation.js';
 
 export const FilterCompletionProvider: CompletionProvider = {
   matches(lineText) {
@@ -98,9 +99,22 @@ export const FilterCompletionProvider: CompletionProvider = {
       filterNames = currencyFilters;
     }
 
-    if (filterNames !== null) {
-      return LIQUID_FILTERS.filter((item) => filterNames!.includes(item.label));
-    }
-    return LIQUID_FILTERS;
+    const selectedFilters = filterNames !== null
+      ? LIQUID_FILTERS.filter((item) => filterNames!.includes(item.label))
+      : LIQUID_FILTERS;
+
+    return selectedFilters.map((item) => {
+      const newItem = { ...item };
+      const detail = resolveSchemaAwareDetail(newItem.label, localSchema);
+      if (detail) {
+        newItem.detail = detail;
+      }
+      const doc = resolveSchemaAwareDoc(newItem.label, localSchema);
+      newItem.documentation = {
+        kind: 'markdown',
+        value: doc,
+      };
+      return newItem;
+    });
   },
 };

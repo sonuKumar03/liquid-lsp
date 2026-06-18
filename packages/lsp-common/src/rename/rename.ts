@@ -1,9 +1,69 @@
 import { Range, WorkspaceEdit, ResponseError, ErrorCodes } from 'vscode-languageserver';
 import type { RenameParams } from 'vscode-languageserver';
-import { getWordAtPosition, tokenizeTopLevelSafe, createLiquidEngine } from 'liquid-core';
+import { getWordAtPosition, tokenizeTopLevelSafe, createLiquidEngine, TagTokenClass } from 'liquid-core';
 import { findVariableDeclarationsFromTokens } from '../shared/variable-declarations.js';
 import type { DocumentManager } from '../server/document-manager.js';
 import type { LiquidType } from '../shared/schema.js';
+
+interface ScopeRange {
+  start: number;
+  end: number;
+  tagName: string;
+}
+
+const BLOCK_START_TAGS = ['if', 'unless', 'for', 'case', 'tablerow', 'capture'];
+
+function getScopes(tokens: any[], docText: string): ScopeRange[] {
+  const blockStack: { name: string; begin: number }[] = [];
+  const scopes: ScopeRange[] = [];
+
+  for (const token of tokens) {
+    if (!(token instanceof TagTokenClass)) continue;
+    const name = token.name;
+    if (BLOCK_START_TAGS.includes(name)) {
+      blockStack.push({ name, begin: token.begin });
+    } else if (name.startsWith('end')) {
+      const startName = name.slice(3);
+      const idx = blockStack.map((s) => s.name).lastIndexOf(startName);
+      if (idx !== -1) {
+        const startTag = blockStack[idx]!;
+        scopes.push({
+          start: startTag.begin,
+          end: token.end,
+          tagName: startTag.name,
+        });
+        blockStack.splice(idx, 1);
+      }
+    }
+  }
+
+  for (const openBlock of blockStack) {
+    scopes.push({
+      start: openBlock.begin,
+      end: docText.length,
+      tagName: openBlock.name,
+    });
+  }
+
+  return scopes;
+}
+
+function getInnermostScope(scopes: ScopeRange[], offset: number, docLength: number): ScopeRange {
+  let innermost: ScopeRange = { start: 0, end: docLength, tagName: 'root' };
+  let minLength = docLength;
+
+  for (const s of scopes) {
+    if (s.start <= offset && offset <= s.end) {
+      const len = s.end - s.start;
+      if (len < minLength) {
+        minLength = len;
+        innermost = s;
+      }
+    }
+  }
+
+  return innermost;
+}
 
 export function handleRename(
   documentManager: DocumentManager,
@@ -47,18 +107,37 @@ export function handleRename(
   const tokens = tokenizeTopLevelSafe(doc.getText(), engine);
   const declarations = findVariableDeclarationsFromTokens(doc, tokens);
 
-  // 3. Naming Collision / Shadowing Check
-  const collision = declarations.find((d) => d.name === newName);
-  if (collision) {
-    const declLine = collision.range.start.line;
-    throw new ResponseError(
-      ErrorCodes.InternalError,
-      `Naming collision: renaming "${word}" to "${newName}" will shadow an existing variable defined on line ${declLine + 1}.`
-    );
-  }
-
   // Find all occurrences of the word in the document text
   const docText = doc.getText();
+
+  // 3. Naming Collision / Shadowing Check
+  const collisions = declarations.filter((d) => d.name === newName);
+  if (collisions.length > 0) {
+    const cursorOffset = doc.offsetAt(position);
+    const scopes = getScopes(tokens, docText);
+    const cursorInner = getInnermostScope(scopes, cursorOffset, docText.length);
+
+    for (const collision of collisions) {
+      const declOffset = doc.offsetAt(collision.range.start);
+      const declInner = getInnermostScope(scopes, declOffset, docText.length);
+
+      const isConflict =
+        JSON.stringify(cursorInner) === JSON.stringify(declInner) ||
+        (cursorInner.start <= declOffset && declOffset <= cursorInner.end) ||
+        (declInner.start <= cursorOffset && cursorOffset <= declInner.end);
+
+      if (isConflict) {
+        const declLine = collision.range.start.line;
+        throw new ResponseError(
+          ErrorCodes.InternalError,
+          `Naming collision: renaming "${word}" to "${newName}" will shadow an existing variable defined on line ${declLine + 1}.`
+        );
+      }
+    }
+  }
+
+
+  // Find all occurrences of the word in the document text
   
   // Clean comments and strings preserving character counts
   let cleanText = docText;

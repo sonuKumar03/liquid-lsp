@@ -6,5 +6,7 @@ export default defineConfig({
     testTimeout: 5000,
     hookTimeout: 5000,
     teardownTimeout: 5000,
+    include: ['src/**/*.test.ts'],
+    exclude: ['dist/**', '**/dist/**', 'node_modules/**', '**/node_modules/**'],
   },
 });

@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["liquidjs"]
+  "cSpell.words": ["liquidjs"],
+  "vitest.commandLine": "npx vitest"
 }

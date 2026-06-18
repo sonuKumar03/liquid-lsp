@@ -17,6 +17,16 @@
       "port": 6009,
       "restart": true,
       "outFiles": ["${workspaceRoot}/lsp-engine/dist/**/*.js"]
+    },
+    {
+      "name": "Debug Current Test File",
+      "type": "node",
+      "request": "launch",
+      "autoAttachChildProcesses": true,
+      "program": "${workspaceFolder}/packages/lsp-common/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${file}"],
+      "smartStep": true,
+      "console": "integratedTerminal"
     }
   ],
   "compounds": [

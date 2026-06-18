@@ -22,7 +22,7 @@ import {
   isOptionalType,
   formatLinterType,
 } from '../../shared/linter-types.js';
-import { ScopeTracker } from './scope.js';
+import { ScopeTracker, extractTruthyPaths } from './scope.js';
 import {
   processExpression,
   processParseAssignExpression,
@@ -256,9 +256,15 @@ export function collectLifecycleDiagnostics(
       const line = textDocument.positionAt(token.begin).line;
       if (token instanceof TagTokenClass) {
         const tagName = token.name;
-        if (tagName === 'if' || tagName === 'unless') {
+        if (tagName === 'if') {
+          const truthyPaths = extractTruthyPaths(token.args);
+          scopeTracker.enterBlock(truthyPaths);
+        } else if (tagName === 'unless') {
           scopeTracker.enterBlock();
-        } else if (tagName === 'else' || tagName === 'elsif') {
+        } else if (tagName === 'elsif') {
+          const truthyPaths = extractTruthyPaths(token.args);
+          scopeTracker.nextBranch(truthyPaths);
+        } else if (tagName === 'else') {
           scopeTracker.nextBranch();
         } else if (tagName === 'endif' || tagName === 'endunless') {
           const block = scopeTracker.exitBlock();

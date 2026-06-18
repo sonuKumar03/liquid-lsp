@@ -374,3 +374,94 @@ test('collectLifecycleDiagnostics reports unused variable when self-referenced (
   );
   expect(unusedDiags.length).toBe(2);
 });
+
+test('collectLifecycleDiagnostics conditional narrowing for optional variables', () => {
+  const engine = createLiquidEngine();
+  const globalSchema = new Map<string, any>([
+    [
+      'user',
+      {
+        kind: 'composite',
+        fields: new Map<string, any>([
+          ['first_name', { kind: 'primitive', type: 'string', optional: true }],
+          ['age', { kind: 'primitive', type: 'number', optional: true }],
+        ]),
+        optional: true,
+      },
+    ],
+  ]);
+
+  // Case 1: Simple optional property checked in if condition
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `
+      {{ user.first_name }}
+      {% if user.first_name %}
+        {{ user.first_name }}
+      {% else %}
+        {{ user.first_name }}
+      {% endif %}
+      {{ user.first_name }}
+    `,
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine, globalSchema);
+
+  // We expect warnings about nil propagation/optional rendering for:
+  // - The first line (outside)
+  // - Inside the {% else %} branch (since it's not narrowed there)
+  // - After {% endif %} (since overrides are restored)
+  // But NOT inside the {% if user.first_name %} truthy branch!
+  
+  const nilWarnings = diagnostics.filter((d: any) => d.code === 'liquid.linter.nil_propagation');
+  
+  const linesWithWarnings = nilWarnings.map((d: any) => d.range.start.line);
+  expect(linesWithWarnings).toContain(1);
+  expect(linesWithWarnings).not.toContain(3);
+  expect(linesWithWarnings).toContain(5);
+  expect(linesWithWarnings).toContain(7);
+});
+
+test('collectLifecycleDiagnostics conditional narrowing with logical and and comparison operators', () => {
+  const engine = createLiquidEngine();
+  const globalSchema = new Map<string, any>([
+    [
+      'user',
+      {
+        kind: 'composite',
+        fields: new Map<string, any>([
+          ['first_name', { kind: 'primitive', type: 'string', optional: true }],
+          ['is_active', { kind: 'primitive', type: 'boolean', optional: true }],
+        ]),
+        optional: true,
+      },
+    ],
+  ]);
+
+  const doc = TextDocument.create(
+    'file:///t.liquid',
+    'liquid',
+    1,
+    `
+      {% if user.first_name != nil and user.is_active == true %}
+        {{ user.first_name }}
+      {% elsif user.first_name %}
+        {{ user.first_name }}
+      {% endif %}
+    `,
+  );
+
+  const diagnostics: any[] = [];
+  collectLifecycleDiagnostics(doc, diagnostics, engine, globalSchema);
+
+  const nilWarnings = diagnostics.filter((d: any) => d.code === 'liquid.linter.nil_propagation');
+  const linesWithWarnings = nilWarnings.map((d: any) => d.range.start.line);
+
+  // Both the if branch and elsif branch have conditions that narrow `user.first_name`.
+  // So there should be no nil warnings inside either branch (lines 2 and 4).
+  expect(linesWithWarnings).not.toContain(2);
+  expect(linesWithWarnings).not.toContain(4);
+});

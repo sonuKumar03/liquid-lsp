@@ -20,6 +20,7 @@ export type ActiveVar = {
 export interface BlockStackEntry {
   branches: Array<Map<string, { type: LinterVariableType; line: number; range: Range }>>;
   currentBranchIndex: number;
+  narrowedVars: Array<Map<string, LinterVariableType>>;
 }
 
 /**

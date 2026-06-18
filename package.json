@@ -8,8 +8,8 @@
     "build:playground": "pnpm --filter liquid-lsp-express-server build",
     "start:playground": "pnpm --filter liquid-lsp-express-server start",
     "dev:playground": "pnpm --filter liquid-lsp-express-server dev",
-    "test": "pnpm -r test",
-    "test:watch": "pnpm -r test:watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

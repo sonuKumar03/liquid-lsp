@@ -80,6 +80,12 @@ liquid-lsp/
 | **Document Outline** | Variable and block tree with precise selection ranges (Chevrotain-powered) | `documentSymbol` | ❌ |
 | **Go-to-Definition** | Jump to variable declarations and `parseAssign` JSON keys | `definition` | ❌ |
 | **Multiple Syntax Errors** | Token-by-token parser reports all errors concurrently | Diagnostics | ❌ |
+| **Semantic Flow Highlighting** | Color-codes variables based on computational role (`source`, `intermediate`, `output`, `dead`) | `semanticTokens` | ❌ |
+| **Rename Schema Guards** | Blocks renaming of backend schema variables and detects local shadowing | `rename` | ❌ |
+| **Multi-Branch Type Consistency** | Asserts identical types for variables assigned across conditional branches | Diagnostics | ✅ |
+| **Filter Parameter Type Check** | Validates filter argument types, date placeholders, and division-by-zero | Diagnostics | ❌ |
+| **Schema-Aware Hover Docs** | Dynamically substitutes matching schema variables in hover card examples | `hover` | ❌ |
+
 
 ---
 

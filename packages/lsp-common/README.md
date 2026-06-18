@@ -81,3 +81,12 @@ Type inferences and validation are managed by:
   - Parser validation (calling `liquidEngine.parse` and mapping parsing errors back to tokens).
   - Lifecycle lint rules (variables assignments and type warnings).
   - Custom worksheet engine validations (e.g., unclosed computations on tables).
+
+### 4. Advanced Computational LSP Features
+
+- **Semantic Flow Highlighting ([`semanticTokens.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/semanticTokens/semanticTokens.ts))**: Delta-encodes tokens using categories `source` (external schema variable), `intermediate` (local variable), `output` (printed in template), and the `dead` modifier (unused variable).
+- **Safe Rename Request ([`rename.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/rename/rename.ts))**: Enforces external schema guards to block renaming variables defined by backend schemas, and checks for local name collisions/shadowing to prevent silent computation corruption.
+- **Multi-Branch Type Consistency ([`linter.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/linters/lifecycle/linter.ts#L259-L372))**: Validates that variables assigned in multiple conditional branches resolve to identical types, raising warnings with Quick Fixes to align mismatching types.
+- **Filter Argument Checking & Nil Propagation ([`type-inferrer.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/linters/lifecycle/type-inferrer.ts))**: Validates filter arguments against declarations, highlights division-by-zero, verifies date placeholder coverage, and traces `nil`/optional variables downstream to suggest fallback filters (`| default: 0`).
+- **Schema-Aware Hover Documentation ([`hovers.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/hovers/hovers.ts) / [`filter-documentation.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/hovers/filter-documentation.ts))**: Rewrites hover card examples dynamically to use the names of actual schema variables that match the expected type of each filter placeholder.
+

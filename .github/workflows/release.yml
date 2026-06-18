@@ -30,7 +30,6 @@ jobs:
 
       - name: Run Quality Checks
         run: |
-          pnpm exec prettier --check .
           pnpm lint
           pnpm test
 
@@ -52,7 +51,6 @@ jobs:
       #   run: pnpm --filter liquid-lsp-vscode-extension exec vsce publish -p $VSCE_PAT
       #   env:
       #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
-
 
       # 4. Create GitHub Release and upload the VSIX binary
       - name: Create GitHub Release

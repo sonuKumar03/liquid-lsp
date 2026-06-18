@@ -20,6 +20,7 @@ liquid-lsp/
 ```
 
 **Dependency direction** (top → bottom, no upward imports):
+
 ```
 key-pointer-schema → liquid-core → lsp-common → lsp-node / lsp-browser
 ```
@@ -41,7 +42,7 @@ type LiquidType =
 ```
 
 - **`open: true`** on composite means unknown extra fields are allowed (dynamic table columns, repeating groups). Property access on open composites produces `'unknown'` instead of an error.
-- **`optional: true`** triggers the *"accessed on optional parent"* warning in `lifecycle.ts`.
+- **`optional: true`** triggers the _"accessed on optional parent"_ warning in `lifecycle.ts`.
 
 ### `ActiveVar` — [`lifecycle.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/linters/lifecycle.ts)
 
@@ -64,12 +65,12 @@ interface ActiveVar {
 
 `startServer(connection, deps?)` is the single runtime-agnostic entry point. It wires together:
 
-| Component | Class / Module | Role |
-|---|---|---|
-| **TypeSystem** | `TypeSystem` | Holds the merged `Map<string, LiquidType>` schema |
-| **DocumentManager** | `DocumentManager` | Wraps `TextDocuments`, caches token streams |
-| **DiagnosticsScheduler** | `DiagnosticsScheduler` | Debounces `validateTextDocument` (150 ms) |
-| **Feature handlers** | `handle*` functions | One pure function per LSP capability |
+| Component                | Class / Module         | Role                                              |
+| ------------------------ | ---------------------- | ------------------------------------------------- |
+| **TypeSystem**           | `TypeSystem`           | Holds the merged `Map<string, LiquidType>` schema |
+| **DocumentManager**      | `DocumentManager`      | Wraps `TextDocuments`, caches token streams       |
+| **DiagnosticsScheduler** | `DiagnosticsScheduler` | Debounces `validateTextDocument` (150 ms)         |
+| **Feature handlers**     | `handle*` functions    | One pure function per LSP capability              |
 
 Each LSP capability registers on `connection.on*`. All handlers receive the document, schema, and token stream — no global state.
 
@@ -112,6 +113,7 @@ inferTypeFromAssignValue(engine, tagName, valueExpr, localTypes): LiquidType
 ```
 
 **Resolution order for `parseAssign`**:
+
 1. Raw JSON literal → `JSON.parse` → `jsonValueToLiquidType`
 2. Quoted string → `evalQuotedToken` → `JSON.parse` → `jsonValueToLiquidType`
 3. Variable reference → `resolveTypeForPath`
@@ -128,6 +130,7 @@ resolveTypeForPath(path: string, schema: Map<string, LiquidType>): LiquidType
 ### `jsonValueToLiquidType` — [`local-variable-types.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/shared/local-variable-types.ts)
 
 Converts a parsed JSON value into a `LiquidType`:
+
 - JSON array of objects → `composite` (merges all object keys across all items)
 - JSON object → `composite`
 - Primitive → matching primitive type
@@ -139,15 +142,15 @@ Converts a parsed JSON value into a `LiquidType`:
 All diagnostic codes are string constants in `DIAGNOSTIC_CODES`:
 
 ```typescript
-UNCLOSED_DELIMITER:              'liquid.syntax.unclosed_delimiter'
-UNKNOWN_FILTER:                  'liquid.filter.unknown'
-EXPECTED_FILTER_NAME:            'liquid.syntax.expected_filter_name'
-CONDITIONAL_ASSIGNMENT:          'liquid.syntax.conditional_assignment'
-INLINE_MATH:                     'liquid.syntax.inline_math'
-UNKNOWN_TAG:                     'liquid.tag.unknown'
-USE_BEFORE_ASSIGN:               'liquid.linter.use_before_assign'
-INVALID_PARSE_ASSIGN_JSON:       'liquid.linter.invalid_parse_assign_json'
-INVALID_DYNAMIC_TABLE_COMPUTATION: 'liquid.linter.invalid_dynamic_table_computation'
+UNCLOSED_DELIMITER: 'liquid.syntax.unclosed_delimiter';
+UNKNOWN_FILTER: 'liquid.filter.unknown';
+EXPECTED_FILTER_NAME: 'liquid.syntax.expected_filter_name';
+CONDITIONAL_ASSIGNMENT: 'liquid.syntax.conditional_assignment';
+INLINE_MATH: 'liquid.syntax.inline_math';
+UNKNOWN_TAG: 'liquid.tag.unknown';
+USE_BEFORE_ASSIGN: 'liquid.linter.use_before_assign';
+INVALID_PARSE_ASSIGN_JSON: 'liquid.linter.invalid_parse_assign_json';
+INVALID_DYNAMIC_TABLE_COMPUTATION: 'liquid.linter.invalid_dynamic_table_computation';
 // + SCHEMA_ERROR_CODES from key-pointer-schema
 ```
 
@@ -160,11 +163,11 @@ INVALID_DYNAMIC_TABLE_COMPUTATION: 'liquid.linter.invalid_dynamic_table_computat
 
 The Chevrotain-based parser provides **offset-aware** parsing of tag argument strings. Use these (not regex) whenever you need exact character positions for diagnostics or symbols:
 
-| Function | Input | Output |
-|---|---|---|
-| `parseAssignKeyValueWithOffsets(args)` | `"price = base \| plus: 10"` | `{ key, keyStart, keyEnd, value }` |
-| `parseCaptureVariableWithOffsets(args)` | `"my_var"` | `{ key, keyStart, keyEnd }` |
-| `parseForLoopVariableWithOffsets(args)` | `"row in items"` | `{ key, keyStart, keyEnd, collection }` |
+| Function                                | Input                        | Output                                  |
+| --------------------------------------- | ---------------------------- | --------------------------------------- |
+| `parseAssignKeyValueWithOffsets(args)`  | `"price = base \| plus: 10"` | `{ key, keyStart, keyEnd, value }`      |
+| `parseCaptureVariableWithOffsets(args)` | `"my_var"`                   | `{ key, keyStart, keyEnd }`             |
+| `parseForLoopVariableWithOffsets(args)` | `"row in items"`             | `{ key, keyStart, keyEnd, collection }` |
 
 ---
 
@@ -184,27 +187,31 @@ getClosestTag(name: string): string | null
 ## 9. How-To: Add a New Diagnostic
 
 1. **Define a code** in [`diagnostic-codes.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/shared/diagnostic-codes.ts):
+
    ```typescript
    MY_NEW_RULE: 'liquid.linter.my_new_rule',
    ```
 
 2. **Implement detection** — the right place depends on what you're checking:
 
-   | What you're checking | Where to add it |
-   |---|---|
-   | Variable types, filter chains, loops | `collectLifecycleDiagnostics` in `lifecycle.ts` |
+   | What you're checking                    | Where to add it                                                 |
+   | --------------------------------------- | --------------------------------------------------------------- |
+   | Variable types, filter chains, loops    | `collectLifecycleDiagnostics` in `lifecycle.ts`                 |
    | JSON validity, compute-column integrity | `collectEngineValidationDiagnostics` in `engine-validations.ts` |
-   | Delimiter/syntax/parse errors | `collectSyntaxDiagnostics` in `diagnostics.ts` |
+   | Delimiter/syntax/parse errors           | `collectSyntaxDiagnostics` in `diagnostics.ts`                  |
 
 3. **Push the diagnostic**:
+
    ```typescript
    diagnostics.push({
-     severity: DiagnosticSeverity.Error,   // or Warning
+     severity: DiagnosticSeverity.Error, // or Warning
      range: { start, end },
      message: 'Human-readable explanation of the problem.',
      code: DIAGNOSTIC_CODES.MY_NEW_RULE,
      source: 'liquid-lsp-linter',
-     data: { /* any payload needed by Quick Fix */ },
+     data: {
+       /* any payload needed by Quick Fix */
+     },
    });
    ```
 
@@ -248,6 +255,7 @@ if (diagnostic.code === DIAGNOSTIC_CODES.MY_NEW_RULE) {
 `handleHover` in [`hovers.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/hovers/hovers.ts) detects what is under the cursor and builds a `MarkupContent` response.
 
 To add hover info for a new token type or tag:
+
 1. Detect the token using `getVariablePathAtPosition` or by scanning `tokens`.
 2. Resolve its type with `resolveTypeForPath` or `formatLiquidType`.
 3. Return:
@@ -268,6 +276,7 @@ To add hover info for a new token type or tag:
 `handleCompletion` in [`completions.ts`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/src/completions/completions.ts) returns `CompletionItem[]`.
 
 To add completions for a new context:
+
 1. Detect the cursor context (e.g. inside a tag arg, after a `.`, after a `|`).
 2. Build `CompletionItem` objects:
    ```typescript
@@ -285,9 +294,10 @@ To add completions for a new context:
 
 > [!IMPORTANT]
 > All relative imports of local `.ts` files **must** use the `.js` extension (ES module rule):
+>
 > ```typescript
-> import { foo } from './utils.js';   // ✅
-> import { foo } from './utils';      // ❌
+> import { foo } from './utils.js'; // ✅
+> import { foo } from './utils'; // ❌
 > ```
 
 > [!IMPORTANT]

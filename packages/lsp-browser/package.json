@@ -24,7 +24,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc && node build-worker.mjs",
+    "build": "tsc -p tsconfig.build.json && node build-worker.mjs",
     "test": "vitest run src"
   },
   "dependencies": {

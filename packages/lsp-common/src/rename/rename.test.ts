@@ -141,3 +141,77 @@ test('handleRename allows renaming in sibling scopes but blocks shadowing', () =
   ).toThrowError(/Naming collision/);
 });
 
+test('handleRename only edits occurrences in the cursor sibling scope', () => {
+  const doc = TextDocument.create(
+    'file:///scope-limited.liquid',
+    'liquid',
+    1,
+    `{% if cond_a %}
+  {% assign temp = 10 %}
+  {{ temp }}
+{% endif %}
+{% if cond_b %}
+  {% assign temp = 20 %}
+  {{ temp }}
+{% endif %}`,
+  );
+  documentsMock.set(doc.uri, doc);
+
+  const documentManagerWithTokens = {
+    documents: {
+      get: (uri: string) => documentsMock.get(uri),
+    },
+    getTokens: () => tokenizeTopLevelSafe(doc.getText(), createLiquidEngine()),
+  } as unknown as DocumentManager;
+
+  const edit = handleRename(
+    documentManagerWithTokens,
+    {
+      textDocument: { uri: doc.uri },
+      position: { line: 5, character: 13 },
+      newName: 'right_temp',
+    },
+    new Map(),
+  );
+
+  const edits = edit?.changes?.[doc.uri] ?? [];
+  expect(edits).toHaveLength(2);
+  expect(edits.map((e) => e.range.start.line)).toEqual([5, 6]);
+});
+
+test('handleRename root-scope variable skips same name in nested shadowing scope', () => {
+  const doc = TextDocument.create(
+    'file:///root-scope.liquid',
+    'liquid',
+    1,
+    `{% assign temp = 1 %}
+{{ temp }}
+{% if cond %}
+  {% assign temp = 2 %}
+  {{ temp }}
+{% endif %}
+{{ temp }}`,
+  );
+  documentsMock.set(doc.uri, doc);
+
+  const documentManagerWithTokens = {
+    documents: {
+      get: (uri: string) => documentsMock.get(uri),
+    },
+    getTokens: () => tokenizeTopLevelSafe(doc.getText(), createLiquidEngine()),
+  } as unknown as DocumentManager;
+
+  const edit = handleRename(
+    documentManagerWithTokens,
+    {
+      textDocument: { uri: doc.uri },
+      position: { line: 0, character: 12 },
+      newName: 'outer_temp',
+    },
+    new Map(),
+  );
+
+  const edits = edit?.changes?.[doc.uri] ?? [];
+  expect(edits).toHaveLength(3);
+  expect(edits.map((e) => e.range.start.line)).toEqual([0, 1, 6]);
+});

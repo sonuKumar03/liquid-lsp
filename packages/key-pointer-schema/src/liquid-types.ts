@@ -16,6 +16,11 @@ export type LiquidType =
       optional?: boolean;
       open?: boolean;
     }
+  | {
+      kind: 'array';
+      elementType: LiquidType;
+      optional?: boolean;
+    }
   | 'unknown';
 
 export function parseType(value: unknown): LiquidType {
@@ -29,11 +34,21 @@ export function parseType(value: unknown): LiquidType {
     ) {
       return value;
     }
+    if (value === 'array') {
+      return { kind: 'array', elementType: 'unknown' };
+    }
     return 'unknown';
   }
   if (value && typeof value === 'object') {
     const valObj = value as Record<string, unknown>;
     const optional = valObj.optional === true || valObj.nullable === true;
+    if (valObj.type === 'array' && valObj.elementType !== undefined) {
+      return {
+        kind: 'array',
+        elementType: parseType(valObj.elementType),
+        ...(optional ? { optional } : {}),
+      };
+    }
     if (valObj.type === 'dropdown' && Array.isArray(valObj.options)) {
       return {
         kind: 'dropdown',

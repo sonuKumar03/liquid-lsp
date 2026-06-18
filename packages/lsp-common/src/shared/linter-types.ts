@@ -38,6 +38,9 @@ export function isOptionalType(type: LinterVariableType): boolean {
     if (type.kind === 'primitive') {
       return !!type.optional;
     }
+    if (type.kind === 'array') {
+      return !!type.optional || isOptionalType(type.elementType);
+    }
     if (type.kind === 'branch_mismatch') {
       return type.types.some((t) => isOptionalType(t));
     }
@@ -55,6 +58,7 @@ export function formatLinterType(t: LinterVariableType): string {
     if (t.kind === 'primitive') return t.type + (t.optional ? '?' : '');
     if (t.kind === 'dropdown') return 'dropdown';
     if (t.kind === 'composite') return 'composite';
+    if (t.kind === 'array') return `array<${formatLinterType(t.elementType)}>` + (t.optional ? '?' : '');
   }
   return 'unknown';
 }

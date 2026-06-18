@@ -75,6 +75,15 @@ export function applyFilterTypeRules(
   filterName: string,
   currentType: LiquidType,
 ): LiquidType {
+  if (filterName === 'split') {
+    return { kind: 'array', elementType: 'string' };
+  }
+  if (filterName === 'first' || filterName === 'last') {
+    if (typeof currentType === 'object' && currentType.kind === 'array') {
+      return currentType.elementType;
+    }
+    return 'unknown';
+  }
   if (filterName === 'toCurrency') {
     return 'currency';
   }
@@ -172,6 +181,10 @@ export function jsonValueToLiquidType(val: unknown): LiquidType {
     return 'string';
   }
   if (Array.isArray(val)) {
+    if (val.length === 0) {
+      return { kind: 'array', elementType: 'unknown' };
+    }
+    const typesSeen = new Set<string>();
     const fields = new Map<string, LiquidType>();
     let hasObject = false;
     for (const item of val) {
@@ -185,15 +198,29 @@ export function jsonValueToLiquidType(val: unknown): LiquidType {
             fields.set(k, 'unknown');
           }
         }
+      } else if (item !== null && item !== undefined) {
+        typesSeen.add(typeof item);
       }
     }
     if (hasObject) {
       return {
-        kind: 'composite',
-        fields,
+        kind: 'array',
+        elementType: {
+          kind: 'composite',
+          fields,
+        },
       };
     }
-    return 'unknown';
+    if (typesSeen.size === 1) {
+      const singleType = Array.from(typesSeen)[0]!;
+      if (singleType === 'string' || singleType === 'number' || singleType === 'boolean') {
+        return {
+          kind: 'array',
+          elementType: singleType,
+        };
+      }
+    }
+    return { kind: 'array', elementType: 'unknown' };
   }
   if (typeof val === 'object') {
     const fields = new Map<string, LiquidType>();
@@ -371,12 +398,12 @@ export function extractLocalVariableTypes(
         const collectionExpr = parsed.collection;
         if (collectionExpr) {
           const resolved = resolveTypeForPath(collectionExpr, localTypes);
-          if (
-            resolved &&
-            typeof resolved === 'object' &&
-            resolved.kind === 'composite'
-          ) {
-            inferredType = resolved;
+          if (resolved && typeof resolved === 'object') {
+            if (resolved.kind === 'array') {
+              inferredType = resolved.elementType;
+            } else if (resolved.kind === 'composite') {
+              inferredType = resolved;
+            }
           }
         }
         localTypes.set(parsed.key, inferredType);

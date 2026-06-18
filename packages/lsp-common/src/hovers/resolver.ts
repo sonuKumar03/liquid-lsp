@@ -32,6 +32,13 @@ export function resolveTypeForPath(
   let currentType = schema.get(baseVar);
   if (!currentType) return 'unknown';
 
+  // If baseVarRaw has index access, and currentType is array, unwrap it
+  if (/\[\s*[a-zA-Z0-9_-]+\s*\]/.test(baseVarRaw)) {
+    if (typeof currentType === 'object' && currentType.kind === 'array') {
+      currentType = currentType.elementType;
+    }
+  }
+
   for (let i = 1; i < parts.length; i++) {
     const fieldNameRaw = (parts[i] ?? '').trim();
     if (!fieldNameRaw) continue;
@@ -45,7 +52,20 @@ export function resolveTypeForPath(
     if (typeof currentType === 'object' && currentType.kind === 'composite') {
       const nextType = currentType.fields.get(fieldName);
       if (nextType) {
-        currentType = nextType;
+        currentType = nextType as LiquidType;
+      } else {
+        return 'unknown';
+      }
+    } else if (typeof currentType === 'object' && currentType.kind === 'array') {
+      // Direct property access on array (e.g. items.price), delegate to elementType
+      const elemType = currentType.elementType;
+      if (typeof elemType === 'object' && elemType.kind === 'composite') {
+        const nextType = elemType.fields.get(fieldName);
+        if (nextType) {
+          currentType = nextType as LiquidType;
+        } else {
+          return 'unknown';
+        }
       } else {
         return 'unknown';
       }
@@ -59,6 +79,13 @@ export function resolveTypeForPath(
       }
     } else {
       return 'unknown';
+    }
+
+    // If fieldNameRaw has index access, and currentType is array, unwrap it
+    if (/\[\s*[a-zA-Z0-9_-]+\s*\]/.test(fieldNameRaw)) {
+      if (typeof currentType === 'object' && currentType.kind === 'array') {
+        currentType = currentType.elementType;
+      }
     }
   }
 
@@ -81,6 +108,9 @@ export function formatLiquidType(type: LiquidType): string {
       .map((k) => `"${k}"`)
       .join(', ');
     return `\`object\` (Fields: ${fieldsStr})${optStr}`;
+  }
+  if (type.kind === 'array') {
+    return `\`array<${formatLiquidType(type.elementType).replace(/`/g, '')}>\`${optStr}`;
   }
   return '`unknown`';
 }

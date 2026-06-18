@@ -149,12 +149,12 @@ function collectTagDiagnostics(
           }
         }
         const resolved = resolveTypeForPath(collectionExpr, activeVarsTypes);
-        if (
-          resolved &&
-          typeof resolved === 'object' &&
-          resolved.kind === 'composite'
-        ) {
-          inferredType = resolved;
+        if (resolved && typeof resolved === 'object') {
+          if (resolved.kind === 'array') {
+            inferredType = resolved.elementType;
+          } else if (resolved.kind === 'composite') {
+            inferredType = resolved;
+          }
         }
       }
 

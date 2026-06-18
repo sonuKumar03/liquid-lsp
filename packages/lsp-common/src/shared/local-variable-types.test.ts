@@ -33,9 +33,13 @@ describe('extractLocalVariableTypes', () => {
     const localItemsType = types.get('local_items');
     expect(localItemsType).toBeDefined();
     expect(typeof localItemsType).toBe('object');
-    if (typeof localItemsType === 'object' && localItemsType.kind === 'composite') {
-      expect(localItemsType.fields.get('title')).toBe('string');
-      expect(localItemsType.fields.get('cost')).toBe('number');
+    if (typeof localItemsType === 'object' && localItemsType.kind === 'array') {
+      const elem = localItemsType.elementType;
+      expect(typeof elem).toBe('object');
+      if (typeof elem === 'object' && elem.kind === 'composite') {
+        expect(elem.fields.get('title')).toBe('string');
+        expect(elem.fields.get('cost')).toBe('number');
+      }
     }
   });
 
@@ -63,9 +67,56 @@ describe('extractLocalVariableTypes', () => {
     const localItemsType = types.get('local_items');
     expect(localItemsType).toBeDefined();
     expect(typeof localItemsType).toBe('object');
-    if (typeof localItemsType === 'object' && localItemsType.kind === 'composite') {
-      expect(localItemsType.fields.get('title')).toBe('string');
+    if (typeof localItemsType === 'object' && localItemsType.kind === 'array') {
+      const elem = localItemsType.elementType;
+      expect(typeof elem).toBe('object');
+      if (typeof elem === 'object' && elem.kind === 'composite') {
+        expect(elem.fields.get('title')).toBe('string');
+      }
     }
+  });
+
+  it('infers loop variable type from array collection in for loops', () => {
+    const engine = createLiquidEngine();
+    const compositeType = {
+      kind: 'composite' as const,
+      fields: new Map([['title', 'string' as const]]),
+    };
+    const schema = new Map([
+      ['items', { kind: 'array' as const, elementType: compositeType }],
+    ]);
+    const text = '{% for item in items %}{% endfor %}';
+    const tokens = tokenizeTopLevel(text, engine);
+    const types = extractLocalVariableTypes(schema, tokens, engine);
+
+    const itemType = types.get('item');
+    expect(itemType).toBeDefined();
+    expect(typeof itemType).toBe('object');
+    if (typeof itemType === 'object' && itemType.kind === 'composite') {
+      expect(itemType.fields.get('title')).toBe('string');
+    }
+  });
+
+  it('infers array type for split filter and element type for first/last', () => {
+    const engine = createLiquidEngine();
+    const schema = new Map([['full_name', 'string' as const]]);
+    
+    // Test split -> array<string>
+    const text1 = '{% assign names = full_name | split: " " %}';
+    const tokens1 = tokenizeTopLevel(text1, engine);
+    const types1 = extractLocalVariableTypes(schema, tokens1, engine);
+    const namesType = types1.get('names');
+    expect(namesType).toBeDefined();
+    expect(typeof namesType).toBe('object');
+    if (typeof namesType === 'object' && namesType.kind === 'array') {
+      expect(namesType.elementType).toBe('string');
+    }
+
+    // Test first/last -> string
+    const text2 = '{% assign names = full_name | split: " " %}{% assign first_name = names | first %}';
+    const tokens2 = tokenizeTopLevel(text2, engine);
+    const types2 = extractLocalVariableTypes(schema, tokens2, engine);
+    expect(types2.get('first_name')).toBe('string');
   });
 });
 

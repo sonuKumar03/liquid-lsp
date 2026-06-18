@@ -89,13 +89,22 @@ const COMPOSITE_TYPE_MAPPING: Record<
     child_contract_id: 'number',
     child_contract_version_id: 'number',
   }),
-  repeating: composite({}, true),
-  table: composite({}, true),
-  'multi-file': composite({
-    name: 'string',
-    id: 'string',
-    sizeBytes: 'number',
-  }),
+  repeating: {
+    kind: 'array',
+    elementType: composite({}, true),
+  },
+  table: {
+    kind: 'array',
+    elementType: composite({}, true),
+  },
+  'multi-file': {
+    kind: 'array',
+    elementType: composite({
+      name: 'string',
+      id: 'string',
+      sizeBytes: 'number',
+    }),
+  },
 };
 
 // 3. Entry point mapping with exhaustive compile-time checking

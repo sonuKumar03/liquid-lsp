@@ -21,6 +21,7 @@ export const SERVER_CAPABILITIES: ServerCapabilities = {
   codeActionProvider: true,
   documentSymbolProvider: true,
   renameProvider: true,
+  referencesProvider: true,
   semanticTokensProvider: {
     legend: {
       tokenTypes: SEMANTIC_TOKEN_TYPES,

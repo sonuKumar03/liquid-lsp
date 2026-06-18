@@ -1,4 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   test: {
@@ -6,7 +10,7 @@ export default defineConfig({
       {
         test: {
           name: 'key-pointer-schema',
-          root: 'packages/key-pointer-schema',
+          root: resolve(__dirname, 'packages/key-pointer-schema'),
           include: ['src/**/*.test.ts'],
           environment: 'node',
         },
@@ -14,7 +18,7 @@ export default defineConfig({
       {
         test: {
           name: 'liquid-core',
-          root: 'packages/liquid-core',
+          root: resolve(__dirname, 'packages/liquid-core'),
           include: ['src/**/*.test.ts'],
           environment: 'node',
         },
@@ -22,7 +26,7 @@ export default defineConfig({
       {
         test: {
           name: 'lsp-common',
-          root: 'packages/lsp-common',
+          root: resolve(__dirname, 'packages/lsp-common'),
           include: ['src/**/*.test.ts'],
           environment: 'node',
         },
@@ -30,7 +34,7 @@ export default defineConfig({
       {
         test: {
           name: 'lsp-browser',
-          root: 'packages/lsp-browser',
+          root: resolve(__dirname, 'packages/lsp-browser'),
           include: ['src/**/*.test.ts'],
           environment: 'node',
         },

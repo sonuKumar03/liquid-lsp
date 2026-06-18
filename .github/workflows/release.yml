@@ -36,21 +36,21 @@ jobs:
       - name: Build Workspaces
         run: pnpm build
 
-      # 1. Publish shared npm libraries in packages/
-      - name: Publish NPM Packages
-        run: pnpm -r --filter "./packages/*" publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # 1. Publish shared npm libraries in packages/ (Skipped for now)
+      # - name: Publish NPM Packages
+      #   run: pnpm -r --filter "./packages/*" publish --access public
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # 2. Package the VS Code extension
       - name: Package VS Code Extension
         run: pnpm package:extension
 
-      # 3. Publish to VS Code Marketplace (Skipped for now)
-      # - name: Publish VS Code Extension
-      #   run: pnpm --filter liquid-lsp-vscode-extension exec vsce publish -p $VSCE_PAT
-      #   env:
-      #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      # 3. Publish to VS Code Marketplace
+      - name: Publish VS Code Extension
+        run: pnpm --filter liquid-lsp-vscode-extension exec vsce publish -p $VSCE_PAT
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
       # 4. Create GitHub Release and upload the VSIX binary
       - name: Create GitHub Release

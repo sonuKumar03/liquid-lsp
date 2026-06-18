@@ -31,3 +31,6 @@ coverage/
 # Environment
 .env
 .env.local
+
+# Onboarding / learning documents
+learning_plan.md

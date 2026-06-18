@@ -107,6 +107,8 @@
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.27.3",
+    "liquid-lsp-engine": "workspace:*",
+    "lsp-node": "workspace:*",
     "typescript": "^6.0.3"
   }
 }

@@ -109,7 +109,7 @@ describe('collectEngineValidationDiagnostics', () => {
     ).toBe(false);
   });
 
-  it('reports use-before-assign as Warning (severity: 2)', () => {
+  it('reports use-before-assign as Error (severity: 1)', () => {
     const engine = createLiquidEngine();
     const text = '{% assignVar y = x | plus: 1 %}';
     const doc = TextDocument.create('file:///t.liquid', 'liquid', 1, text);
@@ -128,6 +128,6 @@ describe('collectEngineValidationDiagnostics', () => {
       (d) => d.code === 'liquid.linter.use_before_assign',
     );
     expect(useBeforeAssign).toBeDefined();
-    expect(useBeforeAssign?.severity).toBe(2); // 2 = Warning
+    expect(useBeforeAssign?.severity).toBe(1); // 1 = Error
   });
 });

@@ -228,7 +228,7 @@ This branch is the most up-to-date. Here is the history of work done:
 
 ## 8. Known Gaps & Next Priorities
 
-The following features have been **designed and documented** but not yet implemented. See [`computation_lsp_features.md`](file:///Users/sonukumar/.gemini/antigravity/brain/7d235bf2-1a3c-44c7-87c8-24811c9c45da/computation_lsp_features.md) for full specs:
+The following features have been **designed and documented** but not yet implemented. See [computation_lsp_features.md](file:///Users/sonukumar/project/liquid-lsp/repo-skills/enhancements/computation_lsp_features.md) for full specs:
 
 | Priority | Feature | Effort |
 |---|---|---|
@@ -241,7 +241,7 @@ The following features have been **designed and documented** but not yet impleme
 | 🟢 Low | **Plain Language Diagnostic Messages** — rewrite all errors for domain experts | Low |
 | 🟢 Low | **Contextual Examples in Hover** — schema-aware examples in filter hover cards | Low |
 
-See [`lsp_refactoring_guide.md`](file:///Users/sonukumar/.gemini/antigravity/brain/7d235bf2-1a3c-44c7-87c8-24811c9c45da/lsp_refactoring_guide.md) for planned refactoring operations (Extract Variable, Inline Variable, Sort by Dependency, etc.).
+See [lsp_refactoring_guide.md](file:///Users/sonukumar/project/liquid-lsp/repo-skills/enhancements/lsp_refactoring_guide.md) for planned refactoring operations (Extract Variable, Inline Variable, Sort by Dependency, etc.).
 
 ---
 
@@ -313,8 +313,8 @@ pnpm run package:extension            # Build the VS Code .vsix extension
 | Document | Purpose |
 |---|---|
 | [`AGENTS.md`](file:///Users/sonukumar/project/liquid-lsp/AGENTS.md) | Master architecture overview and coding conventions |
-| [`developer_reference.md`](file:///Users/sonukumar/.gemini/antigravity/brain/7d235bf2-1a3c-44c7-87c8-24811c9c45da/developer_reference.md) | Deep technical API reference for all key functions |
-| [`computation_lsp_features.md`](file:///Users/sonukumar/.gemini/antigravity/brain/7d235bf2-1a3c-44c7-87c8-24811c9c45da/computation_lsp_features.md) | Planned LSP feature roadmap (8 features, fully specced) |
-| [`lsp_refactoring_guide.md`](file:///Users/sonukumar/.gemini/antigravity/brain/7d235bf2-1a3c-44c7-87c8-24811c9c45da/lsp_refactoring_guide.md) | Planned refactoring operations (10 refactors, fully specced) |
+| [developer_reference.md](file:///Users/sonukumar/project/liquid-lsp/developer_reference.md) | Deep technical API reference for all key functions |
+| [computation_lsp_features.md](file:///Users/sonukumar/project/liquid-lsp/repo-skills/enhancements/computation_lsp_features.md) | Planned LSP feature roadmap (8 features, fully specced) |
+| [lsp_refactoring_guide.md](file:///Users/sonukumar/project/liquid-lsp/repo-skills/enhancements/lsp_refactoring_guide.md) | Planned refactoring operations (10 refactors, fully specced) |
 | [`packages/lsp-common/README.md`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/README.md) | lsp-common package reference |
 | [`packages/liquid-core/README.md`](file:///Users/sonukumar/project/liquid-lsp/packages/liquid-core/README.md) | liquid-core package reference |

@@ -22,49 +22,37 @@ The monorepo separates the platform-agnostic core language intelligence from the
 
 ```mermaid
 flowchart TD
-    %% Custom Styling
-    classDef client fill:#1e1e38,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
-    classDef gateway fill:#1e1e38,stroke:#f97316,stroke-width:2px,color:#f8fafc;
-    classDef runtime fill:#1e1e38,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
-    classDef core fill:#1e1e38,stroke:#10b981,stroke-width:2px,color:#f8fafc;
-
-    subgraph Clients ["💻 Editor Clients"]
-        VSC["VS Code Extension"]:::client
-        Monaco["Monaco Editor (Playground)"]:::client
+    %% Editor Layer
+    subgraph UI ["💻 Editor UI"]
+        VSC["VS Code Client"]
+        Monaco["Monaco Editor"]
     end
 
-    subgraph Gateway ["🔌 Gateway Services"]
-        WS["WebSocket Server (Express)"]:::gateway
+    %% Transport Layer
+    subgraph Transport ["🔌 Communication Bridges"]
+        Worker["Browser Web Worker"]
+        WS["WebSocket Server"]
+        Stdio["LSP Stdio Transport"]
     end
 
-    subgraph Runtimes ["⚡ Environment Runtimes"]
-        LSPNode["lsp-node (stdio/socket)"]:::runtime
-        Worker["lsp-browser (Web Worker)"]:::runtime
+    %% Core Engine
+    subgraph Engine ["⚡ Core Engine"]
+        Common["lsp-common<br>(Type-System & LSP Handlers)"]
     end
 
-    subgraph CoreEngine ["💎 Agnostic Core"]
-        LSPCommon["lsp-common (Core Handlers)"]:::core
-        LiquidCore["liquid-core (Tokenizer & Parser)"]:::core
-        Schema["key-pointer-schema (Types & Mapping)"]:::core
-    end
-
-    %% Client communication
-    VSC <-->|"Stdio / TCP Socket"| LSPNode
-    Monaco <-->|"JSON-RPC via WebSockets"| WS
+    %% Connections
+    VSC <--> Stdio
     Monaco <-->|"MessageChannel"| Worker
-    WS <-->|"Stdio Pipe"| LSPNode
+    Monaco <-->|"WebSockets"| WS
+    WS <--> Stdio
 
-    %% Core dependencies
-    LSPNode --> LSPCommon
-    Worker --> LSPCommon
-    LSPCommon --> LiquidCore
-    LSPCommon --> Schema
-    LiquidCore --> Schema
+    Stdio <--> Common
+    Worker <--> Common
 
-    style Clients fill:#0f172a,stroke:#334155,stroke-dasharray: 5 5;
-    style Gateway fill:#0f172a,stroke:#334155,stroke-dasharray: 5 5;
-    style Runtimes fill:#0f172a,stroke:#334155,stroke-dasharray: 5 5;
-    style CoreEngine fill:#0f172a,stroke:#334155,stroke-dasharray: 5 5;
+    %% Styling
+    style UI fill:#faf5ff,stroke:#c084fc,stroke-width:1px
+    style Transport fill:#eff6ff,stroke:#60a5fa,stroke-width:1px
+    style Engine fill:#f0fdf4,stroke:#4ade80,stroke-width:2px
 ```
 
 ### Monorepo Structure

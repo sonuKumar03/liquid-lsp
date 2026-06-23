@@ -2,13 +2,15 @@
 
 # ⚡ LiquidJS Computational LSP
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-6.x-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![Node](https://img.shields.io/badge/Node.js-%3E%3D20-green?style=for-the-badge&logo=node.js)](https://nodejs.org/)
-[![LSP](https://img.shields.io/badge/LSP-3.17-orange?style=for-the-badge&logo=json)](https://microsoft.github.io/language-server-protocol/)
-[![pnpm](https://img.shields.io/badge/pnpm-workspace-yellow?style=for-the-badge&logo=pnpm)](https://pnpm.io/)
-[![Vitest](https://img.shields.io/badge/Tests-Passing-success?style=for-the-badge&logo=vitest)](https://vitest.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node](https://img.shields.io/badge/Node.js-%3E%3D20-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![LSP](https://img.shields.io/badge/LSP-3.17-orange?style=for-the-badge&logo=json&logoColor=white)](https://microsoft.github.io/language-server-protocol/)
+[![pnpm](https://img.shields.io/badge/pnpm-workspace-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![Vitest](https://img.shields.io/badge/Tests-Passing-4FC08D?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 
-A specialized **Language Server Protocol (LSP)** implementation for LiquidJS computational worksheets. It enforces static type safety, resolves composite variable schemas, registers smart auto-completions, formats source code, and fixes mistakes on-the-fly — designed for domain experts writing computation templates, not just developers.
+A state-of-the-art **Language Server Protocol (LSP)** implementation designed for computational LiquidJS worksheets. It enforces static type safety, resolves nested schemas, offers smart auto-completions, formats syntax, and applies quick-fixes on-the-fly. Built to empower domain experts and developers writing complex calculation templates.
+
+[✨ Live Playground](http://localhost:3000) • [📚 Developer Reference](./developer_reference.md) • [🏗️ Architecture Overview](./AGENTS.md)
 
 </div>
 
@@ -16,77 +18,102 @@ A specialized **Language Server Protocol (LSP)** implementation for LiquidJS com
 
 ## 🗺️ Architecture Overview
 
+The monorepo separates the platform-agnostic core language intelligence from the environment runtimes (Node.js and Web Worker/Browser).
+
 ```mermaid
 flowchart TD
-    subgraph Browser ["Web Playground"]
-        Monaco["Monaco Editor (Browser)"]
+    %% Custom Styling
+    classDef client fill:#1e1e38,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    classDef gateway fill:#1e1e38,stroke:#f97316,stroke-width:2px,color:#f8fafc;
+    classDef runtime fill:#1e1e38,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
+    classDef core fill:#1e1e38,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+
+    subgraph Clients ["💻 Editor Clients"]
+        VSC["VS Code Extension"]:::client
+        Monaco["Monaco Editor (Playground)"]:::client
     end
 
-    subgraph Editor ["Local Desktop"]
-        VSC["VS Code Extension Client"]
+    subgraph Gateway ["🔌 Gateway Services"]
+        WS["WebSocket Server (Express)"]:::gateway
     end
 
-    subgraph Gateway ["Express Server Gateway"]
-        WS["WebSocket Server (Port 3000)"]
+    subgraph Runtimes ["⚡ Environment Runtimes"]
+        LSPNode["lsp-node (stdio/socket)"]:::runtime
+        Worker["lsp-browser (Web Worker)"]:::runtime
     end
 
-    subgraph Engine ["LSP Server Core"]
-        LSP["lsp-node (stdio / socket)"]
-        Worker["lsp-browser (Web Worker)"]
+    subgraph CoreEngine ["💎 Agnostic Core"]
+        LSPCommon["lsp-common (Core Handlers)"]:::core
+        LiquidCore["liquid-core (Tokenizer & Parser)"]:::core
+        Schema["key-pointer-schema (Types & Mapping)"]:::core
     end
 
-    Monaco <-->|"MessageChannel / JSON-RPC"| Worker
-    Monaco <-->|"JSON-RPC via WebSocket"| WS
-    WS <-->|"Stdio Pipe"| LSP
-    VSC <-->|"Stdio / TCP Socket"| LSP
+    %% Client communication
+    VSC <-->|"Stdio / TCP Socket"| LSPNode
+    Monaco <-->|"JSON-RPC via WebSockets"| WS
+    Monaco <-->|"MessageChannel"| Worker
+    WS <-->|"Stdio Pipe"| LSPNode
+
+    %% Core dependencies
+    LSPNode --> LSPCommon
+    Worker --> LSPCommon
+    LSPCommon --> LiquidCore
+    LSPCommon --> Schema
+    LiquidCore --> Schema
+
+    style Clients fill:#0f172a,stroke:#334155,stroke-dasharray: 5 5;
+    style Gateway fill:#0f172a,stroke:#334155,stroke-dasharray: 5 5;
+    style Runtimes fill:#0f172a,stroke:#334155,stroke-dasharray: 5 5;
+    style CoreEngine fill:#0f172a,stroke:#334155,stroke-dasharray: 5 5;
 ```
 
 ### Monorepo Structure
 
 ```
-liquid-lsp/
-├── packages/
-│   ├── key-pointer-schema/   # Wire-format schema parser → LiquidType
-│   ├── liquid-core/          # LiquidJS engine, tokenizer, Chevrotain parsers, metadata
-│   ├── lsp-common/           # ALL LSP features — runtime-agnostic core
-│   ├── lsp-node/             # Node.js stdio/socket transport
-│   └── lsp-browser/          # Web Worker bundle + Monaco client
-├── lsp-engine/               # Integration test harness
-├── express-server/           # Monaco Editor playground at localhost:3000
-├── vscode-extension/         # VS Code extension client
-└── angular-playground/       # Angular-based Monaco Editor web playground
+📁 liquid-lsp
+├── 📁 packages
+│   ├── 📄 key-pointer-schema   # Schema parser and type-mapping registry
+│   ├── 📄 liquid-core          # Custom LiquidJS fork, tokenizer, Chevrotain tag parser
+│   ├── 📄 lsp-common           # Platform-agnostic core LSP handlers & TypeSystem
+│   ├── 📄 lsp-node             # Node.js stdio/socket server runtime
+│   └── 📄 lsp-browser          # Web Worker compilation & Monaco client integration
+├── 📁 vscode-extension         # VS Code client extension and configuration
+├── 📁 express-server           # Express playground hosting Monaco Editor
+├── 📁 angular-playground       # Angular-based Monaco playground client
+└── 📁 lsp-engine               # Workspace integration testing suite
 ```
 
 ---
 
 ## 🚀 Feature Matrix
 
-| Feature | Description | LSP Method | Quick Fix |
-|:---|:---|:---|:---:|
-| **Type Inference** | Infers types from `assign`, `parseAssign`, `for` loop variables | Diagnostics | ❌ |
-| **Composite Property Validation** | Validates dot-path access on schema objects and `parseAssign` JSON | Diagnostics | ❌ |
-| **Loop Variable Type Narrowing** | Propagates element type from composite collections to `for` loop variables | Diagnostics | ❌ |
-| **Type Mismatch Linting** | Warns when string filters apply to numbers, and vice versa | Diagnostics | ❌ |
-| **Nil / Optional Warnings** | Warns when optional schema fields are accessed without a fallback | Diagnostics | ✅ |
-| **Unused Variable Warnings** | Flags variables that are assigned but never read or rendered | Diagnostics | ❌ |
-| **Inline Math Converter** | Converts `x + 5` → `x \| plus: 5` automatically | `codeAction` | ✅ |
-| **Single-Equals Fix** | Converts `=` → `==` inside conditionals | `codeAction` | ✅ |
-| **Filter Spelling Correction** | Levenshtein nearest-match for mistyped filter names | `codeAction` | ✅ |
-| **Quoted Filter Name Fix** | Removes quotes from `\| "upcase"` → `\| upcase` | `codeAction` | ✅ |
-| **Unclosed Tag Fix** | Inserts matching `{% endXxx %}` for unclosed block tags | `codeAction` | ✅ |
-| **Strict Formatter** | Indentation, quote normalization, delimiter spacing, tag splitting | `formatting` | ✅ |
-| **Smart Autocomplete** | Variables, composite fields, filter names, tag names | `completion` | ❌ |
-| **Rich Hover Cards** | Type info, field hierarchy, dropdown options on hover | `hover` | ❌ |
-| **Filter Signature Help** | Parameter list + docs when typing filter arguments | `signatureHelp` | ❌ |
-| **Document Outline** | Variable and block tree with precise selection ranges (Chevrotain-powered) | `documentSymbol` | ❌ |
-| **Go-to-Definition** | Jump to variable declarations and `parseAssign` JSON keys | `definition` | ❌ |
-| **Multiple Syntax Errors** | Token-by-token parser reports all errors concurrently | Diagnostics | ❌ |
-| **Semantic Flow Highlighting** | Color-codes variables based on computational role (`source`, `intermediate`, `output`, `dead`) | `semanticTokens` | ❌ |
-| **Rename Schema Guards** | Blocks renaming of backend schema variables and detects local shadowing | `rename` | ❌ |
-| **Multi-Branch Type Consistency** | Asserts identical types for variables assigned across conditional branches | Diagnostics | ✅ |
-| **Filter Parameter Type Check** | Validates filter argument types, date placeholders, and division-by-zero | Diagnostics | ❌ |
-| **Schema-Aware Hover Docs** | Dynamically substitutes matching schema variables in hover card examples | `hover` | ❌ |
-
+| Feature                                 | LSP Method / Diagnostic                                         | Quick Fix |
+| :-------------------------------------- | :-------------------------------------------------------------- | :-------: |
+| **🔍 Static Analysis & Diagnostics**    |                                                                 |           |
+| **Type Inference**                      | Diagnostics (`assign`, `parseAssign`, loops)                    |     —     |
+| **Composite Property Validation**       | Diagnostics (dot-path schema matching)                          |     —     |
+| **Loop Variable Type Narrowing**        | Diagnostics (collection item typing)                            |     —     |
+| **Type Mismatch Linting**               | Diagnostics (filter constraints)                                |     —     |
+| **Nil / Optional Safety**               | Diagnostics (optional properties accessed without fallback)     | `✅ Yes`  |
+| **Unused Variable Warnings**            | Diagnostics (dead-assign detection)                             |     —     |
+| **Multi-Branch Type Consistency**       | Diagnostics (assert types match across `if`/`else`)             | `✅ Yes`  |
+| **Filter Parameter Validation**         | Diagnostics (arg types, division-by-zero, placeholders)         |     —     |
+| **Syntax Errors Reporting**             | Diagnostics (token-by-token concurrent Chevrotain errors)       |     —     |
+| **⚡ Smart Code Actions & Quick Fixes** |                                                                 |           |
+| **Inline Math Converter**               | `textDocument/codeAction` (`+` to `\| plus:`)                   | `✅ Yes`  |
+| **Single-Equals Correction**            | `textDocument/codeAction` (`=` to `==` inside conditional)      | `✅ Yes`  |
+| **Filter Spelling Correction**          | `textDocument/codeAction` (Levenshtein match suggestions)       | `✅ Yes`  |
+| **Quoted Filter Name Fix**              | `textDocument/codeAction` (`\| "upcase"` to `\| upcase`)        | `✅ Yes`  |
+| **Unclosed Tag Auto-Insertion**         | `textDocument/codeAction` (appends end tags)                    | `✅ Yes`  |
+| **💡 Editor Intelligence**              |                                                                 |           |
+| **Smart Autocomplete**                  | `textDocument/completion` (variables, filters, tags, dot-paths) |     —     |
+| **Rich Hover Cards**                    | `textDocument/hover` (type hierarchy, docs, options)            |     —     |
+| **Schema-Aware Hover Docs**             | `textDocument/hover` (dynamic contextual examples)              |     —     |
+| **Filter Signature Help**               | `textDocument/signatureHelp` (parameter lists & documentation)  |     —     |
+| **Go-to-Definition**                    | `textDocument/definition` (declaration locations, JSON keys)    |     —     |
+| **Document Outline**                    | `textDocument/documentSymbol` (symbols hierarchy tree)          |     —     |
+| **Semantic Flow Highlighting**          | `textDocument/semanticTokens` (color-codes variable roles)      |     —     |
+| **Rename Schema Guards**                | `textDocument/rename` (API schema protection & local shadowing) |     —     |
 
 ---
 
@@ -94,7 +121,7 @@ liquid-lsp/
 
 ### 1. Type Inference — `assign`, `parseAssign`, `for`
 
-The LSP statically infers types across all three variable declaration mechanisms:
+Statically resolves types across standard assignments, custom JSON structures, and collections:
 
 ```liquid
 {% assign price = 100 %}                            {# → number #}
@@ -111,7 +138,7 @@ The LSP statically infers types across all three variable declaration mechanisms
 
 ### 2. Composite Property Validation
 
-Validates every dot-notation property access against the schema or inferred composite type:
+Enforces schema compliance for deeply-nested dot-notation accesses:
 
 ```liquid
 {{ user.address.zipcode }}    {# ✅ resolved through composite nesting #}
@@ -120,14 +147,19 @@ Validates every dot-notation property access against the schema or inferred comp
 
 ### 3. Type Mismatch Linting
 
+Warns when filter requirements conflict with the incoming data type.
+
 ```liquid
 {% assign name = "john" %}
 {% assign result = name | plus: 25 %}
 ```
+
 > [!WARNING]
-> **LSP Warning:** `Type mismatch: Math filter "plus" is applied to a string value.`
+> **LSP Diagnostic:** `Type mismatch: Math filter "plus" is applied to a string value.`
 
 ### 4. Redundant Redefinition Warnings
+
+Flags variables overwritten before they are read, saving computational and rendering cycles:
 
 ```liquid
 {% assign score = 100 %}
@@ -136,32 +168,45 @@ Validates every dot-notation property access against the schema or inferred comp
 
 ### 5. Inline Math Auto-Converter
 
+Translates standard infix mathematical notation into Liquid's pipeline format.
+
 ```liquid
 {% assign total = price + 5 %}
 ```
-**Quick Fix →** `{% assign total = price | plus: 5 %}`
+
+> [!TIP]
+> **Quick Fix:** Convert to `{% assign total = price | plus: 5 %}`
 
 ### 6. Single-Equals Comparison Fix
+
+Prevents accidental assignments inside conditionals.
 
 ```liquid
 {% if status = "Active" %}
 ```
-> [!IMPORTANT]
-> **LSP Warning:** `Assignments are not allowed inside conditional statements.`
 
-**Quick Fix →** `{% if status == "Active" %}`
+> [!IMPORTANT]
+> **LSP Diagnostic:** `Assignments are not allowed inside conditional statements.`
+>
+> **Quick Fix:** Convert to `{% if status == "Active" %}`
 
 ### 7. Strict Document Formatter
 
+Normalizes whitespace, formatting tags, quote marks, and block indentation.
+
+**Before:**
+
 ```liquid
-{# Before #}
 {% if status == 'Active' %}
 {{name|upcase}}
 {% else %}
 {{price}}
 {% endif %}
+```
 
-{# After #}
+**After (Formatted):**
+
+```liquid
 {% if status == "Active" %}
   {{ name | upcase }}
 {% else %}
@@ -169,13 +214,14 @@ Validates every dot-notation property access against the schema or inferred comp
 {% endif %}
 ```
 
-Enforces: block indentation (2 spaces), quote normalization (`'` → `"`), delimiter spacing, and consecutive tag splitting.
+> [!NOTE]
+> Enforces standard rules: 2-space indentation, quote normalization (`'` → `"`), uniform delimiter spacing, and consecutive tag splitting.
 
 ### 8. Rich Hover Cards
 
-Hovering over a schema variable shows its full type hierarchy:
+Reveals nested type documentation and field lists on hover:
 
-```
+```yaml
 user.address
 ─────────────────────────
 composite {
@@ -187,16 +233,20 @@ composite {
 
 ### 9. Filter Signature Help
 
-Typing `{{ description | truncate: ` shows:
+Shows signature helpers when typing filter parameters:
+
 ```
-truncate(length: number, truncate_string: string = "...")
+{{ description | truncate: [length: number, truncate_string: string = "..."] }}
 ```
 
-### 10. Spelling Auto-Correction
+### 10. Spelling Correction
+
+Uses Levenshtein distance to offer quick fixes for mistyped filters:
 
 ```liquid
 {{ "hello" | upcasee }}
 ```
+
 > [!TIP]
 > **Quick Fix:** `Unknown filter "upcasee". Did you mean "upcase"?`
 
@@ -204,99 +254,117 @@ truncate(length: number, truncate_string: string = "...")
 
 ## 🔌 Connection & Deployment Modes
 
-### 1. Local Stdio Mode (VS Code Default)
+The server can be deployed in four flexible topologies:
 
-The VS Code extension spawns the LSP server automatically. No setup required.
+### 1. Local Stdio Mode (Default Desktop VS Code)
+
+Spawns the Node.js language server binary directly as a subprocess of the editor client. No manual setup required.
 
 ### 2. Remote TCP Socket Mode
 
+Runs the LSP server on a remote server for environments running thin clients.
+
 ```bash
-# On remote server:
+# On remote host:
 node lsp-engine/dist/main.js --socket=6009
 ```
 
+Configure your client (e.g. VS Code `settings.json`):
+
 ```json
-// VS Code settings.json:
 "liquid.server.mode": "remote",
 "liquid.server.host": "your-remote-server-ip",
 "liquid.server.port": 6009
 ```
 
-### 3. Browser Web Worker Mode (Monaco)
+### 3. Browser Web Worker Mode (Monaco Client-Side)
 
-The `lsp-browser` package bundles the full LSP into a Web Worker:
+No backend server required. Runs completely client-side in the browser by compiling into a Web Worker:
 
-```html
-<script type="module">
-  import { connectBrowserLspWorker } from '/lsp-browser-client.js';
-  const client = await connectBrowserLspWorker('/lsp-worker.js');
-  await client.sendRequest('initialize', {
-    capabilities: {},
-    initializationOptions: { schema: { /* ... */ } },
-  });
-</script>
+```javascript
+import { connectBrowserLspWorker } from '/lsp-browser-client.js';
+
+const client = await connectBrowserLspWorker('/lsp-worker.js');
+await client.sendRequest('initialize', {
+  capabilities: {},
+  initializationOptions: {
+    schema: {
+      /* client schema here */
+    },
+  },
+});
 ```
 
-### 4. Express WebSocket Gateway (Monaco Playground)
+### 4. Express WebSocket Gateway (Monaco Dev Playground)
+
+Wires a remote Monaco Editor client to the LSP server over WebSockets:
 
 ```bash
-pnpm run start:playground   # http://localhost:3000
+pnpm run start:playground   # Starts playground at http://localhost:3000
 ```
 
-The playground includes a Monaco Editor wired to the LSP with full diagnostics, hover, completions, formatting, and theme toggle.
+Includes a live-reloading interactive code editor with real-time linting, formatting, hover tips, autocomplete, and theme toggling.
 
 ---
 
 ## 🛠️ Developer Setup
 
 ### Prerequisites
-- Node.js ≥ 20
-- pnpm ≥ 10 (`npm install -g pnpm`)
 
-### Install & Build
+- **Node.js**: `v20.x` or higher
+- **pnpm**: `v10.x` or higher (`npm install -g pnpm`)
+
+### Installation & Build
+
+Get the workspace up and running locally:
 
 ```bash
 pnpm install
 pnpm run build
 ```
 
-### Commands
+### Commands Registry
+
+Run commands from the repository root:
 
 ```bash
-pnpm test                      # Run all tests
-pnpm run start:playground      # Monaco playground at localhost:3000
-pnpm run lint                  # ESLint
-pnpm run format                # Prettier
-pnpm run package:extension     # Build .vsix for VS Code
+pnpm test                      # Run vitest suite across all packages
+pnpm run start:playground      # Launch local Monaco Playground (http://localhost:3000)
+pnpm run lint                  # Run ESLint validation
+pnpm run format                # Re-format files with Prettier
+pnpm run package:extension     # Compile & package VS Code extension (.vsix)
 ```
 
-### Debug in VS Code
+### Debugging in VS Code
 
-1. Open the repo root in VS Code.
-2. Go to **Run and Debug** (`Ctrl+Shift+D`).
+1. Open the repository root directory in VS Code.
+2. Open **Run and Debug** (`Ctrl+Shift+D` or `Cmd+Shift+D`).
 3. Select **`Debug Client & Server`** and press `F5`.
 4. Set breakpoints in `vscode-extension/src/client.ts` or `packages/lsp-common/src/**`.
 
 ---
 
-## 📝 Technical Details
+## ⚙️ Tech Stack & Specifications
 
-- **Language**: TypeScript 6.x (ES Modules, strict no-`any`)
-- **Package Manager**: pnpm workspaces
-- **Parser**: Custom [Chevrotain](https://chevrotain.io/) tag argument parser for precise diagnostic ranges
-- **LiquidJS**: Custom fork `github:sonuKumar03/liquidjs` with `computeColumn`, `assignVar`, `parseAssign` tags
-- **LSP Protocol**: `vscode-languageserver` 3.17
-- **Tests**: Vitest — unit + JSON-RPC integration tests
+- **TypeScript 6.x**: High-performance, modern type-safety with a strict no-`any` policy.
+- **ES Modules**: Standard Node ESM (`type: module`) using explicit `.js` import extensions.
+- **pnpm Workspaces**: Clean monorepo dependency orchestration and local linking.
+- **Chevrotain Parser**: High-performance custom parser for token-by-token analysis and precise error ranges.
+- **LiquidJS Fork**: Uses `github:sonuKumar03/liquidjs` which contributes tag parsers like `computeColumn`, `assignVar`, and `parseAssign`.
+- **LSP Protocol**: Fully compatible with LSP v3.17 (`vscode-languageserver`).
+- **Testing**: Unified Vitest suite executing unit tests and full JSON-RPC integration test scenarios.
 
 ---
 
-## 📚 Documentation
+## 📚 Documentation Registry
 
-| Document | Description |
-|---|---|
-| [AGENTS.md](./AGENTS.md) | Monorepo architecture, coding conventions, AI agent guide |
-| [developer_reference.md](./developer_reference.md) | API reference — how to add diagnostics, quick fixes, hover, completions |
-| [repo-skills/references/handover.md](./repo-skills/references/handover.md) | Full project handover document for new contributors |
-| [packages/lsp-common/README.md](./packages/lsp-common/README.md) | Core LSP package reference |
-| [packages/liquid-core/README.md](./packages/liquid-core/README.md) | Engine, tokenizer, parser reference |
-| [packages/key-pointer-schema/README.md](./packages/key-pointer-schema/README.md) | Schema wire-format and type mapping reference |
+To learn more about specific components and internals, explore these documents:
+
+| Document                                                             | Purpose / Highlights                                                                           |
+| :------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------- |
+| [AGENTS.md](./AGENTS.md)                                             | Monorepo architecture roadmap, coding style rules, and AI development guide.                   |
+| [developer_reference.md](./developer_reference.md)                   | Step-by-step instructions for adding features (Diagnostics, Quick Fixes, Autocomplete, Hover). |
+| [handover.md](./repo-skills/references/handover.md)                  | Handover blueprint containing design rationale, codebase state, and future roadmap.            |
+| [key-pointer-schema README](./packages/key-pointer-schema/README.md) | Parser and mapper specifications for variable wire-format schemas.                             |
+| [liquid-core README](./packages/liquid-core/README.md)               | Custom LiquidJS parser, Chevrotain grammar, tokenizer, and tags.                               |
+| [lsp-common README](./packages/lsp-common/README.md)                 | Platform-agnostic LSP implementation handlers, state, and type system.                         |

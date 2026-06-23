@@ -87,33 +87,34 @@ flowchart TD
 
 ## 🚀 Feature Matrix
 
-| Feature                                 | LSP Method / Diagnostic                                         | Quick Fix |
-| :-------------------------------------- | :-------------------------------------------------------------- | :-------: |
-| **🔍 Static Analysis & Diagnostics**    |                                                                 |           |
-| **Type Inference**                      | Diagnostics (`assign`, `parseAssign`, loops)                    |     —     |
-| **Composite Property Validation**       | Diagnostics (dot-path schema matching)                          |     —     |
-| **Loop Variable Type Narrowing**        | Diagnostics (collection item typing)                            |     —     |
-| **Type Mismatch Linting**               | Diagnostics (filter constraints)                                |     —     |
-| **Nil / Optional Safety**               | Diagnostics (optional properties accessed without fallback)     | `✅ Yes`  |
-| **Unused Variable Warnings**            | Diagnostics (dead-assign detection)                             |     —     |
-| **Multi-Branch Type Consistency**       | Diagnostics (assert types match across `if`/`else`)             | `✅ Yes`  |
-| **Filter Parameter Validation**         | Diagnostics (arg types, division-by-zero, placeholders)         |     —     |
-| **Syntax Errors Reporting**             | Diagnostics (token-by-token concurrent Chevrotain errors)       |     —     |
-| **⚡ Smart Code Actions & Quick Fixes** |                                                                 |           |
-| **Inline Math Converter**               | `textDocument/codeAction` (`+` to `\| plus:`)                   | `✅ Yes`  |
-| **Single-Equals Correction**            | `textDocument/codeAction` (`=` to `==` inside conditional)      | `✅ Yes`  |
-| **Filter Spelling Correction**          | `textDocument/codeAction` (Levenshtein match suggestions)       | `✅ Yes`  |
-| **Quoted Filter Name Fix**              | `textDocument/codeAction` (`\| "upcase"` to `\| upcase`)        | `✅ Yes`  |
-| **Unclosed Tag Auto-Insertion**         | `textDocument/codeAction` (appends end tags)                    | `✅ Yes`  |
-| **💡 Editor Intelligence**              |                                                                 |           |
-| **Smart Autocomplete**                  | `textDocument/completion` (variables, filters, tags, dot-paths) |     —     |
-| **Rich Hover Cards**                    | `textDocument/hover` (type hierarchy, docs, options)            |     —     |
-| **Schema-Aware Hover Docs**             | `textDocument/hover` (dynamic contextual examples)              |     —     |
-| **Filter Signature Help**               | `textDocument/signatureHelp` (parameter lists & documentation)  |     —     |
-| **Go-to-Definition**                    | `textDocument/definition` (declaration locations, JSON keys)    |     —     |
-| **Document Outline**                    | `textDocument/documentSymbol` (symbols hierarchy tree)          |     —     |
-| **Semantic Flow Highlighting**          | `textDocument/semanticTokens` (color-codes variable roles)      |     —     |
-| **Rename Schema Guards**                | `textDocument/rename` (API schema protection & local shadowing) |     —     |
+| Feature                                 | LSP Method / Diagnostic                                                    | Quick Fix |
+| :-------------------------------------- | :------------------------------------------------------------------------- | :-------: |
+| **🔍 Static Analysis & Diagnostics**    |                                                                            |           |
+| **Type Inference**                      | Diagnostics (`assign`, `assignVar`, `parseAssign`, `computeColumn`, loops) |     —     |
+| **Composite Property Validation**       | Diagnostics (dot-path schema matching)                                     |     —     |
+| **Loop Variable Type Narrowing**        | Diagnostics (collection item typing)                                       |     —     |
+| **Type Mismatch Linting**               | Diagnostics (filter constraints)                                           |     —     |
+| **Nil / Optional Safety**               | Diagnostics (optional properties accessed without fallback)                | `✅ Yes`  |
+| **Unused Variable Warnings**            | Diagnostics (dead-assign detection)                                        |     —     |
+| **Multi-Branch Type Consistency**       | Diagnostics (assert types match across `if`/`else`)                        | `✅ Yes`  |
+| **Filter Parameter Validation**         | Diagnostics (arg types, division-by-zero, placeholders)                    |     —     |
+| **Engine & Tag Validations**            | Diagnostics (`computeColumn` rules, invalid JSON structures)               |     —     |
+| **Syntax Errors Reporting**             | Diagnostics (token-by-token concurrent Chevrotain errors)                  |     —     |
+| **⚡ Smart Code Actions & Quick Fixes** |                                                                            |           |
+| **Inline Math Converter**               | `textDocument/codeAction` (`+` to `\| plus:`)                              | `✅ Yes`  |
+| **Single-Equals Correction**            | `textDocument/codeAction` (`=` to `==` inside conditional)                 | `✅ Yes`  |
+| **Filter Spelling Correction**          | `textDocument/codeAction` (Levenshtein match suggestions)                  | `✅ Yes`  |
+| **Quoted Filter Name Fix**              | `textDocument/codeAction` (`\| "upcase"` to `\| upcase`)                   | `✅ Yes`  |
+| **Unclosed Tag Auto-Insertion**         | `textDocument/codeAction` (appends end tags)                               | `✅ Yes`  |
+| **💡 Editor Intelligence**              |                                                                            |           |
+| **Smart Autocomplete**                  | `textDocument/completion` (variables, filters, tags, dot-paths)            |     —     |
+| **Rich Hover Cards**                    | `textDocument/hover` (type hierarchy, docs, options)                       |     —     |
+| **Schema-Aware Hover Docs**             | `textDocument/hover` (dynamic contextual examples)                         |     —     |
+| **Filter Signature Help**               | `textDocument/signatureHelp` (parameter lists & documentation)             |     —     |
+| **Go-to-Definition**                    | `textDocument/definition` (declaration locations, JSON keys)               |     —     |
+| **Document Outline**                    | `textDocument/documentSymbol` (symbols hierarchy tree)                     |     —     |
+| **Semantic Flow Highlighting**          | `textDocument/semanticTokens` (color-codes variable roles)                 |     —     |
+| **Rename Schema Guards**                | `textDocument/rename` (API schema protection & local shadowing)            |     —     |
 
 ---
 

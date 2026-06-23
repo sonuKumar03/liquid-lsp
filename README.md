@@ -296,8 +296,6 @@ pnpm run package:extension     # Build .vsix for VS Code
 |---|---|
 | [AGENTS.md](./AGENTS.md) | Monorepo architecture, coding conventions, AI agent guide |
 | [developer_reference.md](./developer_reference.md) | API reference — how to add diagnostics, quick fixes, hover, completions |
-| [repo-skills/enhancements/computation_lsp_features.md](./repo-skills/enhancements/computation_lsp_features.md) | Planned LSP feature roadmap (8 features) |
-| [repo-skills/enhancements/lsp_refactoring_guide.md](./repo-skills/enhancements/lsp_refactoring_guide.md) | Planned refactoring operations (10 refactors) |
 | [repo-skills/references/handover.md](./repo-skills/references/handover.md) | Full project handover document for new contributors |
 | [packages/lsp-common/README.md](./packages/lsp-common/README.md) | Core LSP package reference |
 | [packages/liquid-core/README.md](./packages/liquid-core/README.md) | Engine, tokenizer, parser reference |

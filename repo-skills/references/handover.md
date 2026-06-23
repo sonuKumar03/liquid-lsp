@@ -226,22 +226,21 @@ This branch is the most up-to-date. Here is the history of work done:
 
 ---
 
-## 8. Known Gaps & Next Priorities
+## 8. Planned Refactoring Backlog & Gaps
 
-The following features have been **designed and documented** but not yet implemented. See [computation_lsp_features.md](file:///Users/sonukumar/project/liquid-lsp/repo-skills/enhancements/computation_lsp_features.md) for full specs:
+The core computational features (Automatic Coercion, Rename Collision Prevention, Nil Propagation, Semantic Highlight, Branch Type Consistency, Filter Argument Checking, Plain Language Diagnostics, and Contextual Hover Examples) are fully implemented.
 
-| Priority | Feature | Effort |
-|---|---|---|
-| 🔴 High | **Automatic Coercion & Fallback Quick Fixes** — warn + fix when optional/string vars are used in math | Medium |
-| 🔴 High | **Nil Propagation Diagnostics** — trace nil from optional schema fields through assignment chains | High |
-| 🟡 Medium | **Rename Collision & Shadowing Prevention** — collision check before rename + external schema guard | Medium |
-| 🟡 Medium | **Semantic Flow Highlighting** — color-code source/intermediate/output/dead variables | Medium |
-| 🟡 Medium | **Multi-Branch Type Consistency** — warn when if/else assigns same var with different types | Medium |
-| 🟡 Medium | **Filter Argument Type Checking** — validate filter parameter types at call sites | Low |
-| 🟢 Low | **Plain Language Diagnostic Messages** — rewrite all errors for domain experts | Low |
-| 🟢 Low | **Contextual Examples in Hover** — schema-aware examples in filter hover cards | Low |
-
-See [lsp_refactoring_guide.md](file:///Users/sonukumar/project/liquid-lsp/repo-skills/enhancements/lsp_refactoring_guide.md) for planned refactoring operations (Extract Variable, Inline Variable, Sort by Dependency, etc.).
+The following refactoring operations remain in the backlog for future implementation:
+* **Extract Variable** — Extract repeated sub-expressions into a named intermediate variable.
+* **Inline Variable** — Inline single-use local variable definitions.
+* **Simplify Redundant Filter Chain** — Collapse duplicate/no-op filters (e.g. `default: 0 | default: 0`).
+* **Convert `if/else` to `default` Filter** — Collapse simple fallback conditionals.
+* **Sort Assignments by Dependency Order** — Reorder assignments using a topological sort.
+* **Remove Dead Assignments** — Provide a Quick Fix to automatically delete/comment out unused variables.
+* **Split Long Filter Chain** — Break complex pipelines into step-by-step intermediate variables.
+* **Normalize `parseAssign` JSON** — Reformat/prettify JSON string literals inside parseAssign tags.
+* **Flatten Nested Conditionals** — Merge nested conditionals using logical operators (e.g. `and`).
+* **Align `if/else` Variable Assignments** — Scaffold missing variable assignments in alternative conditional branches.
 
 ---
 
@@ -314,7 +313,5 @@ pnpm run package:extension            # Build the VS Code .vsix extension
 |---|---|
 | [`AGENTS.md`](file:///Users/sonukumar/project/liquid-lsp/AGENTS.md) | Master architecture overview and coding conventions |
 | [developer_reference.md](file:///Users/sonukumar/project/liquid-lsp/developer_reference.md) | Deep technical API reference for all key functions |
-| [computation_lsp_features.md](file:///Users/sonukumar/project/liquid-lsp/repo-skills/enhancements/computation_lsp_features.md) | Planned LSP feature roadmap (8 features, fully specced) |
-| [lsp_refactoring_guide.md](file:///Users/sonukumar/project/liquid-lsp/repo-skills/enhancements/lsp_refactoring_guide.md) | Planned refactoring operations (10 refactors, fully specced) |
 | [`packages/lsp-common/README.md`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/README.md) | lsp-common package reference |
 | [`packages/liquid-core/README.md`](file:///Users/sonukumar/project/liquid-lsp/packages/liquid-core/README.md) | liquid-core package reference |

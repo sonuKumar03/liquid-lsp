@@ -8,7 +8,7 @@ This document serves as the master roadmap. For specific code documentation, ref
 
 ## Monorepo Architecture
 
-This project is organized as a monorepo using **pnpm workspaces**. It consists of 5 core libraries under `packages/` and 3 application/wrapper projects:
+This project is organized as a monorepo using **pnpm workspaces**. It consists of 5 core libraries under `packages/` and 4 application/wrapper projects:
 
 ```
                   ┌────────────────────────┐
@@ -25,21 +25,22 @@ This project is organized as a monorepo using **pnpm workspaces**. It consists o
                   │       lsp-common       │
                   └───────────┬────────────┘
                               │ Core Handlers
-             ┌────────────────┴────────────────┐
-             ▼                                 ▼
-┌────────────────────────┐        ┌────────────────────────┐
-│        lsp-node        │        │      lsp-browser       │
-└────────────┬───────────┘        └────────────┬───────────┘
-             │ Node Engine                     │ Browser Worker
-             ▼                                 ▼
-┌────────────────────────┐        ┌────────────────────────┐
-│       lsp-engine       │        │     express-server     │
-└────────────┬───────────┘        └────────────────────────┘
-             │ Server Bundle
-             ▼
-┌────────────────────────┐
-│    vscode-extension    │
-└────────────────────────┘
+             ┌────────────────┴────────────────┬────────────────┐
+             ▼                                 ▼                ▼
+┌────────────────────────┐        ┌────────────────────────┐    │
+│        lsp-node        │        │      lsp-browser       │    │
+└────────────┬───────────┘        └────────────┬───────────┘    │
+             │ Node Engine                     │ Browser Worker │
+             ▼                                 ├────────────────┘
+┌────────────────────────┐                     ▼
+│       lsp-engine       │        ┌────────────────────────┐
+└────────────┬───────────┘        │     express-server     │
+             │ Server Bundle      └────────────────────────┘
+             ▼                                 ▲
+┌────────────────────────┐                     │ imports
+│    vscode-extension    │        ┌────────────────────────┐
+└────────────────────────┘        │   angular-playground   │
+                                  └────────────────────────┘
 ```
 
 ### 1. Libraries (`packages/*`)
@@ -55,6 +56,7 @@ This project is organized as a monorepo using **pnpm workspaces**. It consists o
 - [**`lsp-engine`**](file:///Users/sonukumar/project/liquid-lsp/lsp-engine/README.md): Legacy npm workspace wrapper used to compile the node server and run integration tests.
 - [**`vscode-extension`**](file:///Users/sonukumar/project/liquid-lsp/vscode-extension/README.md): The VS Code extension client wrapper contributing configurations and launching the server process.
 - [**`express-server`**](file:///Users/sonukumar/project/liquid-lsp/express-server/README.md): Local development express server hosting the web-based Monaco Editor playground.
+- [**`angular-playground`**](file:///Users/sonukumar/project/liquid-lsp/angular-playground/README.md): Local development Angular-based web client playground integrating Monaco Editor with the in-browser Web Worker LSP.
 
 ---
 

@@ -17,6 +17,7 @@ This repository contains a specialized Language Server Protocol (LSP) implementa
 - **`lsp-engine`**: Legacy npm workspace wrapper used to compile the node server and run integration tests.
 - **`vscode-extension`**: The VS Code extension client wrapper contributing configurations and launching the server process.
 - **`express-server`**: Local development express server hosting the web-based Monaco Editor playground.
+- **`angular-playground`**: Local development Angular web client playground integrating Monaco Editor with the in-browser Worker LSP.
 
 ---
 
@@ -44,7 +45,8 @@ All workspace commands should be run from the repository root:
 │   └── lsp-browser/          (Browser worker bundles)
 ├── lsp-engine/               (Test & entry shim)
 ├── express-server/           (Monaco Editor web playground)
-└── vscode-extension/         (VS Code Extension client)
+├── vscode-extension/         (VS Code Extension client)
+└── angular-playground/       (Angular web client playground)
 ```
 
 ---

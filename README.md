@@ -53,7 +53,8 @@ liquid-lsp/
 │   └── lsp-browser/          # Web Worker bundle + Monaco client
 ├── lsp-engine/               # Integration test harness
 ├── express-server/           # Monaco Editor playground at localhost:3000
-└── vscode-extension/         # VS Code extension client
+├── vscode-extension/         # VS Code extension client
+└── angular-playground/       # Angular-based Monaco Editor web playground
 ```
 
 ---

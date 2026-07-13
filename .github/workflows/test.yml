@@ -35,5 +35,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build test artifacts
+        run: |
+          pnpm --filter 'liquid-lsp-engine...' build
+          pnpm --filter lsp-browser build
+
       - name: Run tests
         run: pnpm test

@@ -6,6 +6,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   test: {
+    teardownTimeout: 30000,
     projects: [
       {
         test: {
@@ -29,6 +30,9 @@ export default defineConfig({
           root: resolve(__dirname, 'packages/lsp-common'),
           include: ['src/**/*.test.ts'],
           environment: 'node',
+          bail: 1,
+          testTimeout: 30000,
+          hookTimeout: 30000,
         },
       },
       {

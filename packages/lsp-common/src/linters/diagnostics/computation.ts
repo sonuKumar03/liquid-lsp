@@ -11,15 +11,39 @@ import {
 import type { LiquidType } from '../../shared/schema.js';
 import { DIAGNOSTIC_CODES } from '../../shared/diagnostic-codes.js';
 
+/**
+ * Built-in Liquid literals, logical operators, and loop metadata identifiers
+ * that should not be flagged as missing questionnaire schema variables.
+ */
 const BUILTIN_IDENTIFIERS = new Set([
+  // Liquid Literals
   'true',
   'false',
   'nil',
   'null',
   'empty',
   'blank',
+
+  // Date & Time keywords
+  'now',
+  'today',
+
+  // Loop & iteration scope metadata
   'forloop',
   'tablerowloop',
+
+  // Logical & expression keywords
+  'and',
+  'or',
+  'not',
+  'contains',
+  'in',
+  'with',
+  'as',
+
+  // SpotDraft computational runtime identifiers
+  'self',
+  '$$answer',
 ]);
 
 /**
@@ -87,6 +111,15 @@ export function collectComputationDiagnostics(
       checkDependencies(node, scope);
       if (node.target) {
         scope.add(node.target);
+      }
+      return;
+    }
+
+    // Capture blocks: add captured variable identifier to scope
+    if (node.name === 'capture') {
+      const varName = node.args.trim().split(/\s+/)[0];
+      if (varName) {
+        scope.add(varName);
       }
       return;
     }

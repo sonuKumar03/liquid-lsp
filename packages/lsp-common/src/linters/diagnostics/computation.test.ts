@@ -98,4 +98,20 @@ describe('collectComputationDiagnostics', () => {
 
     expect(diagnostics.length).toBe(0);
   });
+
+  it('allows built-in keywords and capture variables', () => {
+    const doc = TextDocument.create(
+      'file:///test.liquid',
+      'liquid',
+      1,
+      '{% capture user_name %}Sonu{% endcapture %}\n{% assign greeting = user_name %}\n{% if true %}{{ today }}{% endif %}',
+    );
+    const schema = new Map<string, LiquidType>([
+      ['dummy', 'string'],
+    ]);
+    const diagnostics: Diagnostic[] = [];
+    collectComputationDiagnostics(doc, diagnostics, schema);
+
+    expect(diagnostics.length).toBe(0);
+  });
 });

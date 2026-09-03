@@ -137,18 +137,19 @@ function buildMetadataSignature(meta: LiquidFilterMeta): FilterSignatureInfo {
   return info;
 }
 
-const FILTER_SIGNATURES: Record<string, FilterSignatureInfo> = Object.fromEntries(
-  LIQUID_FILTER_METAS.flatMap((meta) => {
-    const override = SIGNATURE_OVERRIDES[meta.name];
-    if (override) {
-      return [[meta.name, override]];
-    }
-    if (!meta.argTypes || meta.argTypes.length === 0) {
-      return [];
-    }
-    return [[meta.name, buildMetadataSignature(meta)]];
-  }),
-);
+const FILTER_SIGNATURES: Record<string, FilterSignatureInfo> =
+  Object.fromEntries(
+    LIQUID_FILTER_METAS.flatMap((meta) => {
+      const override = SIGNATURE_OVERRIDES[meta.name];
+      if (override) {
+        return [[meta.name, override]];
+      }
+      if (!meta.argTypes || meta.argTypes.length === 0) {
+        return [];
+      }
+      return [[meta.name, buildMetadataSignature(meta)]];
+    }),
+  );
 
 export function handleSignatureHelp(
   documents: TextDocuments<TextDocument>,

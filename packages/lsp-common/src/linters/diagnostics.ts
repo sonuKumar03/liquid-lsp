@@ -1,10 +1,6 @@
 import type { Diagnostic, Connection } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import {
-  type Liquid,
-  type TopLevelToken,
-  tokenizeTopLevel,
-} from 'liquid-core';
+import { type Liquid, type TopLevelToken, tokenizeTopLevel } from 'liquid-core';
 import type { LiquidType } from '../shared/schema.js';
 import type { SchemaLoadError, VariableDeclaration } from 'key-pointer-schema';
 import { schemaLoadErrorsToDiagnostics } from '../shared/schema-load-errors.js';
@@ -71,4 +67,3 @@ export async function validateTextDocument(
 
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
-

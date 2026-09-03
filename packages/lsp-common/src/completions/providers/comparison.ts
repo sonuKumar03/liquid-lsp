@@ -61,7 +61,9 @@ export const ComparisonCompletionProvider: CompletionProvider = {
   },
 };
 
-function extractEqualityConstraints(conditionText: string): Map<string, string> {
+function extractEqualityConstraints(
+  conditionText: string,
+): Map<string, string> {
   const constraints = new Map<string, string>();
   const regex =
     /([a-zA-Z_][a-zA-Z0-9_.[\]'"-]*)\s*==\s*("([^"\\]|\\.)*"|'([^'\\]|\\.)*')/g;
@@ -96,7 +98,9 @@ function getActiveBranchDropdownValue(
 
     if (token.name === 'if' || token.name === 'unless') {
       branchStack.push(
-        token.name === 'if' ? extractEqualityConstraints(token.args) : new Map(),
+        token.name === 'if'
+          ? extractEqualityConstraints(token.args)
+          : new Map(),
       );
       continue;
     }

@@ -213,7 +213,11 @@ export function jsonValueToLiquidType(val: unknown): LiquidType {
     }
     if (typesSeen.size === 1) {
       const singleType = Array.from(typesSeen)[0]!;
-      if (singleType === 'string' || singleType === 'number' || singleType === 'boolean') {
+      if (
+        singleType === 'string' ||
+        singleType === 'number' ||
+        singleType === 'boolean'
+      ) {
         return {
           kind: 'array',
           elementType: singleType,

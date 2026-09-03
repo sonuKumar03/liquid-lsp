@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { createLiquidEngine, tokenizeTopLevel } from 'liquid-core';
-import { extractLocalVariableTypes, unquoteString } from './local-variable-types.js';
+import {
+  extractLocalVariableTypes,
+  unquoteString,
+} from './local-variable-types.js';
 import { findVariableDeclarationsFromTokens } from './variable-declarations.js';
 
 describe('extractLocalVariableTypes', () => {
@@ -100,7 +103,7 @@ describe('extractLocalVariableTypes', () => {
   it('infers array type for split filter and element type for first/last', () => {
     const engine = createLiquidEngine();
     const schema = new Map([['full_name', 'string' as const]]);
-    
+
     // Test split -> array<string>
     const text1 = '{% assign names = full_name | split: " " %}';
     const tokens1 = tokenizeTopLevel(text1, engine);
@@ -113,7 +116,8 @@ describe('extractLocalVariableTypes', () => {
     }
 
     // Test first/last -> string
-    const text2 = '{% assign names = full_name | split: " " %}{% assign first_name = names | first %}';
+    const text2 =
+      '{% assign names = full_name | split: " " %}{% assign first_name = names | first %}';
     const tokens2 = tokenizeTopLevel(text2, engine);
     const types2 = extractLocalVariableTypes(schema, tokens2, engine);
     expect(types2.get('first_name')).toBe('string');

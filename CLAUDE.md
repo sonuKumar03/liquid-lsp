@@ -7,6 +7,7 @@ Repository skill for code changes: [repo-skills/liquidjs-v3-core-lsp/SKILL.md](r
 This repository contains a specialized Language Server Protocol (LSP) implementation for LiquidJS computational worksheets. The project is organized as a monorepo using **pnpm workspaces**:
 
 ### 1. Libraries (`packages/*`)
+
 - **`key-pointer-schema`**: Parses, validates, and merges client-supplied variable schemas.
 - **`liquid-core`**: Integrates our custom fork of LiquidJS, implements computational tags (`computeColumn`, `assignVar`, `parseAssign`), parses expressions, and exports tokenization utilities.
 - **`lsp-common`**: Contains the core runtime-agnostic language server features (hover, completions, signature help, code actions, diagnostics, etc.) and state management.
@@ -14,6 +15,7 @@ This repository contains a specialized Language Server Protocol (LSP) implementa
 - **`lsp-browser`**: Web Worker build config and client wrappers for running the LSP server inside browser environments (e.g. Monaco Editor).
 
 ### 2. Applications & Wrappers
+
 - **`lsp-engine`**: Legacy npm workspace wrapper used to compile the node server and run integration tests.
 - **`vscode-extension`**: The VS Code extension client wrapper contributing configurations and launching the server process.
 - **`express-server`**: Local development express server hosting the web-based Monaco Editor playground.

@@ -23,7 +23,11 @@
   justify-content: space-between;
   padding: 0 16px;
   height: 56px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed); // Violet-indigo gradient
+  background: linear-gradient(
+    135deg,
+    #4f46e5,
+    #7c3aed
+  ); // Violet-indigo gradient
   color: white;
 
   .brand {
@@ -43,6 +47,12 @@
 
   .spacer {
     flex: 1 1 auto;
+  }
+
+  .migration-link {
+    margin-left: 18px;
+    color: white;
+    border-color: rgba(255, 255, 255, 0.45);
   }
 
   .status-indicator {
@@ -141,7 +151,8 @@
   width: 100%;
   box-sizing: border-box;
 
-  .editor-pane, .output-pane {
+  .editor-pane,
+  .output-pane {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -188,7 +199,10 @@
         border-color: #7c3aed;
         color: #7c3aed;
         background-color: rgba(124, 58, 237, 0.05);
-        transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+        transition:
+          background-color 0.2s ease,
+          box-shadow 0.2s ease,
+          transform 0.1s ease;
         white-space: nowrap;
 
         &:not([disabled]):hover {
@@ -270,7 +284,6 @@
           flex-direction: column;
           padding: 8px;
         }
-
       }
     }
 

@@ -1,4 +1,7 @@
-import { CONDITIONAL_ASSIGNMENT_MESSAGE, SINGLE_EQUALS_ASSIGNMENT_REGEX } from 'liquid-core';
+import {
+  CONDITIONAL_ASSIGNMENT_MESSAGE,
+  SINGLE_EQUALS_ASSIGNMENT_REGEX,
+} from 'liquid-core';
 import { DIAGNOSTIC_CODES } from '../../shared/diagnostic-codes.js';
 import { type CodeActionStrategy, createQuickFix } from './strategy.js';
 

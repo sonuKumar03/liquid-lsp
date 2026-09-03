@@ -280,10 +280,7 @@ function walkTagTemplate(
     return;
   }
 
-  if (
-    template instanceof Tag &&
-    ASSIGN_TAG_NAMES.has(template.name)
-  ) {
+  if (template instanceof Tag && ASSIGN_TAG_NAMES.has(template.name)) {
     handleAssignTemplate(
       doc,
       engine,

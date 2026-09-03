@@ -95,7 +95,13 @@ function collectTagDiagnostics(
               engine,
             );
 
-      scopeTracker.declareVariable(varName, line, token, absOffset, inferredType);
+      scopeTracker.declareVariable(
+        varName,
+        line,
+        token,
+        absOffset,
+        inferredType,
+      );
 
       validateDropdownValue(
         doc,
@@ -115,7 +121,13 @@ function collectTagDiagnostics(
       const absOffset = (argsOffset >= 0 ? argsOffset : 0) + parsed.keyStart;
 
       const inferredType = 'string';
-      scopeTracker.declareVariable(varName, line, token, absOffset, inferredType);
+      scopeTracker.declareVariable(
+        varName,
+        line,
+        token,
+        absOffset,
+        inferredType,
+      );
     }
   } else if (name === 'for') {
     const parsed = parseForLoopVariableWithOffsets(token.args);
@@ -158,10 +170,23 @@ function collectTagDiagnostics(
         }
       }
 
-      scopeTracker.declareVariable(varName, line, token, absOffset, inferredType);
+      scopeTracker.declareVariable(
+        varName,
+        line,
+        token,
+        absOffset,
+        inferredType,
+      );
     }
   } else if (isConditionalTagLine(name)) {
-    processExpression(token.args, token, doc, diagnostics, scopeTracker.activeVars, engine);
+    processExpression(
+      token.args,
+      token,
+      doc,
+      diagnostics,
+      scopeTracker.activeVars,
+      engine,
+    );
     const argsOffset = tokenText.indexOf(token.args);
     validateDropdownComparisons(
       doc,
@@ -295,7 +320,10 @@ export function collectLifecycleDiagnostics(
                 let mismatch = false;
                 for (let j = 1; j < assignedBranches.length; j++) {
                   const curr = assignedBranches[j]?.info;
-                  if (curr && JSON.stringify(curr.type) !== JSON.stringify(first.type)) {
+                  if (
+                    curr &&
+                    JSON.stringify(curr.type) !== JSON.stringify(first.type)
+                  ) {
                     mismatch = true;
                     break;
                   }
@@ -307,7 +335,11 @@ export function collectLifecycleDiagnostics(
                 if (mismatch) {
                   const types = assignedBranches.map((b) => {
                     const t = b.info!.type;
-                    if (t && typeof t === 'object' && t.kind === 'branch_mismatch') {
+                    if (
+                      t &&
+                      typeof t === 'object' &&
+                      t.kind === 'branch_mismatch'
+                    ) {
                       return t.types[0] || 'unknown';
                     }
                     return t;
@@ -320,7 +352,9 @@ export function collectLifecycleDiagnostics(
                   for (let j = 0; j < assignedBranches.length; j++) {
                     const info = assignedBranches[j]!.info!;
                     const currentTypeStr = typeStrings[j] || 'unknown';
-                    const otherTypes = typeStrings.filter((_, idx) => idx !== j);
+                    const otherTypes = typeStrings.filter(
+                      (_, idx) => idx !== j,
+                    );
                     const uniqueOtherTypes = Array.from(new Set(otherTypes));
                     const otherBranchesStr = uniqueOtherTypes.join(' and ');
 
@@ -355,15 +389,25 @@ export function collectLifecycleDiagnostics(
                   });
                 } else {
                   const hasElse = block.branches.length > 1;
-                  if (assignedBranches.length < block.branches.length && hasElse) {
+                  if (
+                    assignedBranches.length < block.branches.length &&
+                    hasElse
+                  ) {
                     let optType = first.type;
                     if (typeof optType === 'string') {
                       if (optType === 'unknown') {
                         optType = 'unknown';
                       } else {
-                        optType = { kind: 'primitive', type: optType, optional: true };
+                        optType = {
+                          kind: 'primitive',
+                          type: optType,
+                          optional: true,
+                        };
                       }
-                    } else if (typeof optType === 'object' && optType.kind !== 'branch_mismatch') {
+                    } else if (
+                      typeof optType === 'object' &&
+                      optType.kind !== 'branch_mismatch'
+                    ) {
                       optType = { ...optType, optional: true };
                     }
                     scopeTracker.activeVars.set(varName, {
@@ -409,9 +453,14 @@ export function collectLifecycleDiagnostics(
         if (resolved && isOptionalType(resolved)) {
           const tokenText = token.getText();
           const exprOffset = tokenText.indexOf(expr);
-          const start = textDocument.positionAt(token.begin + (exprOffset !== -1 ? exprOffset : 2));
+          const start = textDocument.positionAt(
+            token.begin + (exprOffset !== -1 ? exprOffset : 2),
+          );
           const end = textDocument.positionAt(
-            token.begin + (exprOffset !== -1 ? exprOffset + expr.length : tokenText.length - 2),
+            token.begin +
+              (exprOffset !== -1
+                ? exprOffset + expr.length
+                : tokenText.length - 2),
           );
 
           const isNumeric =

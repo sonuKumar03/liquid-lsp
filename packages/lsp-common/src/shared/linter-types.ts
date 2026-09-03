@@ -18,7 +18,9 @@ export type ActiveVar = {
 };
 
 export interface BlockStackEntry {
-  branches: Array<Map<string, { type: LinterVariableType; line: number; range: Range }>>;
+  branches: Array<
+    Map<string, { type: LinterVariableType; line: number; range: Range }>
+  >;
   currentBranchIndex: number;
   narrowedVars: Array<Map<string, LinterVariableType>>;
 }
@@ -26,7 +28,9 @@ export interface BlockStackEntry {
 /**
  * Type guard for BranchMismatchType.
  */
-export function isBranchMismatchType(t: LinterVariableType): t is BranchMismatchType {
+export function isBranchMismatchType(
+  t: LinterVariableType,
+): t is BranchMismatchType {
   return t !== null && typeof t === 'object' && t.kind === 'branch_mismatch';
 }
 
@@ -59,8 +63,10 @@ export function formatLinterType(t: LinterVariableType): string {
     if (t.kind === 'primitive') return t.type + (t.optional ? '?' : '');
     if (t.kind === 'dropdown') return 'dropdown';
     if (t.kind === 'composite') return 'composite';
-    if (t.kind === 'array') return `array<${formatLinterType(t.elementType)}>` + (t.optional ? '?' : '');
+    if (t.kind === 'array')
+      return (
+        `array<${formatLinterType(t.elementType)}>` + (t.optional ? '?' : '')
+      );
   }
   return 'unknown';
 }
-

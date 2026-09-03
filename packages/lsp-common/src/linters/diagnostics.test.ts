@@ -805,7 +805,9 @@ test('Liquid diagnostics regression test for complex conditional and assignVar/p
         step === 1 &&
         res.method === 'textDocument/publishDiagnostics'
       ) {
-        const errors = res.params.diagnostics.filter((d: any) => d.severity === 1);
+        const errors = res.params.diagnostics.filter(
+          (d: any) => d.severity === 1,
+        );
         expect(errors.length).toBe(0);
         child.kill('SIGINT');
         resolve();
@@ -858,8 +860,8 @@ test('Liquid assignment typo suggestion (== instead of =)', () =>
         res.method === 'textDocument/publishDiagnostics'
       ) {
         const diagnostics = res.params.diagnostics;
-        const typoError = diagnostics.find(
-          (d: any) => d.message.includes('Did you mean "=" instead of "=="?'),
+        const typoError = diagnostics.find((d: any) =>
+          d.message.includes('Did you mean "=" instead of "=="?'),
         );
         expect(typoError).toBeDefined();
         child.kill('SIGINT');

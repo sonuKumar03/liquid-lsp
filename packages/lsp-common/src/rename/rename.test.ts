@@ -53,7 +53,7 @@ test('handleRename rejects renaming to an existing variable name (collision)', (
     getTokens: () => {
       // Return tag tokens to let findVariableDeclarations find them
       return tokenizeTopLevelSafe(doc.getText(), createLiquidEngine());
-    }
+    },
   } as unknown as DocumentManager;
 
   expect(() =>
@@ -89,7 +89,7 @@ test('handleRename allows renaming in sibling scopes but blocks shadowing', () =
     },
     getTokens: () => {
       return tokenizeTopLevelSafe(doc.getText(), createLiquidEngine());
-    }
+    },
   } as unknown as DocumentManager;
 
   // Renaming 'local_val' to 'temp' should be allowed because they are in disjoint sibling scopes
@@ -124,7 +124,7 @@ test('handleRename allows renaming in sibling scopes but blocks shadowing', () =
     },
     getTokens: () => {
       return tokenizeTopLevelSafe(docShadow.getText(), createLiquidEngine());
-    }
+    },
   } as unknown as DocumentManager;
 
   // Renaming 'temp' to 'global_var' should be blocked because 'global_var' is in the parent scope (shadowing)

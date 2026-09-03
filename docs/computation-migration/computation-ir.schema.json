@@ -1,0 +1,378 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.invalid/computation/computation-interchange.schema.json",
+  "title": "Language-independent computation interchange model",
+  "type": "object",
+  "required": ["version", "kind", "body"],
+  "properties": {
+    "version": { "type": "string", "const": "1" },
+    "kind": { "const": "program" },
+    "body": { "type": "array", "items": { "$ref": "#/$defs/statement" } },
+    "source": { "$ref": "#/$defs/source" }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "$ref": "#/$defs/position" },
+        "end": { "$ref": "#/$defs/position" },
+        "dialect": { "type": "string" },
+        "text": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "position": {
+      "type": "object",
+      "required": ["line", "column"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 0 },
+        "column": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "node": {
+      "type": "object",
+      "required": ["kind", "source"],
+      "properties": {
+        "kind": { "type": "string" },
+        "source": { "$ref": "#/$defs/source" },
+        "original": {
+          "type": "object",
+          "required": ["dialect", "kind"],
+          "properties": {
+            "dialect": { "type": "string" },
+            "kind": { "type": "string" },
+            "text": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "type": { "$ref": "#/$defs/valueType" }
+      },
+      "additionalProperties": true
+    },
+    "statement": {
+      "oneOf": [
+        { "$ref": "#/$defs/assignment" },
+        { "$ref": "#/$defs/conditional" },
+        { "$ref": "#/$defs/loop" },
+        { "$ref": "#/$defs/parseAssignment" },
+        { "$ref": "#/$defs/variableAssignment" },
+        { "$ref": "#/$defs/computeColumn" },
+        { "$ref": "#/$defs/output" }
+      ]
+    },
+    "assignment": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "name", "value"],
+          "properties": {
+            "kind": { "const": "assignment" },
+            "name": { "type": "string" },
+            "value": { "$ref": "#/$defs/expression" }
+          }
+        }
+      ]
+    },
+    "parseAssignment": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "name", "literal"],
+          "properties": {
+            "kind": { "const": "parseAssignment" },
+            "name": { "type": "string" },
+            "literal": { "$ref": "#/$defs/literal" }
+          }
+        }
+      ]
+    },
+    "variableAssignment": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "name", "value"],
+          "properties": {
+            "kind": { "const": "variableAssignment" },
+            "name": { "type": "string" },
+            "value": { "$ref": "#/$defs/expression" }
+          }
+        }
+      ]
+    },
+    "conditional": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "branches"],
+          "properties": {
+            "kind": { "const": "conditional" },
+            "branches": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["body"],
+                "properties": {
+                  "condition": { "$ref": "#/$defs/expression" },
+                  "body": {
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/statement" }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "loop": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "name", "collection", "body"],
+          "properties": {
+            "kind": { "const": "loop" },
+            "name": { "type": "string" },
+            "collection": { "$ref": "#/$defs/expression" },
+            "body": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/statement" }
+            }
+          }
+        }
+      ]
+    },
+    "computeColumn": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "table", "column", "body"],
+          "properties": {
+            "kind": { "const": "computeColumn" },
+            "table": { "type": "string" },
+            "column": { "type": "string" },
+            "body": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/statement" }
+            }
+          }
+        }
+      ]
+    },
+    "output": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "output" },
+            "value": { "$ref": "#/$defs/expression" }
+          }
+        }
+      ]
+    },
+    "expression": {
+      "oneOf": [
+        { "$ref": "#/$defs/literal" },
+        { "$ref": "#/$defs/variable" },
+        { "$ref": "#/$defs/property" },
+        { "$ref": "#/$defs/index" },
+        { "$ref": "#/$defs/operation" },
+        { "$ref": "#/$defs/filter" },
+        { "$ref": "#/$defs/call" },
+        { "$ref": "#/$defs/array" },
+        { "$ref": "#/$defs/object" }
+      ]
+    },
+    "literal": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "literal" },
+            "value": {}
+          }
+        }
+      ]
+    },
+    "variable": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "path"],
+          "properties": {
+            "kind": { "const": "variable" },
+            "path": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1
+            }
+          }
+        }
+      ]
+    },
+    "property": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "object", "property"],
+          "properties": {
+            "kind": { "const": "property" },
+            "object": { "$ref": "#/$defs/expression" },
+            "property": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "index": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "object", "index"],
+          "properties": {
+            "kind": { "const": "index" },
+            "object": { "$ref": "#/$defs/expression" },
+            "index": { "$ref": "#/$defs/expression" }
+          }
+        }
+      ]
+    },
+    "operation": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "operator", "left", "right"],
+          "properties": {
+            "kind": { "const": "operation" },
+            "operator": {
+              "enum": [
+                "ADD",
+                "SUBTRACT",
+                "MULTIPLY",
+                "DIVIDE",
+                "EQ",
+                "NEQ",
+                "GT",
+                "LT",
+                "GTE",
+                "LTE"
+              ]
+            },
+            "left": { "$ref": "#/$defs/expression" },
+            "right": { "$ref": "#/$defs/expression" }
+          }
+        }
+      ]
+    },
+    "filter": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "name", "input", "arguments"],
+          "properties": {
+            "kind": { "const": "filter" },
+            "name": { "type": "string" },
+            "input": { "$ref": "#/$defs/expression" },
+            "arguments": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/expression" }
+            }
+          }
+        }
+      ]
+    },
+    "call": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "name", "arguments"],
+          "properties": {
+            "kind": { "const": "call" },
+            "name": { "type": "string" },
+            "arguments": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/expression" }
+            }
+          }
+        }
+      ]
+    },
+    "array": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "items"],
+          "properties": {
+            "kind": { "const": "array" },
+            "items": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/expression" }
+            }
+          }
+        }
+      ]
+    },
+    "object": {
+      "allOf": [
+        { "$ref": "#/$defs/node" },
+        {
+          "type": "object",
+          "required": ["kind", "entries"],
+          "properties": {
+            "kind": { "const": "object" },
+            "entries": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/expression" }
+            }
+          }
+        }
+      ]
+    },
+    "valueType": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "null",
+            "boolean",
+            "number",
+            "string",
+            "date",
+            "duration",
+            "currency",
+            "phoneNumber",
+            "array",
+            "object",
+            "unknown"
+          ]
+        },
+        "item": { "$ref": "#/$defs/valueType" },
+        "properties": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/valueType" }
+        },
+        "metadata": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -546,7 +546,9 @@ test('Liquid loop variable field completions', () =>
 
         // Verify that fields of composite type 'multi-file' (name, id, sizeBytes) are suggested
         const hasName = items.some((item: any) => item.label === 'name');
-        const hasSizeBytes = items.some((item: any) => item.label === 'sizeBytes');
+        const hasSizeBytes = items.some(
+          (item: any) => item.label === 'sizeBytes',
+        );
         expect(hasName).toBe(true);
         expect(hasSizeBytes).toBe(true);
 
@@ -689,7 +691,9 @@ test('Liquid dropdown comparison completions', () =>
         const items = res.result;
         expect(items.length).toBeGreaterThan(0);
         expect(items.some((item: any) => item.label === '"active"')).toBe(true);
-        expect(items.some((item: any) => item.label === '"inactive"')).toBe(true);
+        expect(items.some((item: any) => item.label === '"inactive"')).toBe(
+          true,
+        );
 
         child.kill('SIGINT');
         resolve();

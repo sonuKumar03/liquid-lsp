@@ -114,7 +114,11 @@ describe('collectEngineValidationDiagnostics', () => {
     const text = '{% assignVar y = x | plus: 1 %}';
     const doc = TextDocument.create('file:///t.liquid', 'liquid', 1, text);
     const tokens = tokenizeTopLevel(text, engine);
-    const diagnostics: Array<{ message: string; code?: string; severity?: number }> = [];
+    const diagnostics: Array<{
+      message: string;
+      code?: string;
+      severity?: number;
+    }> = [];
 
     collectEngineValidationDiagnostics(
       doc,

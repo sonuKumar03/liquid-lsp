@@ -64,7 +64,9 @@ export function setupLSPBridge(ws: WebSocket): void {
     const byteLength = getMessageByteLength(message);
 
     if (byteLength > MAX_MESSAGE_SIZE) {
-      console.error(`Rejected message of size ${byteLength} exceeding limit of ${MAX_MESSAGE_SIZE}`);
+      console.error(
+        `Rejected message of size ${byteLength} exceeding limit of ${MAX_MESSAGE_SIZE}`,
+      );
       ws.close(1009, 'Message size exceeds limit');
       return;
     }
@@ -78,7 +80,10 @@ export function setupLSPBridge(ws: WebSocket): void {
       }
       JSON.parse(payload);
     } catch (err) {
-      console.error('Invalid non-JSON or malformed WebSocket message received:', err);
+      console.error(
+        'Invalid non-JSON or malformed WebSocket message received:',
+        err,
+      );
       ws.close(1007, 'Invalid UTF-8 or malformed JSON-RPC message');
       return;
     }
@@ -113,7 +118,10 @@ function getMessageByteLength(message: unknown): number {
     return message.length;
   }
   if (Array.isArray(message)) {
-    return message.reduce((acc, chunk) => acc + (Buffer.isBuffer(chunk) ? chunk.length : 0), 0);
+    return message.reduce(
+      (acc, chunk) => acc + (Buffer.isBuffer(chunk) ? chunk.length : 0),
+      0,
+    );
   }
   if (message instanceof ArrayBuffer) {
     return message.byteLength;

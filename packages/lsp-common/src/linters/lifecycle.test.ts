@@ -15,9 +15,11 @@ test('collectLifecycleDiagnostics reports overwritten variables', () => {
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  expect(diagnostics.some((d: any) => d.message.includes('never used it before overwriting'))).toBe(
-    true,
-  );
+  expect(
+    diagnostics.some((d: any) =>
+      d.message.includes('never used it before overwriting'),
+    ),
+  ).toBe(true);
 });
 
 test('collectLifecycleDiagnostics reports math filter type mismatches', () => {
@@ -151,9 +153,7 @@ test('collectLifecycleDiagnostics reports optional property path warnings', () =
   collectLifecycleDiagnostics(doc, diagnostics, engine, schema);
 
   expect(
-    diagnostics.some((d: any) =>
-      d.message.includes('parent is optional'),
-    ),
+    diagnostics.some((d: any) => d.message.includes('parent is optional')),
   ).toBe(true);
 });
 
@@ -175,7 +175,9 @@ test('collectLifecycleDiagnostics checks loop variable type access with parseAss
 
   expect(
     diagnostics.some((d: any) =>
-      d.message.includes('"row" doesn\'t have a field called "non_existent_field".'),
+      d.message.includes(
+        '"row" doesn\'t have a field called "non_existent_field".',
+      ),
     ),
   ).toBe(true);
 
@@ -190,7 +192,7 @@ test('collectLifecycleDiagnostics coercion warnings (Feature 1)', () => {
   const engine = createLiquidEngine();
   const schema = new Map<string, any>();
   schema.set('price', { kind: 'primitive', type: 'number', optional: true });
-  
+
   const doc = TextDocument.create(
     'file:///t.liquid',
     'liquid',
@@ -201,7 +203,9 @@ test('collectLifecycleDiagnostics coercion warnings (Feature 1)', () => {
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine, schema);
 
-  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.coercion_warning')).toBe(true);
+  expect(
+    diagnostics.some((d: any) => d.code === 'liquid.linter.coercion_warning'),
+  ).toBe(true);
 });
 
 test('collectLifecycleDiagnostics format-to-numeric warning (Feature 1)', () => {
@@ -216,7 +220,11 @@ test('collectLifecycleDiagnostics format-to-numeric warning (Feature 1)', () => 
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.non_numeric_coercion')).toBe(true);
+  expect(
+    diagnostics.some(
+      (d: any) => d.code === 'liquid.linter.non_numeric_coercion',
+    ),
+  ).toBe(true);
 });
 
 test('collectLifecycleDiagnostics nil propagation (Feature 3)', () => {
@@ -240,7 +248,9 @@ test('collectLifecycleDiagnostics nil propagation (Feature 3)', () => {
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine, schema);
 
-  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.nil_propagation')).toBe(true);
+  expect(
+    diagnostics.some((d: any) => d.code === 'liquid.linter.nil_propagation'),
+  ).toBe(true);
 });
 
 test('collectLifecycleDiagnostics nil propagation from optional filter arguments (Feature 3)', () => {
@@ -250,7 +260,7 @@ test('collectLifecycleDiagnostics nil propagation from optional filter arguments
   schema.set('contract', {
     kind: 'composite',
     fields: new Map<string, any>([
-      ['tax_rate', { kind: 'primitive', type: 'number', optional: true }]
+      ['tax_rate', { kind: 'primitive', type: 'number', optional: true }],
     ]),
   });
 
@@ -265,7 +275,9 @@ test('collectLifecycleDiagnostics nil propagation from optional filter arguments
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine, schema);
 
-  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.nil_propagation')).toBe(true);
+  expect(
+    diagnostics.some((d: any) => d.code === 'liquid.linter.nil_propagation'),
+  ).toBe(true);
 });
 
 test('collectLifecycleDiagnostics branch consistency (Feature 5)', () => {
@@ -285,9 +297,13 @@ test('collectLifecycleDiagnostics branch consistency (Feature 5)', () => {
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  console.log("DEBUG DIAGS:", JSON.stringify(diagnostics, null, 2));
+  console.log('DEBUG DIAGS:', JSON.stringify(diagnostics, null, 2));
 
-  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.branch_type_mismatch')).toBe(true);
+  expect(
+    diagnostics.some(
+      (d: any) => d.code === 'liquid.linter.branch_type_mismatch',
+    ),
+  ).toBe(true);
 });
 
 test('collectLifecycleDiagnostics filter argument validation (Feature 6)', () => {
@@ -303,7 +319,11 @@ test('collectLifecycleDiagnostics filter argument validation (Feature 6)', () =>
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  expect(diagnostics.some((d: any) => d.code === 'liquid.linter.filter_argument_type_mismatch')).toBe(true);
+  expect(
+    diagnostics.some(
+      (d: any) => d.code === 'liquid.linter.filter_argument_type_mismatch',
+    ),
+  ).toBe(true);
 });
 
 test('collectLifecycleDiagnostics branch consistency without filter usage', () => {
@@ -324,10 +344,16 @@ test('collectLifecycleDiagnostics branch consistency without filter usage', () =
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  const branchMismatches = diagnostics.filter((d: any) => d.code === 'liquid.linter.branch_type_mismatch');
+  const branchMismatches = diagnostics.filter(
+    (d: any) => d.code === 'liquid.linter.branch_type_mismatch',
+  );
   expect(branchMismatches.length).toBe(2);
-  expect(branchMismatches[0].message).toContain("assigned as string in this branch");
-  expect(branchMismatches[1].message).toContain("assigned as boolean in this branch");
+  expect(branchMismatches[0].message).toContain(
+    'assigned as string in this branch',
+  );
+  expect(branchMismatches[1].message).toContain(
+    'assigned as boolean in this branch',
+  );
 });
 
 test('collectLifecycleDiagnostics does not report overwritten warning for sequential blocks if read inside first block (Bug A)', () => {
@@ -415,9 +441,11 @@ test('collectLifecycleDiagnostics conditional narrowing for optional variables',
   // - Inside the {% else %} branch (since it's not narrowed there)
   // - After {% endif %} (since overrides are restored)
   // But NOT inside the {% if user.first_name %} truthy branch!
-  
-  const nilWarnings = diagnostics.filter((d: any) => d.code === 'liquid.linter.nil_propagation');
-  
+
+  const nilWarnings = diagnostics.filter(
+    (d: any) => d.code === 'liquid.linter.nil_propagation',
+  );
+
   const linesWithWarnings = nilWarnings.map((d: any) => d.range.start.line);
   expect(linesWithWarnings).toContain(1);
   expect(linesWithWarnings).not.toContain(3);
@@ -457,7 +485,9 @@ test('collectLifecycleDiagnostics conditional narrowing with logical and and com
   const diagnostics: any[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine, globalSchema);
 
-  const nilWarnings = diagnostics.filter((d: any) => d.code === 'liquid.linter.nil_propagation');
+  const nilWarnings = diagnostics.filter(
+    (d: any) => d.code === 'liquid.linter.nil_propagation',
+  );
   const linesWithWarnings = nilWarnings.map((d: any) => d.range.start.line);
 
   // Both the if branch and elsif branch have conditions that narrow `user.first_name`.

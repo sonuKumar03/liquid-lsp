@@ -5,7 +5,10 @@ import type {
   KeyPointerSelectOption,
 } from './key-pointer-types.js';
 
-function composite(fields: Record<string, LiquidType>, open?: boolean): LiquidType {
+function composite(
+  fields: Record<string, LiquidType>,
+  open?: boolean,
+): LiquidType {
   return {
     kind: 'composite',
     fields: new Map(Object.entries(fields)),

@@ -5,7 +5,12 @@ import { DocumentManager } from './document-manager.js';
 
 interface MockConnection extends Connection {
   triggerOpen: (params: {
-    textDocument: { uri: string; languageId: string; version: number; text: string };
+    textDocument: {
+      uri: string;
+      languageId: string;
+      version: number;
+      text: string;
+    };
   }) => void;
   triggerChange: (params: {
     textDocument: { uri: string; version: number };
@@ -89,9 +94,7 @@ describe('DocumentManager', () => {
         uri,
         version: 2,
       },
-      contentChanges: [
-        { text: '{% assign a = 1 %}{% assign b = 2 %}' },
-      ],
+      contentChanges: [{ text: '{% assign a = 1 %}{% assign b = 2 %}' }],
     });
     const tokensV2 = documentManager.getTokens(uri, engine);
 

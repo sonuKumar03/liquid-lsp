@@ -35,9 +35,13 @@ test('handleFoldingRanges folds multiline block tags', () => {
   documentsMock.clear();
   documentsMock.set(doc.uri, doc);
 
-  const ranges = handleFoldingRanges(documentManagerMock, {
-    textDocument: { uri: doc.uri },
-  }, engine);
+  const ranges = handleFoldingRanges(
+    documentManagerMock,
+    {
+      textDocument: { uri: doc.uri },
+    },
+    engine,
+  );
 
   expect(ranges).not.toBeNull();
   expect(ranges?.length).toBe(2);
@@ -71,9 +75,13 @@ test('handleFoldingRanges folds nested block tags correctly', () => {
   documentsMock.clear();
   documentsMock.set(doc.uri, doc);
 
-  const ranges = handleFoldingRanges(documentManagerMock, {
-    textDocument: { uri: doc.uri },
-  }, engine);
+  const ranges = handleFoldingRanges(
+    documentManagerMock,
+    {
+      textDocument: { uri: doc.uri },
+    },
+    engine,
+  );
 
   expect(ranges).not.toBeNull();
   expect(ranges?.length).toBe(2);
@@ -106,9 +114,13 @@ test('handleFoldingRanges folds comment blocks with kind "comment"', () => {
   documentsMock.clear();
   documentsMock.set(doc.uri, doc);
 
-  const ranges = handleFoldingRanges(documentManagerMock, {
-    textDocument: { uri: doc.uri },
-  }, engine);
+  const ranges = handleFoldingRanges(
+    documentManagerMock,
+    {
+      textDocument: { uri: doc.uri },
+    },
+    engine,
+  );
 
   expect(ranges).not.toBeNull();
   expect(ranges?.length).toBe(1);
@@ -132,9 +144,13 @@ test('handleFoldingRanges folds raw blocks', () => {
   documentsMock.clear();
   documentsMock.set(doc.uri, doc);
 
-  const ranges = handleFoldingRanges(documentManagerMock, {
-    textDocument: { uri: doc.uri },
-  }, engine);
+  const ranges = handleFoldingRanges(
+    documentManagerMock,
+    {
+      textDocument: { uri: doc.uri },
+    },
+    engine,
+  );
 
   expect(ranges).not.toBeNull();
   expect(ranges?.length).toBe(1);
@@ -158,9 +174,13 @@ test('handleFoldingRanges folds multiline inline comments with kind "comment"', 
   documentsMock.clear();
   documentsMock.set(doc.uri, doc);
 
-  const ranges = handleFoldingRanges(documentManagerMock, {
-    textDocument: { uri: doc.uri },
-  }, engine);
+  const ranges = handleFoldingRanges(
+    documentManagerMock,
+    {
+      textDocument: { uri: doc.uri },
+    },
+    engine,
+  );
 
   expect(ranges).not.toBeNull();
   expect(ranges?.length).toBe(1);
@@ -184,9 +204,13 @@ test('handleFoldingRanges ignores single line tags and comments', () => {
   documentsMock.clear();
   documentsMock.set(doc.uri, doc);
 
-  const ranges = handleFoldingRanges(documentManagerMock, {
-    textDocument: { uri: doc.uri },
-  }, engine);
+  const ranges = handleFoldingRanges(
+    documentManagerMock,
+    {
+      textDocument: { uri: doc.uri },
+    },
+    engine,
+  );
 
   expect(ranges).toBeNull();
 });

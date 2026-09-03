@@ -5,7 +5,12 @@ import type {
   SemanticTokensDelta,
   SemanticTokensEdit,
 } from 'vscode-languageserver';
-import { createLiquidEngine, tokenizeTopLevelSafe, TagTokenClass, TokenKind } from 'liquid-core';
+import {
+  createLiquidEngine,
+  tokenizeTopLevelSafe,
+  TagTokenClass,
+  TokenKind,
+} from 'liquid-core';
 import { findVariableDeclarationsFromTokens } from '../shared/variable-declarations.js';
 import type { DocumentManager } from '../server/document-manager.js';
 import type { LiquidType } from '../shared/schema.js';
@@ -47,15 +52,28 @@ export function handleSemanticTokens(
   const declarations = findVariableDeclarationsFromTokens(doc, tokens);
 
   const docText = doc.getText();
-  
+
   // Clean comments and strings to find valid variable occurrences
   let cleanText = docText;
-  cleanText = cleanText.replace(/\{%\s*comment\s*%\}([\s\S]*?)\{%\s*endcomment\s*%\}/g, (match) => ' '.repeat(match.length));
-  cleanText = cleanText.replace(/\{#([\s\S]*?)#\}/g, (match) => ' '.repeat(match.length));
-  cleanText = cleanText.replace(/"([^"\\]|\\.)*"/g, (match) => '"' + ' '.repeat(match.length - 2) + '"');
-  cleanText = cleanText.replace(/'([^'\\]|\\.)*'/g, (match) => "'" + ' '.repeat(match.length - 2) + "'");
+  cleanText = cleanText.replace(
+    /\{%\s*comment\s*%\}([\s\S]*?)\{%\s*endcomment\s*%\}/g,
+    (match) => ' '.repeat(match.length),
+  );
+  cleanText = cleanText.replace(/\{#([\s\S]*?)#\}/g, (match) =>
+    ' '.repeat(match.length),
+  );
+  cleanText = cleanText.replace(
+    /"([^"\\]|\\.)*"/g,
+    (match) => '"' + ' '.repeat(match.length - 2) + '"',
+  );
+  cleanText = cleanText.replace(
+    /'([^'\\]|\\.)*'/g,
+    (match) => "'" + ' '.repeat(match.length - 2) + "'",
+  );
 
-  const schemaVars = new Set(globalSchema ? Array.from(globalSchema.keys()) : []);
+  const schemaVars = new Set(
+    globalSchema ? Array.from(globalSchema.keys()) : [],
+  );
   const localVars = new Set(declarations.map((d) => d.name));
   const allVars = new Set([...schemaVars, ...localVars]);
 
@@ -79,7 +97,11 @@ export function handleSemanticTokens(
       for (const v of allVars) {
         // A variable is read in a tag if it is not the target of assign/capture/for
         const isDeclaration =
-          (token.name === 'assign' || token.name === 'assignVar' || token.name === 'parseAssign' || token.name === 'capture' || token.name === 'for') &&
+          (token.name === 'assign' ||
+            token.name === 'assignVar' ||
+            token.name === 'parseAssign' ||
+            token.name === 'capture' ||
+            token.name === 'for') &&
           new RegExp(`^\\s*${v}\\b`).test(args);
         if (!isDeclaration && new RegExp(`\\b${v}\\b`).test(args)) {
           readVars.add(v);
@@ -155,14 +177,22 @@ export function handleSemanticTokensDelta(
   const previousCached = tokenCache.get(doc.uri);
 
   // Generate current full tokens and update cache
-  const currentResult = handleSemanticTokens(documentManager, { textDocument: params.textDocument }, globalSchema);
+  const currentResult = handleSemanticTokens(
+    documentManager,
+    { textDocument: params.textDocument },
+    globalSchema,
+  );
   if (!currentResult) return null;
 
   if (previousCached && previousCached.resultId === params.previousResultId) {
-    const edits = computeSemanticTokensEdits(previousCached.data, currentResult.data);
-    const resultDelta: SemanticTokensDelta = currentResult.resultId !== undefined
-      ? { resultId: currentResult.resultId, edits }
-      : { edits };
+    const edits = computeSemanticTokensEdits(
+      previousCached.data,
+      currentResult.data,
+    );
+    const resultDelta: SemanticTokensDelta =
+      currentResult.resultId !== undefined
+        ? { resultId: currentResult.resultId, edits }
+        : { edits };
     return resultDelta;
   }
 
@@ -175,7 +205,11 @@ export function computeSemanticTokensEdits(
   curr: number[],
 ): SemanticTokensEdit[] {
   let prefixLen = 0;
-  while (prefixLen < prev.length && prefixLen < curr.length && prev[prefixLen] === curr[prefixLen]) {
+  while (
+    prefixLen < prev.length &&
+    prefixLen < curr.length &&
+    prev[prefixLen] === curr[prefixLen]
+  ) {
     prefixLen++;
   }
 

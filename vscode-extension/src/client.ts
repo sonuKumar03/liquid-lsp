@@ -31,7 +31,9 @@ export function activate(context: ExtensionContext) {
   let serverOptions: ServerOptions;
 
   if (mode === 'remote') {
-    outputChannel.appendLine(`Connecting to remote LSP server at ${host}:${port}`);
+    outputChannel.appendLine(
+      `Connecting to remote LSP server at ${host}:${port}`,
+    );
     serverOptions = () => {
       const socket = net.connect({ host, port });
       socket.on('error', (err) => {
@@ -76,9 +78,11 @@ export function activate(context: ExtensionContext) {
     serverOptions,
     clientOptions,
   );
-  
+
   client.start().catch((err) => {
-    outputChannel.appendLine(`Liquid LSP server failed to start: ${err instanceof Error ? err.message : String(err)}`);
+    outputChannel.appendLine(
+      `Liquid LSP server failed to start: ${err instanceof Error ? err.message : String(err)}`,
+    );
   });
 
   outputChannel.appendLine('Liquid LSP extension activated successfully.');

@@ -1,15 +1,43 @@
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
-  font-family: 'Inter', 'Outfit', sans-serif;
+  font-family: 'Outfit', sans-serif;
+  scrollbar-color: #40556d #101827;
+  scrollbar-width: thin;
 }
 
-*, *:before, *:after {
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 10px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: #101827;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  border: 2px solid #101827;
+  border-radius: 999px;
+  background: #40556d;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background: #58718b;
+}
+
+*,
+*:before,
+*:after {
   box-sizing: inherit;
 }

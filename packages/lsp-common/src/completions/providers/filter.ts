@@ -2,7 +2,10 @@ import { LIQUID_FILTERS } from '../../shared/constants.js';
 import { resolveTypeForPath } from '../../hovers/hovers.js';
 import type { LiquidType } from '../../shared/schema.js';
 import type { CompletionProvider } from './provider.js';
-import { resolveSchemaAwareDoc, resolveSchemaAwareDetail } from '../../hovers/filter-documentation.js';
+import {
+  resolveSchemaAwareDoc,
+  resolveSchemaAwareDetail,
+} from '../../hovers/filter-documentation.js';
 import { CompletionItemKind } from 'vscode-languageserver';
 
 const FILTER_ARGUMENT_VALUE_SUGGESTIONS: Record<string, string[]> = {
@@ -16,8 +19,7 @@ export const FilterCompletionProvider: CompletionProvider = {
     const lastTagOpen = lineText.lastIndexOf('{%');
     const lastOutputOpen = lineText.lastIndexOf('{{');
     return (
-      lastPipe !== -1 &&
-      (lastPipe > lastTagOpen || lastPipe > lastOutputOpen)
+      lastPipe !== -1 && (lastPipe > lastTagOpen || lastPipe > lastOutputOpen)
     );
   },
 
@@ -125,9 +127,10 @@ export const FilterCompletionProvider: CompletionProvider = {
       filterNames = currencyFilters;
     }
 
-    const selectedFilters = filterNames !== null
-      ? LIQUID_FILTERS.filter((item) => filterNames!.includes(item.label))
-      : LIQUID_FILTERS;
+    const selectedFilters =
+      filterNames !== null
+        ? LIQUID_FILTERS.filter((item) => filterNames!.includes(item.label))
+        : LIQUID_FILTERS;
 
     return selectedFilters.map((item) => {
       const newItem = { ...item };

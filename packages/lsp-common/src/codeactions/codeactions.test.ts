@@ -853,15 +853,21 @@ test('Liquid Code Actions for unclosed delimiter on non-block tag', () =>
         step = 2;
       } else if (step === 2 && res.id === 2) {
         const actions = res.result;
-        
+
         // 1. Should NOT propose inserting {% endassign %}
-        const endAssignAction = actions.find((a: any) => a.title.includes('endassign'));
+        const endAssignAction = actions.find((a: any) =>
+          a.title.includes('endassign'),
+        );
         expect(endAssignAction).toBeUndefined();
 
         // 2. Should propose closing tag delimiter with "%}"
-        const closeTagAction = actions.find((a: any) => a.title.includes('Close with %}'));
+        const closeTagAction = actions.find((a: any) =>
+          a.title.includes('Close with %}'),
+        );
         expect(closeTagAction).toBeDefined();
-        expect(closeTagAction.edit.changes['file:///t.liquid'][0].newText).toBe('%}');
+        expect(closeTagAction.edit.changes['file:///t.liquid'][0].newText).toBe(
+          '%}',
+        );
 
         child.kill('SIGINT');
         resolve();

@@ -34,3 +34,6 @@ coverage/
 
 # Onboarding / learning documents
 learning_plan.md
+
+# Package manager stores
+.pnpm-store/

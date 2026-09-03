@@ -57,6 +57,7 @@ key-pointer-schema  →  liquid-core  →  lsp-common  →  lsp-node
 ## 3. First-Time Setup
 
 ### Prerequisites
+
 - Node.js ≥ 20
 - pnpm ≥ 10 (`npm install -g pnpm`)
 
@@ -102,12 +103,12 @@ pnpm run format
 
 The LiquidJS fork adds three computation-specific tags that the entire LSP is built around:
 
-| Tag | Purpose | Example |
-|---|---|---|
-| `{% assign %}` | Standard LiquidJS variable assignment | `{% assign price = 100 %}` |
-| `{% assignVar %}` | Schema-bound assignment (validates against external schema) | `{% assignVar total = price %}` |
-| `{% parseAssign %}` | Parses a JSON string or raw JSON literal into a typed composite | `{% parseAssign item = '{"cost": 450}' %}` |
-| `{% computeColumn %}` | Performs matrix/table column computation | `{% computeColumn "tax" = price | times: 0.18 %}` |
+| Tag                   | Purpose                                                         | Example                                    |
+| --------------------- | --------------------------------------------------------------- | ------------------------------------------ | --------------- |
+| `{% assign %}`        | Standard LiquidJS variable assignment                           | `{% assign price = 100 %}`                 |
+| `{% assignVar %}`     | Schema-bound assignment (validates against external schema)     | `{% assignVar total = price %}`            |
+| `{% parseAssign %}`   | Parses a JSON string or raw JSON literal into a typed composite | `{% parseAssign item = '{"cost": 450}' %}` |
+| `{% computeColumn %}` | Performs matrix/table column computation                        | `{% computeColumn "tax" = price            | times: 0.18 %}` |
 
 ### 4.2 LiquidType
 
@@ -208,21 +209,21 @@ connection.sendDiagnostics() → editor shows squiggles
 
 This branch is the most up-to-date. Here is the history of work done:
 
-| Commit | What Was Built |
-|---|---|
+| Commit    | What Was Built                                                          |
+| --------- | ----------------------------------------------------------------------- |
 | `8664c43` | JSON type inference for `parseAssign` + named parent in property errors |
-| `1c88178` | Loop variable type inference from composite collections |
-| `ca9f456` | Simplified `keyPointerTypeToLiquid` with lookup tables |
-| `8de6bdc` | Open-ended composite types for table/repeating schema fields |
-| `9b6308a` | Chevrotain-powered precise `selectionRange` in document symbols |
-| `34e3aa4` | Offset-aware diagnostic ranges using Chevrotain parsers |
-| `7b69719` | Chevrotain tag argument parser integration |
-| `b13fad0` | Fixed duplicate filter name warnings |
-| `9b7b7fe` | Diagnostic squiggle alignment fix (exact line/col) |
-| `5e42112` | Split Tags toggle in playground |
-| `770f294` | Consecutive tag formatting |
-| `db961b3` | Quick Fixes for quoted filter names |
-| `d4284f2` | String filter on number type warnings |
+| `1c88178` | Loop variable type inference from composite collections                 |
+| `ca9f456` | Simplified `keyPointerTypeToLiquid` with lookup tables                  |
+| `8de6bdc` | Open-ended composite types for table/repeating schema fields            |
+| `9b6308a` | Chevrotain-powered precise `selectionRange` in document symbols         |
+| `34e3aa4` | Offset-aware diagnostic ranges using Chevrotain parsers                 |
+| `7b69719` | Chevrotain tag argument parser integration                              |
+| `b13fad0` | Fixed duplicate filter name warnings                                    |
+| `9b7b7fe` | Diagnostic squiggle alignment fix (exact line/col)                      |
+| `5e42112` | Split Tags toggle in playground                                         |
+| `770f294` | Consecutive tag formatting                                              |
+| `db961b3` | Quick Fixes for quoted filter names                                     |
+| `d4284f2` | String filter on number type warnings                                   |
 
 ---
 
@@ -231,16 +232,17 @@ This branch is the most up-to-date. Here is the history of work done:
 The core computational features (Automatic Coercion, Rename Collision Prevention, Nil Propagation, Semantic Highlight, Branch Type Consistency, Filter Argument Checking, Plain Language Diagnostics, and Contextual Hover Examples) are fully implemented.
 
 The following refactoring operations remain in the backlog for future implementation:
-* **Extract Variable** — Extract repeated sub-expressions into a named intermediate variable.
-* **Inline Variable** — Inline single-use local variable definitions.
-* **Simplify Redundant Filter Chain** — Collapse duplicate/no-op filters (e.g. `default: 0 | default: 0`).
-* **Convert `if/else` to `default` Filter** — Collapse simple fallback conditionals.
-* **Sort Assignments by Dependency Order** — Reorder assignments using a topological sort.
-* **Remove Dead Assignments** — Provide a Quick Fix to automatically delete/comment out unused variables.
-* **Split Long Filter Chain** — Break complex pipelines into step-by-step intermediate variables.
-* **Normalize `parseAssign` JSON** — Reformat/prettify JSON string literals inside parseAssign tags.
-* **Flatten Nested Conditionals** — Merge nested conditionals using logical operators (e.g. `and`).
-* **Align `if/else` Variable Assignments** — Scaffold missing variable assignments in alternative conditional branches.
+
+- **Extract Variable** — Extract repeated sub-expressions into a named intermediate variable.
+- **Inline Variable** — Inline single-use local variable definitions.
+- **Simplify Redundant Filter Chain** — Collapse duplicate/no-op filters (e.g. `default: 0 | default: 0`).
+- **Convert `if/else` to `default` Filter** — Collapse simple fallback conditionals.
+- **Sort Assignments by Dependency Order** — Reorder assignments using a topological sort.
+- **Remove Dead Assignments** — Provide a Quick Fix to automatically delete/comment out unused variables.
+- **Split Long Filter Chain** — Break complex pipelines into step-by-step intermediate variables.
+- **Normalize `parseAssign` JSON** — Reformat/prettify JSON string literals inside parseAssign tags.
+- **Flatten Nested Conditionals** — Merge nested conditionals using logical operators (e.g. `and`).
+- **Align `if/else` Variable Assignments** — Scaffold missing variable assignments in alternative conditional branches.
 
 ---
 
@@ -248,9 +250,10 @@ The following refactoring operations remain in the backlog for future implementa
 
 > [!IMPORTANT]
 > **ES Module `.js` imports**: All relative imports of local TypeScript files must use the `.js` extension even though the source is `.ts`:
+>
 > ```typescript
-> import { foo } from './utils.js';   // ✅ correct
-> import { foo } from './utils';      // ❌ will break at runtime
+> import { foo } from './utils.js'; // ✅ correct
+> import { foo } from './utils'; // ❌ will break at runtime
 > ```
 
 > [!IMPORTANT]
@@ -266,13 +269,14 @@ The following refactoring operations remain in the backlog for future implementa
 
 ## 10. Testing Strategy
 
-| Test Type | Location | How to Run |
-|---|---|---|
-| **Unit tests** | `packages/*/src/**/*.test.ts` | `pnpm --filter <pkg> test` |
+| Test Type             | Location                                              | How to Run                                                                     |
+| --------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Unit tests**        | `packages/*/src/**/*.test.ts`                         | `pnpm --filter <pkg> test`                                                     |
 | **Integration tests** | `packages/lsp-common/src/linters/integration.test.ts` | Spawns `lsp-engine/dist/main.js` as a child process, sends JSON-RPC over stdio |
-| **Playground** | `express-server/public/index.html` | Manual testing at `localhost:3000` |
+| **Playground**        | `express-server/public/index.html`                    | Manual testing at `localhost:3000`                                             |
 
 When adding a new diagnostic or quick fix, you need:
+
 1. A **unit test** in `lifecycle.test.ts` or `diagnostics.test.ts`
 2. Optionally a **playground example** in `index.html` to visually confirm
 
@@ -282,11 +286,11 @@ When adding a new diagnostic or quick fix, you need:
 
 Given a team of 3–4, here is a suggested division:
 
-| Role | Focus Areas |
-|---|---|
-| **LSP Core** | `lsp-common/linters/`, type inference, new diagnostics, quick fixes |
-| **Language Engine** | `liquid-core/`, Chevrotain parser, tokenizer, LiquidJS fork maintenance |
-| **Schema & Types** | `key-pointer-schema/`, `LiquidType`, wire-format parsing, schema evolution |
+| Role                | Focus Areas                                                                     |
+| ------------------- | ------------------------------------------------------------------------------- |
+| **LSP Core**        | `lsp-common/linters/`, type inference, new diagnostics, quick fixes             |
+| **Language Engine** | `liquid-core/`, Chevrotain parser, tokenizer, LiquidJS fork maintenance         |
+| **Schema & Types**  | `key-pointer-schema/`, `LiquidType`, wire-format parsing, schema evolution      |
 | **DX / Playground** | `express-server/`, `vscode-extension/`, Monaco integration, playground examples |
 
 ---
@@ -309,9 +313,9 @@ pnpm run package:extension            # Build the VS Code .vsix extension
 
 ## 13. Reference Documents
 
-| Document | Purpose |
-|---|---|
-| [`AGENTS.md`](file:///Users/sonukumar/project/liquid-lsp/AGENTS.md) | Master architecture overview and coding conventions |
-| [developer_reference.md](file:///Users/sonukumar/project/liquid-lsp/developer_reference.md) | Deep technical API reference for all key functions |
-| [`packages/lsp-common/README.md`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/README.md) | lsp-common package reference |
-| [`packages/liquid-core/README.md`](file:///Users/sonukumar/project/liquid-lsp/packages/liquid-core/README.md) | liquid-core package reference |
+| Document                                                                                                      | Purpose                                             |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| [`AGENTS.md`](file:///Users/sonukumar/project/liquid-lsp/AGENTS.md)                                           | Master architecture overview and coding conventions |
+| [developer_reference.md](file:///Users/sonukumar/project/liquid-lsp/developer_reference.md)                   | Deep technical API reference for all key functions  |
+| [`packages/lsp-common/README.md`](file:///Users/sonukumar/project/liquid-lsp/packages/lsp-common/README.md)   | lsp-common package reference                        |
+| [`packages/liquid-core/README.md`](file:///Users/sonukumar/project/liquid-lsp/packages/liquid-core/README.md) | liquid-core package reference                       |

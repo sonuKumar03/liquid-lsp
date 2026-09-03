@@ -1,0 +1,466 @@
+{
+  "format": "computation-interchange-fixtures",
+  "version": "1",
+  "sourceLanguage": "liquidjs-computation",
+  "source": "liquidjs-computation-tests",
+  "consumer": "any-language",
+  "comparison": "Compare canonical values, errors, and dependency behavior.",
+  "fixtures": [
+    {
+      "id": "primitive-addition",
+      "source": "{{ 183.357 | plus: 12 }}",
+      "ir": {
+        "kind": "filter",
+        "name": "plus",
+        "arguments": [{ "kind": "literal", "value": 12 }],
+        "input": { "kind": "literal", "value": 183.357 }
+      },
+      "input": {},
+      "expected": { "kind": "value", "value": 195.357 }
+    },
+    {
+      "id": "null-subtraction",
+      "source": "{{ 2 | minus: null }}",
+      "ir": {
+        "kind": "filter",
+        "name": "minus",
+        "arguments": [{ "kind": "literal", "value": null }],
+        "input": { "kind": "literal", "value": 2 }
+      },
+      "input": {},
+      "expected": { "kind": "value", "value": 2 }
+    },
+    {
+      "id": "date-subtraction",
+      "source": "{% assign diff = end | minus: start %}{{ diff.days }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "diff",
+        "value": {
+          "kind": "filter",
+          "name": "minus",
+          "arguments": [{ "kind": "variable", "path": ["start"] }],
+          "input": { "kind": "variable", "path": ["end"] }
+        }
+      },
+      "input": { "start": "2020-01-01", "end": "2020-03-01" },
+      "expected": { "kind": "rendered-text", "value": "60" }
+    },
+    {
+      "id": "date-plus-duration",
+      "source": "{{ start | plus: duration }}",
+      "ir": {
+        "kind": "filter",
+        "name": "plus",
+        "arguments": [{ "kind": "variable", "path": ["duration"] }],
+        "input": { "kind": "variable", "path": ["start"] }
+      },
+      "input": {
+        "start": "2020-01-01",
+        "duration": { "value": 20, "type": "DAYS", "days": 20 }
+      },
+      "expected": { "kind": "value", "value": "2020-01-21T00:00:00.000Z" }
+    },
+    {
+      "id": "currency-addition",
+      "source": "{% assign total = amount | plus: 100 %}{{ total.value }}:{{ total.type }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "plus",
+          "arguments": [{ "kind": "literal", "value": 100 }],
+          "input": { "kind": "variable", "path": ["amount"] }
+        }
+      },
+      "input": { "amount": { "value": 1000, "type": "INR" } },
+      "expected": { "kind": "rendered-text", "value": "1100:INR" }
+    },
+    {
+      "id": "parse-assign-object",
+      "source": "{% parseAssign item = '{\"cost\": 450}' %}{{ item.cost }}",
+      "ir": {
+        "kind": "parseAssignment",
+        "name": "item",
+        "literal": {
+          "kind": "object",
+          "entries": { "cost": { "kind": "literal", "value": 450 } }
+        }
+      },
+      "input": {},
+      "expected": { "kind": "rendered-text", "value": "450" }
+    },
+    {
+      "id": "assignment-dependencies",
+      "source": "{% assign total = price | plus: tax %}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "plus",
+          "arguments": [{ "kind": "variable", "path": ["tax"] }],
+          "input": { "kind": "variable", "path": ["price"] }
+        }
+      },
+      "input": {},
+      "expected": {
+        "kind": "dependency-graph",
+        "value": { "price": ["total"], "tax": ["total"] }
+      }
+    },
+    {
+      "id": "compute-column-row-isolation",
+      "source": "{% computeColumn rows total %}{% assign $$answer = self.amount | plus: 1 %}{% endcomputeColumn %}",
+      "ir": {
+        "kind": "computeColumn",
+        "table": "rows",
+        "column": "total",
+        "body": [
+          {
+            "kind": "assignment",
+            "name": "$$answer",
+            "value": {
+              "kind": "filter",
+              "name": "plus",
+              "arguments": [{ "kind": "literal", "value": 1 }],
+              "input": {
+                "kind": "property",
+                "property": "amount",
+                "object": { "kind": "variable", "path": ["self"] }
+              }
+            }
+          }
+        ]
+      },
+      "input": { "rows": [{ "amount": 2 }, { "amount": 4 }] },
+      "expected": {
+        "kind": "context",
+        "value": {
+          "rows": [
+            { "amount": 2, "total": 3 },
+            { "amount": 4, "total": 5 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "invalid-parse-assign",
+      "source": "{% parseAssign value = unquoted %}",
+      "ir": null,
+      "input": {},
+      "expected": {
+        "kind": "error",
+        "phase": "validation",
+        "code": "INVALID_PARSE_ASSIGN_LITERAL"
+      }
+    },
+    {
+      "id": "reference-comparison-branch",
+      "source": "{% if amount > threshold %}{% assign result = 1 %}{% else %}{% assign result = 0 %}{% endif %}{{ result }}",
+      "ir": {
+        "kind": "conditional",
+        "condition": { "kind": "comparison", "operator": ">" },
+        "then": { "kind": "assignment", "name": "result", "value": 1 },
+        "else": { "kind": "assignment", "name": "result", "value": 0 }
+      },
+      "input": { "amount": 12, "threshold": 10 },
+      "expected": { "kind": "rendered-text", "value": "1" }
+    },
+    {
+      "id": "reference-null-left-subtraction",
+      "source": "{% assign total = amount | minus: 2 %}{{ total }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "minus",
+          "arguments": [{ "kind": "literal", "value": 2 }],
+          "input": { "kind": "variable", "path": ["amount"] }
+        }
+      },
+      "input": { "amount": null },
+      "expected": { "kind": "rendered-text", "value": "-2" }
+    },
+    {
+      "id": "parse-assign-array",
+      "source": "{% parseAssign items = '[10, 20, 30]' %}{{ items[1] }}",
+      "ir": {
+        "kind": "parseAssignment",
+        "name": "items",
+        "literal": {
+          "kind": "array",
+          "items": [
+            { "kind": "literal", "value": 10 },
+            { "kind": "literal", "value": 20 },
+            { "kind": "literal", "value": 30 }
+          ]
+        }
+      },
+      "input": {},
+      "expected": { "kind": "rendered-text", "value": "20" }
+    },
+    {
+      "id": "currency-subtraction",
+      "source": "{% assign net = gross | minus: discount %}{{ net.value }}:{{ net.type }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "net",
+        "value": {
+          "kind": "filter",
+          "name": "minus",
+          "arguments": [{ "kind": "variable", "path": ["discount"] }],
+          "input": { "kind": "variable", "path": ["gross"] }
+        }
+      },
+      "input": {
+        "gross": { "value": 1000, "type": "INR" },
+        "discount": { "value": 200, "type": "INR" }
+      },
+      "expected": { "kind": "rendered-text", "value": "800:INR" }
+    },
+    {
+      "id": "currency-multiplication",
+      "source": "{% assign total = rate | times: 3 %}{{ total.value }}:{{ total.type }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "times",
+          "arguments": [{ "kind": "literal", "value": 3 }],
+          "input": { "kind": "variable", "path": ["rate"] }
+        }
+      },
+      "input": { "rate": { "value": 250, "type": "USD" } },
+      "expected": { "kind": "rendered-text", "value": "750:USD" }
+    },
+    {
+      "id": "currency-with-null",
+      "source": "{% assign total = amount | plus: null %}{{ total }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "plus",
+          "arguments": [{ "kind": "literal", "value": null }],
+          "input": { "kind": "variable", "path": ["amount"] }
+        }
+      },
+      "input": { "amount": { "value": 1000, "type": "INR" } },
+      "expected": { "kind": "value", "value": null }
+    },
+    {
+      "id": "duration-addition",
+      "source": "{% assign total = d1 | plus: d2 %}{{ total.value }}:{{ total.type }}:{{ total.days }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "plus",
+          "arguments": [{ "kind": "variable", "path": ["d2"] }],
+          "input": { "kind": "variable", "path": ["d1"] }
+        }
+      },
+      "input": {
+        "d1": { "value": 2, "type": "WEEKS", "days": 14 },
+        "d2": { "value": 3, "type": "DAYS", "days": 3 }
+      },
+      "expected": { "kind": "rendered-text", "value": "17:DAYS:17" }
+    },
+    {
+      "id": "duration-with-null",
+      "source": "{% assign total = d1 | plus: null %}{{ total }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "plus",
+          "arguments": [{ "kind": "literal", "value": null }],
+          "input": { "kind": "variable", "path": ["d1"] }
+        }
+      },
+      "input": { "d1": { "value": 2, "type": "WEEKS", "days": 14 } },
+      "expected": { "kind": "value", "value": null }
+    },
+    {
+      "id": "sum-array-empty",
+      "source": "{% assign total = rows | sumArray %}{{ total }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "sumArray",
+          "arguments": [],
+          "input": { "kind": "variable", "path": ["rows"] }
+        }
+      },
+      "input": { "rows": [] },
+      "expected": { "kind": "rendered-text", "value": "0" }
+    },
+    {
+      "id": "sum-array-default",
+      "source": "{% assign total = rows | sumArray: \"price\", 50 %}{{ total }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "sumArray",
+          "arguments": [
+            { "kind": "literal", "value": "price" },
+            { "kind": "literal", "value": 50 }
+          ],
+          "input": { "kind": "variable", "path": ["rows"] }
+        }
+      },
+      "input": { "rows": [] },
+      "expected": { "kind": "rendered-text", "value": "50" }
+    },
+    {
+      "id": "sum-array-currencies",
+      "source": "{% assign total = rows | sumArray: \"price\" %}{{ total.value }}:{{ total.type }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "sumArray",
+          "arguments": [{ "kind": "literal", "value": "price" }],
+          "input": { "kind": "variable", "path": ["rows"] }
+        }
+      },
+      "input": {
+        "rows": [
+          { "price": { "value": 1000, "type": "INR" } },
+          { "price": { "value": 250, "type": "INR" } }
+        ]
+      },
+      "expected": { "kind": "rendered-text", "value": "1250:INR" }
+    },
+    {
+      "id": "sum-array-currency-null",
+      "source": "{% assign total = rows | sumArray: \"price\" %}{{ total }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "sumArray",
+          "arguments": [{ "kind": "literal", "value": "price" }],
+          "input": { "kind": "variable", "path": ["rows"] }
+        }
+      },
+      "input": {
+        "rows": [
+          { "price": { "value": 1000, "type": "INR" } },
+          { "price": null }
+        ]
+      },
+      "expected": { "kind": "value", "value": null }
+    },
+    {
+      "id": "sum-array-durations",
+      "source": "{% assign total = rows | sumArray: \"time\" %}{{ total.value }}:{{ total.type }}:{{ total.days }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "total",
+        "value": {
+          "kind": "filter",
+          "name": "sumArray",
+          "arguments": [{ "kind": "literal", "value": "time" }],
+          "input": { "kind": "variable", "path": ["rows"] }
+        }
+      },
+      "input": {
+        "rows": [
+          { "time": { "value": 1, "type": "WEEKS", "days": 7 } },
+          { "time": { "value": 3, "type": "DAYS", "days": 3 } }
+        ]
+      },
+      "expected": { "kind": "rendered-text", "value": "10:DAYS:10" }
+    },
+    {
+      "id": "for-loop-accumulation",
+      "source": "{% assign total = 0 %}{% for item in items %}{% assign total = total | plus: item %}{% endfor %}{{ total }}",
+      "ir": {
+        "kind": "for",
+        "name": "item",
+        "collection": { "kind": "variable", "path": ["items"] },
+        "body": []
+      },
+      "input": { "items": [1, 2, 3, 4] },
+      "expected": { "kind": "rendered-text", "value": "10" }
+    },
+    {
+      "id": "concat-filter",
+      "source": "{% assign combined = a | concat: b %}{{ combined[0] }}:{{ combined[2] }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "combined",
+        "value": {
+          "kind": "filter",
+          "name": "concat",
+          "arguments": [{ "kind": "variable", "path": ["b"] }],
+          "input": { "kind": "variable", "path": ["a"] }
+        }
+      },
+      "input": { "a": ["x", "y"], "b": ["z"] },
+      "expected": { "kind": "rendered-text", "value": "x:z" }
+    },
+    {
+      "id": "uniq-filter",
+      "source": "{% assign unique = items | uniq %}{{ unique[0] }}:{{ unique[1] }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "unique",
+        "value": {
+          "kind": "filter",
+          "name": "uniq",
+          "arguments": [],
+          "input": { "kind": "variable", "path": ["items"] }
+        }
+      },
+      "input": { "items": ["a", "b", "a", "b"] },
+      "expected": { "kind": "rendered-text", "value": "a:b" }
+    },
+    {
+      "id": "strip-filter",
+      "source": "{% assign clean = raw | strip %}{{ clean }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "clean",
+        "value": {
+          "kind": "filter",
+          "name": "strip",
+          "arguments": [],
+          "input": { "kind": "variable", "path": ["raw"] }
+        }
+      },
+      "input": { "raw": "   hello world   " },
+      "expected": { "kind": "rendered-text", "value": "hello world" }
+    },
+    {
+      "id": "strip-html-filter",
+      "source": "{% assign clean = raw | strip_html %}{{ clean }}",
+      "ir": {
+        "kind": "assignment",
+        "name": "clean",
+        "value": {
+          "kind": "filter",
+          "name": "strip_html",
+          "arguments": [],
+          "input": { "kind": "variable", "path": ["raw"] }
+        }
+      },
+      "input": { "raw": "<p>Hello <b>World</b></p>" },
+      "expected": { "kind": "rendered-text", "value": "Hello World" }
+    }
+  ]
+}

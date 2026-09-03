@@ -22,7 +22,11 @@ export function deepCloneType(t: LinterVariableType): LinterVariableType {
       };
     }
     if (t.kind === 'primitive') {
-      const res: { kind: 'primitive'; type: 'string' | 'number' | 'boolean' | 'date' | 'currency'; optional?: boolean } = {
+      const res: {
+        kind: 'primitive';
+        type: 'string' | 'number' | 'boolean' | 'date' | 'currency';
+        optional?: boolean;
+      } = {
         kind: 'primitive',
         type: t.type,
       };
@@ -42,7 +46,12 @@ export function deepCloneType(t: LinterVariableType): LinterVariableType {
       for (const [k, v] of t.fields.entries()) {
         clonedFields.set(k, deepCloneType(v) as LiquidType);
       }
-      const res: { kind: 'composite'; fields: Map<string, LiquidType>; optional?: boolean; open?: boolean } = {
+      const res: {
+        kind: 'composite';
+        fields: Map<string, LiquidType>;
+        optional?: boolean;
+        open?: boolean;
+      } = {
         kind: 'composite',
         fields: clonedFields,
       };
@@ -51,7 +60,11 @@ export function deepCloneType(t: LinterVariableType): LinterVariableType {
       return res;
     }
     if (t.kind === 'array') {
-      const res: { kind: 'array'; elementType: LiquidType; optional?: boolean } = {
+      const res: {
+        kind: 'array';
+        elementType: LiquidType;
+        optional?: boolean;
+      } = {
         kind: 'array',
         elementType: deepCloneType(t.elementType) as LiquidType,
       };
@@ -91,7 +104,9 @@ export function narrowPathInVar(
     return current;
   }
 
-  const fieldName = (parts[partIdx] ?? '').trim().replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
+  const fieldName = (parts[partIdx] ?? '')
+    .trim()
+    .replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
   if (!fieldName) return current;
 
   if (typeof current === 'object' && current.kind === 'composite') {
@@ -101,7 +116,11 @@ export function narrowPathInVar(
       current.fields.set(fieldName, narrowedField as LiquidType);
     }
   } else if (typeof current === 'object' && current.kind === 'array') {
-    current.elementType = narrowPathInVar(current.elementType, parts, partIdx) as LiquidType;
+    current.elementType = narrowPathInVar(
+      current.elementType,
+      parts,
+      partIdx,
+    ) as LiquidType;
   }
 
   return current;
@@ -122,14 +141,18 @@ export function extractTruthyPaths(conditionText: string): string[] {
     }
 
     // Case 2: check for "!= nil" or "!= null"
-    const neqNilMatch = trimmed.match(/^([a-zA-Z_][a-zA-Z0-9_.[\]'-]*)\s*!=\s*(nil|null)$/);
+    const neqNilMatch = trimmed.match(
+      /^([a-zA-Z_][a-zA-Z0-9_.[\]'-]*)\s*!=\s*(nil|null)$/,
+    );
     if (neqNilMatch && neqNilMatch[1]) {
       paths.push(neqNilMatch[1].trim());
       continue;
     }
 
     // Case 3: check for "== true"
-    const eqTrueMatch = trimmed.match(/^([a-zA-Z_][a-zA-Z0-9_.[\]'-]*)\s*==\s*true$/);
+    const eqTrueMatch = trimmed.match(
+      /^([a-zA-Z_][a-zA-Z0-9_.[\]'-]*)\s*==\s*true$/,
+    );
     if (eqTrueMatch && eqTrueMatch[1]) {
       paths.push(eqTrueMatch[1].trim());
       continue;
@@ -153,7 +176,9 @@ export class ScopeTracker {
 
     for (const path of truthyPaths) {
       const parts = path.split('.');
-      const baseVar = (parts[0] ?? '').trim().replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
+      const baseVar = (parts[0] ?? '')
+        .trim()
+        .replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
       const v = this.activeVars.get(baseVar);
       if (v) {
         if (!branchOverrides.has(baseVar)) {
@@ -192,7 +217,9 @@ export class ScopeTracker {
       const branchOverrides = new Map<string, LinterVariableType>();
       for (const path of truthyPaths) {
         const parts = path.split('.');
-        const baseVar = (parts[0] ?? '').trim().replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
+        const baseVar = (parts[0] ?? '')
+          .trim()
+          .replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
         const v = this.activeVars.get(baseVar);
         if (v) {
           if (!branchOverrides.has(baseVar)) {
@@ -234,7 +261,10 @@ export class ScopeTracker {
   ) {
     const absPos = this.doc.positionAt(token.begin + offsetInToken);
     const start = { line: absPos.line, character: absPos.character };
-    const end = { line: absPos.line, character: absPos.character + varName.length };
+    const end = {
+      line: absPos.line,
+      character: absPos.character + varName.length,
+    };
     return {
       declRange: Range.create(start, end),
       line,
@@ -257,7 +287,8 @@ export class ScopeTracker {
         if (branchVar) {
           if (
             prev.declRange.start.line === branchVar.range.start.line &&
-            prev.declRange.start.character === branchVar.range.start.character &&
+            prev.declRange.start.character ===
+              branchVar.range.start.character &&
             prev.declRange.end.line === branchVar.range.end.line &&
             prev.declRange.end.character === branchVar.range.end.character
           ) {

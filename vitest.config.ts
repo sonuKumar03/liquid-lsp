@@ -25,6 +25,14 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'computation-reference',
+          root: resolve(__dirname, 'packages/computation-reference'),
+          include: ['src/**/*.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        test: {
           name: 'lsp-common',
           root: resolve(__dirname, 'packages/lsp-common'),
           include: ['src/**/*.test.ts'],

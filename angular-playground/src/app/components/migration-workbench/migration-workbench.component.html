@@ -1,0 +1,134 @@
+<main class="workbench">
+  <header class="workbench-header">
+    <div>
+      <a class="back-link" routerLink="/">← Back to playground</a>
+      <h1>Computation migration workbench</h1>
+    </div>
+    <div class="run-status" [class.running]="isRunning()">
+      <span class="status-dot"></span>
+      {{ isRunning() ? 'Analyzing' : 'Ready' }}
+    </div>
+  </header>
+
+  <section class="input-strip" aria-labelledby="input-heading">
+    <div class="section-heading">
+      <span class="eyebrow">Input</span>
+      <h2 id="input-heading">Start with one computation</h2>
+    </div>
+    <div class="input-editors">
+      <div>
+        <label class="field-label" for="context">Context JSON</label>
+        <textarea
+          id="context"
+          class="context-input"
+          [ngModel]="context()"
+          (ngModelChange)="context.set($event)"
+          spellcheck="false"
+          aria-label="Context JSON"
+        ></textarea>
+      </div>
+      <div>
+        <label class="field-label" for="field-schemas"
+          >Field schemas / format options</label
+        >
+        <textarea
+          id="field-schemas"
+          class="context-input"
+          [ngModel]="fieldSchemas()"
+          (ngModelChange)="fieldSchemas.set($event)"
+          spellcheck="false"
+          aria-label="Field schemas and format options"
+        ></textarea>
+      </div>
+    </div>
+  </section>
+
+  @if (error()) {
+    <section class="error-banner" role="alert">
+      <strong>Could not analyze this input.</strong>
+      <span>{{ error() }}</span>
+    </section>
+  }
+
+  <section class="editors-row" aria-label="Language comparison">
+    <article class="panel editor-panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">Source editor</span>
+          <h2>LiquidJS computation</h2>
+        </div>
+        <span class="panel-tag">Editable</span>
+      </div>
+      <textarea
+        id="liquid-source"
+        class="source-input"
+        [ngModel]="source()"
+        (ngModelChange)="source.set($event)"
+        spellcheck="false"
+        aria-label="LiquidJS computation"
+      ></textarea>
+      <div class="editor-result liquid-result">
+        <span class="eyebrow">LiquidJS result</span>
+        <strong>{{ liquidOutput() || '—' }}</strong>
+      </div>
+    </article>
+
+    <article class="panel editor-panel reference-panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">Consumer preview</span>
+          <h2>Reference language</h2>
+        </div>
+        <span class="panel-tag">Generated</span>
+      </div>
+      <pre class="code-output reference-code">{{ referenceSource() }}</pre>
+      <div class="editor-result reference-result">
+        <span class="eyebrow">Reference result</span>
+        <strong>{{ referenceOutput() || '—' }}</strong>
+      </div>
+    </article>
+  </section>
+
+  <section class="workspace-grid" aria-label="Migration comparison">
+    <article class="panel ir-panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">Portable model</span>
+          <h2>Intermediate representation</h2>
+        </div>
+        <span class="panel-tag">JSON</span>
+      </div>
+      <pre class="code-output">{{ irText() }}</pre>
+    </article>
+  </section>
+
+  @if (metrics(); as currentMetrics) {
+    <section class="benchmark-panel" aria-labelledby="benchmark-heading">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">Last run</span>
+          <h2 id="benchmark-heading">Timing comparison</h2>
+        </div>
+        <span class="panel-tag">500-op baseline in CLI</span>
+      </div>
+      <div class="metrics-grid">
+        <div>
+          <span>IR extraction</span
+          ><strong>{{ formatMetric(currentMetrics.extraction) }}</strong>
+        </div>
+        <div>
+          <span>Reference compile</span
+          ><strong>{{ formatMetric(currentMetrics.referenceCompile) }}</strong>
+        </div>
+        <div>
+          <span>Reference evaluate</span
+          ><strong>{{ formatMetric(currentMetrics.referenceEvaluate) }}</strong>
+        </div>
+        <div>
+          <span>LiquidJS render</span
+          ><strong>{{ formatMetric(currentMetrics.liquidRender) }}</strong>
+        </div>
+      </div>
+    </section>
+  }
+</main>

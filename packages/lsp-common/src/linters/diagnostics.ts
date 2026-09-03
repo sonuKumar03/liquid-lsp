@@ -8,6 +8,7 @@ import { collectEngineValidationDiagnostics } from '../shared/engine-validations
 import { collectLifecycleDiagnostics } from './lifecycle.js';
 import { checkUnclosedDelimiters } from './diagnostics/unclosed-delimiters.js';
 import { collectSyntaxDiagnostics } from './diagnostics/syntax.js';
+import { collectComputationDiagnostics } from './diagnostics/computation.js';
 
 export async function validateTextDocument(
   connection: Connection,
@@ -30,6 +31,11 @@ export async function validateTextDocument(
     diagnostics,
     liquidEngine,
     precomputedTokens,
+  );
+  collectComputationDiagnostics(
+    textDocument,
+    diagnostics,
+    globalSchema,
   );
   collectLifecycleDiagnostics(
     textDocument,

@@ -162,3 +162,7 @@ export interface ComputationIRDocument {
   /** Parsing errors encountered during extraction, if any. */
   errors: ComputationIRError[];
 }
+
+export * from './expressions.js';
+export * from './cfg.js';
+

@@ -25,6 +25,14 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'computation-ir',
+          root: resolve(__dirname, 'packages/computation-ir'),
+          include: ['src/**/*.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        test: {
           name: 'computation-reference',
           root: resolve(__dirname, 'packages/computation-reference'),
           include: ['src/**/*.test.ts'],

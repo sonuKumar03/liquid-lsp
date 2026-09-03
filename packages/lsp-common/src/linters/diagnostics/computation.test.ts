@@ -66,4 +66,36 @@ describe('collectComputationDiagnostics', () => {
 
     expect(diagnostics.length).toBe(0);
   });
+
+  it('warns when an undeclared variable is used in a formula', () => {
+    const doc = TextDocument.create(
+      'file:///test.liquid',
+      'liquid',
+      1,
+      '{% assign total = subtotal | plus: missing_tax %}',
+    );
+    const schema = new Map<string, LiquidType>([
+      ['subtotal', 'number'],
+    ]);
+    const diagnostics: Diagnostic[] = [];
+    collectComputationDiagnostics(doc, diagnostics, schema);
+
+    expect(diagnostics.some((d) => d.message.includes('"missing_tax" is used before being defined'))).toBe(true);
+  });
+
+  it('allows variables defined in earlier assignments within the template', () => {
+    const doc = TextDocument.create(
+      'file:///test.liquid',
+      'liquid',
+      1,
+      '{% assign subtotal = 100 %}\n{% assign tax = subtotal | times: 0.1 %}\n{{ tax }}',
+    );
+    const schema = new Map<string, LiquidType>([
+      ['dummy', 'string'],
+    ]);
+    const diagnostics: Diagnostic[] = [];
+    collectComputationDiagnostics(doc, diagnostics, schema);
+
+    expect(diagnostics.length).toBe(0);
+  });
 });

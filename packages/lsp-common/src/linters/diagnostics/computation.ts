@@ -5,9 +5,22 @@ import {
   extractComputationIR,
   type ComputationIRDocument,
   type ComputationIRNode,
+  type ComputationIROutputNode,
+  type ComputationIRTagNode,
 } from 'liquid-core';
 import type { LiquidType } from '../../shared/schema.js';
 import { DIAGNOSTIC_CODES } from '../../shared/diagnostic-codes.js';
+
+const BUILTIN_IDENTIFIERS = new Set([
+  'true',
+  'false',
+  'nil',
+  'null',
+  'empty',
+  'blank',
+  'forloop',
+  'tablerowloop',
+]);
 
 /**
  * Collects syntax and semantic diagnostics for computational Liquid templates using the Computation IR.
@@ -26,11 +39,57 @@ export function collectComputationDiagnostics(
   const text = doc.getText();
   const ir = precomputedIR ?? extractComputationIR(text);
 
-  function checkNode(node: ComputationIRNode): void {
+  const activeScope = new Set<string>();
+
+  function checkDependencies(
+    node: ComputationIROutputNode | ComputationIRTagNode,
+    scope: Set<string>,
+  ): void {
+    if (!globalSchema || globalSchema.size === 0) return;
+
+    for (const dep of node.dependencies) {
+      if (BUILTIN_IDENTIFIERS.has(dep) || scope.has(dep) || globalSchema.has(dep)) {
+        continue;
+      }
+      const matchingToken = node.expressionTokens.find((t) => t.text === dep);
+      const range = matchingToken
+        ? Range.create(
+            doc.positionAt(matchingToken.source.start.offset),
+            doc.positionAt(matchingToken.source.end.offset),
+          )
+        : Range.create(
+            doc.positionAt(node.source.start.offset),
+            doc.positionAt(node.source.end.offset),
+          );
+
+      diagnostics.push({
+        severity: DiagnosticSeverity.Warning,
+        range,
+        message: `"${dep}" is used before being defined or is missing from the schema.`,
+        code: DIAGNOSTIC_CODES.USE_BEFORE_ASSIGN,
+        source: 'liquid-lsp-computation',
+      });
+    }
+  }
+
+  function checkNode(node: ComputationIRNode, scope: Set<string>): void {
+    if (node.kind === 'output') {
+      checkDependencies(node, scope);
+      return;
+    }
     if (node.kind !== 'tag') return;
 
     const startPos = doc.positionAt(node.source.start.offset);
     const endPos = doc.positionAt(node.source.end.offset);
+
+    // Validate assignments: check dependencies on RHS, then add target to scope
+    if (node.name === 'assign' || node.name === 'assignVar' || node.name === 'parseAssign') {
+      checkDependencies(node, scope);
+      if (node.target) {
+        scope.add(node.target);
+      }
+      return;
+    }
 
     // 1. Validate computeColumn tags
     if (node.name === 'computeColumn') {
@@ -85,6 +144,18 @@ export function collectComputationDiagnostics(
           source: 'liquid-lsp-computation',
         });
       }
+
+      // Inside computeColumn, self and $$answer are valid
+      const innerScope = new Set(scope);
+      innerScope.add('self');
+      innerScope.add('$$answer');
+
+      if (node.children) {
+        for (const child of node.children) {
+          checkNode(child, innerScope);
+        }
+      }
+      return;
     }
 
     // 2. Validate for loops
@@ -111,17 +182,43 @@ export function collectComputationDiagnostics(
           source: 'liquid-lsp-computation',
         });
       }
+
+      // Check collection expression dependencies
+      checkDependencies(node, scope);
+
+      const innerScope = new Set(scope);
+      if (node.target) {
+        innerScope.add(node.target);
+      }
+
+      if (node.children) {
+        for (const child of node.children) {
+          checkNode(child, innerScope);
+        }
+      }
+      return;
     }
 
-    // 3. Recurse into children
+    // 3. Conditional blocks
+    if (node.name === 'if' || node.name === 'unless' || node.name === 'elsif') {
+      checkDependencies(node, scope);
+      if (node.children) {
+        for (const child of node.children) {
+          checkNode(child, scope);
+        }
+      }
+      return;
+    }
+
+    // General recursion for any other block tags
     if (node.children) {
       for (const child of node.children) {
-        checkNode(child);
+        checkNode(child, scope);
       }
     }
   }
 
   for (const node of ir.nodes) {
-    checkNode(node);
+    checkNode(node, activeScope);
   }
 }

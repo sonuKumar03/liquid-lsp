@@ -1,4 +1,4 @@
-import type { ComputationIRFilter } from "./index.js";
+import type { ComputationIRFilter } from './index.js';
 
 export type BinaryOperator =
   | 'ADD'
@@ -78,16 +78,23 @@ const MATH_FILTER_MAP: Record<string, BinaryOperator> = {
  */
 export function parseExpressionAtom(raw: string): ExpressionNode {
   const trimmed = raw.trim();
-  if (trimmed === 'true') return { kind: 'literal', valueType: 'boolean', value: true };
-  if (trimmed === 'false') return { kind: 'literal', valueType: 'boolean', value: false };
-  if (trimmed === 'nil' || trimmed === 'null') return { kind: 'literal', valueType: 'null', value: null };
+  if (trimmed === 'true')
+    return { kind: 'literal', valueType: 'boolean', value: true };
+  if (trimmed === 'false')
+    return { kind: 'literal', valueType: 'boolean', value: false };
+  if (trimmed === 'nil' || trimmed === 'null')
+    return { kind: 'literal', valueType: 'null', value: null };
 
   if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
     return { kind: 'literal', valueType: 'number', value: parseFloat(trimmed) };
   }
 
   if (/^"([^"\\]|\\.)*"$/.test(trimmed) || /^'([^'\\]|\\.)*'$/.test(trimmed)) {
-    return { kind: 'literal', valueType: 'string', value: trimmed.slice(1, -1) };
+    return {
+      kind: 'literal',
+      valueType: 'string',
+      value: trimmed.slice(1, -1),
+    };
   }
 
   if (trimmed.includes('.')) {
@@ -127,7 +134,12 @@ function tokenizeExpression(str: string): string[] {
     }
 
     const twoChars = str.slice(i, i + 2);
-    if (twoChars === '==' || twoChars === '!=' || twoChars === '<=' || twoChars === '>=') {
+    if (
+      twoChars === '==' ||
+      twoChars === '!=' ||
+      twoChars === '<=' ||
+      twoChars === '>='
+    ) {
       tokens.push(twoChars);
       i += 2;
       continue;
@@ -402,7 +414,11 @@ export function foldConstants(expr: ExpressionNode): ExpressionNode {
           return { kind: 'literal', valueType: 'number', value: lVal + rVal };
         }
         if (typeof lVal === 'string' || typeof rVal === 'string') {
-          return { kind: 'literal', valueType: 'string', value: String(lVal) + String(rVal) };
+          return {
+            kind: 'literal',
+            valueType: 'string',
+            value: String(lVal) + String(rVal),
+          };
         }
       }
 
@@ -419,19 +435,31 @@ export function foldConstants(expr: ExpressionNode): ExpressionNode {
       }
 
       if (expr.operator === 'DIVIDE') {
-        if (typeof lVal === 'number' && typeof rVal === 'number' && rVal !== 0) {
+        if (
+          typeof lVal === 'number' &&
+          typeof rVal === 'number' &&
+          rVal !== 0
+        ) {
           return { kind: 'literal', valueType: 'number', value: lVal / rVal };
         }
       }
 
       if (expr.operator === 'MODULO') {
-        if (typeof lVal === 'number' && typeof rVal === 'number' && rVal !== 0) {
+        if (
+          typeof lVal === 'number' &&
+          typeof rVal === 'number' &&
+          rVal !== 0
+        ) {
           return { kind: 'literal', valueType: 'number', value: lVal % rVal };
         }
       }
 
       if (expr.operator === 'CONCAT') {
-        return { kind: 'literal', valueType: 'string', value: String(lVal) + String(rVal) };
+        return {
+          kind: 'literal',
+          valueType: 'string',
+          value: String(lVal) + String(rVal),
+        };
       }
 
       if (expr.operator === 'EQ') {
@@ -443,31 +471,59 @@ export function foldConstants(expr: ExpressionNode): ExpressionNode {
       }
 
       if (expr.operator === 'GT') {
-        return { kind: 'literal', valueType: 'boolean', value: Number(lVal) > Number(rVal) };
+        return {
+          kind: 'literal',
+          valueType: 'boolean',
+          value: Number(lVal) > Number(rVal),
+        };
       }
 
       if (expr.operator === 'GTE') {
-        return { kind: 'literal', valueType: 'boolean', value: Number(lVal) >= Number(rVal) };
+        return {
+          kind: 'literal',
+          valueType: 'boolean',
+          value: Number(lVal) >= Number(rVal),
+        };
       }
 
       if (expr.operator === 'LT') {
-        return { kind: 'literal', valueType: 'boolean', value: Number(lVal) < Number(rVal) };
+        return {
+          kind: 'literal',
+          valueType: 'boolean',
+          value: Number(lVal) < Number(rVal),
+        };
       }
 
       if (expr.operator === 'LTE') {
-        return { kind: 'literal', valueType: 'boolean', value: Number(lVal) <= Number(rVal) };
+        return {
+          kind: 'literal',
+          valueType: 'boolean',
+          value: Number(lVal) <= Number(rVal),
+        };
       }
 
       if (expr.operator === 'AND') {
-        return { kind: 'literal', valueType: 'boolean', value: Boolean(lVal && rVal) };
+        return {
+          kind: 'literal',
+          valueType: 'boolean',
+          value: Boolean(lVal && rVal),
+        };
       }
 
       if (expr.operator === 'OR') {
-        return { kind: 'literal', valueType: 'boolean', value: Boolean(lVal || rVal) };
+        return {
+          kind: 'literal',
+          valueType: 'boolean',
+          value: Boolean(lVal || rVal),
+        };
       }
 
       if (expr.operator === 'CONTAINS') {
-        return { kind: 'literal', valueType: 'boolean', value: String(lVal).includes(String(rVal)) };
+        return {
+          kind: 'literal',
+          valueType: 'boolean',
+          value: String(lVal).includes(String(rVal)),
+        };
       }
     }
 
@@ -475,8 +531,10 @@ export function foldConstants(expr: ExpressionNode): ExpressionNode {
     if (expr.operator === 'MULTIPLY') {
       if (right.kind === 'literal' && right.value === 1) return left;
       if (left.kind === 'literal' && left.value === 1) return right;
-      if (right.kind === 'literal' && right.value === 0) return { kind: 'literal', valueType: 'number', value: 0 };
-      if (left.kind === 'literal' && left.value === 0) return { kind: 'literal', valueType: 'number', value: 0 };
+      if (right.kind === 'literal' && right.value === 0)
+        return { kind: 'literal', valueType: 'number', value: 0 };
+      if (left.kind === 'literal' && left.value === 0)
+        return { kind: 'literal', valueType: 'number', value: 0 };
     }
 
     if (expr.operator === 'ADD') {
@@ -515,22 +573,46 @@ export function foldConstants(expr: ExpressionNode): ExpressionNode {
 
     if (target.kind === 'literal') {
       if (expr.filterName === 'upcase' && typeof target.value === 'string') {
-        return { kind: 'literal', valueType: 'string', value: target.value.toUpperCase() };
+        return {
+          kind: 'literal',
+          valueType: 'string',
+          value: target.value.toUpperCase(),
+        };
       }
       if (expr.filterName === 'downcase' && typeof target.value === 'string') {
-        return { kind: 'literal', valueType: 'string', value: target.value.toLowerCase() };
+        return {
+          kind: 'literal',
+          valueType: 'string',
+          value: target.value.toLowerCase(),
+        };
       }
       if (expr.filterName === 'abs' && typeof target.value === 'number') {
-        return { kind: 'literal', valueType: 'number', value: Math.abs(target.value) };
+        return {
+          kind: 'literal',
+          valueType: 'number',
+          value: Math.abs(target.value),
+        };
       }
       if (expr.filterName === 'round' && typeof target.value === 'number') {
-        return { kind: 'literal', valueType: 'number', value: Math.round(target.value) };
+        return {
+          kind: 'literal',
+          valueType: 'number',
+          value: Math.round(target.value),
+        };
       }
       if (expr.filterName === 'ceil' && typeof target.value === 'number') {
-        return { kind: 'literal', valueType: 'number', value: Math.ceil(target.value) };
+        return {
+          kind: 'literal',
+          valueType: 'number',
+          value: Math.ceil(target.value),
+        };
       }
       if (expr.filterName === 'floor' && typeof target.value === 'number') {
-        return { kind: 'literal', valueType: 'number', value: Math.floor(target.value) };
+        return {
+          kind: 'literal',
+          valueType: 'number',
+          value: Math.floor(target.value),
+        };
       }
     }
 

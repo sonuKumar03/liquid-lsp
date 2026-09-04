@@ -32,11 +32,7 @@ export async function validateTextDocument(
     liquidEngine,
     precomputedTokens,
   );
-  collectComputationDiagnostics(
-    textDocument,
-    diagnostics,
-    globalSchema,
-  );
+  collectComputationDiagnostics(textDocument, diagnostics, globalSchema);
   collectLifecycleDiagnostics(
     textDocument,
     diagnostics,

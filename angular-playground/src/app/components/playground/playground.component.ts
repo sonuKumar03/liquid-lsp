@@ -36,6 +36,12 @@ import { MonacoSetupService } from '../../services/monaco-setup.service';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { MonacoLanguageClient } from 'monaco-languageclient';
 import { createModelReference } from 'vscode/monaco';
+import { extractComputationIR } from 'liquid-core';
+import {
+  optimizeComputationIR,
+  buildControlFlowGraph,
+  optimizeCFG,
+} from 'computation-ir';
 
 /** URI of the virtual document in the Monaco / LSP workspace. */
 const MODEL_URI = 'file:///playground/playground.liquid';
@@ -94,11 +100,51 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
   public readonly editorValue = signal<string>('');
   public readonly mockContext = signal<string>('');
   public readonly variableSchema = signal<string>('');
+  public readonly irViewMode = signal<
+    'ir' | 'optimized_ir' | 'cfg' | 'optimized_cfg'
+  >('optimized_cfg');
 
   public readonly lspReady = computed(() => this.lspService.isReady());
 
   public readonly currentDiagnostics = computed<LSPDiagnostic[]>(() => {
     return this.lspService.diagnostics()[MODEL_URI] ?? [];
+  });
+
+  public readonly computationIR = computed(() => {
+    try {
+      return extractComputationIR(this.editorValue());
+    } catch {
+      return null;
+    }
+  });
+
+  public readonly optimizedComputationIR = computed(() => {
+    const ir = this.computationIR();
+    return ir ? optimizeComputationIR(ir) : null;
+  });
+
+  public readonly controlFlowGraph = computed(() => {
+    const ir = this.computationIR();
+    return ir ? buildControlFlowGraph(ir) : null;
+  });
+
+  public readonly optimizedControlFlowGraph = computed(() => {
+    const cfg = this.controlFlowGraph();
+    return cfg ? optimizeCFG(cfg) : null;
+  });
+
+  public readonly irDisplayText = computed(() => {
+    const mode = this.irViewMode();
+    if (mode === 'ir') {
+      return JSON.stringify(this.computationIR(), null, 2);
+    }
+    if (mode === 'optimized_ir') {
+      return JSON.stringify(this.optimizedComputationIR(), null, 2);
+    }
+    if (mode === 'cfg') {
+      return JSON.stringify(this.controlFlowGraph(), null, 2);
+    }
+    return JSON.stringify(this.optimizedControlFlowGraph(), null, 2);
   });
 
   constructor() {

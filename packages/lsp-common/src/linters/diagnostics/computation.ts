@@ -72,7 +72,11 @@ export function collectComputationDiagnostics(
     if (!globalSchema || globalSchema.size === 0) return;
 
     for (const dep of node.dependencies) {
-      if (BUILTIN_IDENTIFIERS.has(dep) || scope.has(dep) || globalSchema.has(dep)) {
+      if (
+        BUILTIN_IDENTIFIERS.has(dep) ||
+        scope.has(dep) ||
+        globalSchema.has(dep)
+      ) {
         continue;
       }
       const matchingToken = node.expressionTokens.find((t) => t.text === dep);
@@ -107,7 +111,11 @@ export function collectComputationDiagnostics(
     const endPos = doc.positionAt(node.source.end.offset);
 
     // Validate assignments: check dependencies on RHS, then add target to scope
-    if (node.name === 'assign' || node.name === 'assignVar' || node.name === 'parseAssign') {
+    if (
+      node.name === 'assign' ||
+      node.name === 'assignVar' ||
+      node.name === 'parseAssign'
+    ) {
       checkDependencies(node, scope);
       if (node.target) {
         scope.add(node.target);
@@ -133,7 +141,8 @@ export function collectComputationDiagnostics(
         diagnostics.push({
           severity: DiagnosticSeverity.Error,
           range: Range.create(startPos, endPos),
-          message: 'computeColumn requires both a table name and a target column name (e.g. {% computeColumn table column %}).',
+          message:
+            'computeColumn requires both a table name and a target column name (e.g. {% computeColumn table column %}).',
           code: DIAGNOSTIC_CODES.INVALID_DYNAMIC_TABLE_COMPUTATION,
           source: 'liquid-lsp-computation',
         });
@@ -141,13 +150,14 @@ export function collectComputationDiagnostics(
         const [tableName] = parts;
         if (tableName && globalSchema && globalSchema.has(tableName)) {
           const tableType = globalSchema.get(tableName);
-          const typeStr = typeof tableType === 'object' && tableType.kind === 'primitive'
-            ? tableType.type
-            : typeof tableType === 'string'
-              ? tableType
-              : typeof tableType === 'object'
-                ? tableType.kind
-                : 'unknown';
+          const typeStr =
+            typeof tableType === 'object' && tableType.kind === 'primitive'
+              ? tableType.type
+              : typeof tableType === 'string'
+                ? tableType
+                : typeof tableType === 'object'
+                  ? tableType.kind
+                  : 'unknown';
 
           if (
             typeStr === 'number' ||
@@ -172,7 +182,8 @@ export function collectComputationDiagnostics(
         diagnostics.push({
           severity: DiagnosticSeverity.Error,
           range: Range.create(startPos, endPos),
-          message: 'Unclosed computeColumn tag. Expected {% endcomputeColumn %}.',
+          message:
+            'Unclosed computeColumn tag. Expected {% endcomputeColumn %}.',
           code: DIAGNOSTIC_CODES.UNCLOSED_DELIMITER,
           source: 'liquid-lsp-computation',
         });
@@ -200,7 +211,8 @@ export function collectComputationDiagnostics(
         diagnostics.push({
           severity: DiagnosticSeverity.Error,
           range: Range.create(startPos, endPos),
-          message: 'for loop requires an iterable collection (e.g. {% for item in items %}).',
+          message:
+            'for loop requires an iterable collection (e.g. {% for item in items %}).',
           code: DIAGNOSTIC_CODES.UNKNOWN_TAG,
           source: 'liquid-lsp-computation',
         });

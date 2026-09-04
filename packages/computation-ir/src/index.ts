@@ -166,4 +166,4 @@ export interface ComputationIRDocument {
 export * from './expressions.js';
 export * from './cfg.js';
 export * from './optimizer.js';
-
+export * from './transpiler.js';

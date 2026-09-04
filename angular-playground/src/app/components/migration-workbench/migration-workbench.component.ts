@@ -4,6 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { createLiquidEngine, extractComputationIR } from 'liquid-core';
 import {
+  optimizeComputationIR,
+  buildControlFlowGraph,
+  optimizeCFG,
+} from 'computation-ir';
+import {
   evaluateReferenceProgramWithOutputs,
   referenceProgramFromIR,
   referenceSourceFromIR,
@@ -69,6 +74,12 @@ export class MigrationWorkbenchComponent {
   readonly context = signal(DEFAULT_CONTEXT);
   readonly fieldSchemas = signal(DEFAULT_FIELD_SCHEMAS);
   readonly irText = signal('{}');
+  readonly optimizedIrText = signal('{}');
+  readonly cfgText = signal('{}');
+  readonly optimizedCfgText = signal('{}');
+  readonly modelView = signal<'ir' | 'optimized_ir' | 'cfg' | 'optimized_cfg'>(
+    'ir',
+  );
   readonly referenceSource = signal('');
   readonly liquidOutput = signal('');
   readonly referenceOutput = signal('');
@@ -123,6 +134,15 @@ export class MigrationWorkbenchComponent {
       const ir = extractComputationIR(source);
       const extraction = performance.now() - extractionStarted;
       this.irText.set(JSON.stringify(ir, null, 2));
+
+      const optimizedIr = optimizeComputationIR(ir);
+      this.optimizedIrText.set(JSON.stringify(optimizedIr, null, 2));
+
+      const rawCfg = buildControlFlowGraph(ir);
+      this.cfgText.set(JSON.stringify(rawCfg, null, 2));
+
+      const optimizedCfg = optimizeCFG(rawCfg);
+      this.optimizedCfgText.set(JSON.stringify(optimizedCfg, null, 2));
 
       const compileStarted = performance.now();
       const program = referenceProgramFromIR(ir);

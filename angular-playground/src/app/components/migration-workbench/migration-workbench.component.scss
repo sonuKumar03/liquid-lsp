@@ -69,6 +69,39 @@ h1 {
   white-space: nowrap;
 }
 
+.view-toggles {
+  display: flex;
+  gap: 6px;
+  background: #0f1826;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #29394c;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  color: #9db0c6;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: #e5edf7;
+    background: rgba(139, 212, 195, 0.08);
+  }
+
+  &.active {
+    background: #8bd4c3;
+    color: #101827;
+    font-weight: 600;
+  }
+}
+
 .run-status {
   display: flex;
   align-items: center;

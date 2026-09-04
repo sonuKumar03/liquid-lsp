@@ -94,11 +94,66 @@
       <div class="panel-heading">
         <div>
           <span class="eyebrow">Portable model</span>
-          <h2>Intermediate representation</h2>
+          <h2>
+            @switch (modelView()) {
+              @case ('ir') {
+                Raw Intermediate Representation (AST)
+              }
+              @case ('optimized_ir') {
+                Optimized IR (Folded & Pruned AST)
+              }
+              @case ('cfg') {
+                Control Flow Graph (Raw CFG)
+              }
+              @case ('optimized_cfg') {
+                Optimized CFG (Dead Blocks Pruned)
+              }
+            }
+          </h2>
         </div>
-        <span class="panel-tag">JSON</span>
+        <div class="view-toggles">
+          <button
+            type="button"
+            class="toggle-btn"
+            [class.active]="modelView() === 'ir'"
+            (click)="modelView.set('ir')"
+          >
+            Raw IR
+          </button>
+          <button
+            type="button"
+            class="toggle-btn"
+            [class.active]="modelView() === 'optimized_ir'"
+            (click)="modelView.set('optimized_ir')"
+          >
+            Optimized IR
+          </button>
+          <button
+            type="button"
+            class="toggle-btn"
+            [class.active]="modelView() === 'cfg'"
+            (click)="modelView.set('cfg')"
+          >
+            Raw CFG
+          </button>
+          <button
+            type="button"
+            class="toggle-btn"
+            [class.active]="modelView() === 'optimized_cfg'"
+            (click)="modelView.set('optimized_cfg')"
+          >
+            Optimized CFG
+          </button>
+        </div>
       </div>
-      <pre class="code-output">{{ irText() }}</pre>
+      <pre class="code-output">
+        @switch (modelView()) {
+          @case ('ir') { {{ irText() }} }
+          @case ('optimized_ir') { {{ optimizedIrText() }} }
+          @case ('cfg') { {{ cfgText() }} }
+          @case ('optimized_cfg') { {{ optimizedCfgText() }} }
+        }
+      </pre>
     </article>
   </section>
 

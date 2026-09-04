@@ -32,7 +32,9 @@ describe('collectComputationDiagnostics', () => {
     collectComputationDiagnostics(doc, diagnostics);
 
     expect(diagnostics.length).toBeGreaterThan(0);
-    expect(diagnostics[0]?.message).toContain('computeColumn requires both a table name and a target column name');
+    expect(diagnostics[0]?.message).toContain(
+      'computeColumn requires both a table name and a target column name',
+    );
   });
 
   it('warns when computeColumn target is a primitive type in schema', () => {
@@ -42,13 +44,15 @@ describe('collectComputationDiagnostics', () => {
       1,
       '{% computeColumn user_age total %}{% endcomputeColumn %}',
     );
-    const schema = new Map<string, LiquidType>([
-      ['user_age', 'number'],
-    ]);
+    const schema = new Map<string, LiquidType>([['user_age', 'number']]);
     const diagnostics: Diagnostic[] = [];
     collectComputationDiagnostics(doc, diagnostics, schema);
 
-    expect(diagnostics.some((d) => d.message.includes('Cannot compute column on "user_age"'))).toBe(true);
+    expect(
+      diagnostics.some((d) =>
+        d.message.includes('Cannot compute column on "user_age"'),
+      ),
+    ).toBe(true);
   });
 
   it('passes cleanly on valid computeColumn with table schema', () => {
@@ -59,7 +63,10 @@ describe('collectComputationDiagnostics', () => {
       '{% computeColumn line_items total %}\n{% assign $$answer = self.price | plus: 5 %}\n{% endcomputeColumn %}',
     );
     const schema = new Map<string, LiquidType>([
-      ['line_items', { kind: 'table', columns: new Map([['price', 'number']]) }],
+      [
+        'line_items',
+        { kind: 'table', columns: new Map([['price', 'number']]) },
+      ],
     ]);
     const diagnostics: Diagnostic[] = [];
     collectComputationDiagnostics(doc, diagnostics, schema);
@@ -74,13 +81,15 @@ describe('collectComputationDiagnostics', () => {
       1,
       '{% assign total = subtotal | plus: missing_tax %}',
     );
-    const schema = new Map<string, LiquidType>([
-      ['subtotal', 'number'],
-    ]);
+    const schema = new Map<string, LiquidType>([['subtotal', 'number']]);
     const diagnostics: Diagnostic[] = [];
     collectComputationDiagnostics(doc, diagnostics, schema);
 
-    expect(diagnostics.some((d) => d.message.includes('"missing_tax" is used before being defined'))).toBe(true);
+    expect(
+      diagnostics.some((d) =>
+        d.message.includes('"missing_tax" is used before being defined'),
+      ),
+    ).toBe(true);
   });
 
   it('allows variables defined in earlier assignments within the template', () => {
@@ -90,9 +99,7 @@ describe('collectComputationDiagnostics', () => {
       1,
       '{% assign subtotal = 100 %}\n{% assign tax = subtotal | times: 0.1 %}\n{{ tax }}',
     );
-    const schema = new Map<string, LiquidType>([
-      ['dummy', 'string'],
-    ]);
+    const schema = new Map<string, LiquidType>([['dummy', 'string']]);
     const diagnostics: Diagnostic[] = [];
     collectComputationDiagnostics(doc, diagnostics, schema);
 
@@ -106,9 +113,7 @@ describe('collectComputationDiagnostics', () => {
       1,
       '{% capture user_name %}Sonu{% endcapture %}\n{% assign greeting = user_name %}\n{% if true %}{{ today }}{% endif %}',
     );
-    const schema = new Map<string, LiquidType>([
-      ['dummy', 'string'],
-    ]);
+    const schema = new Map<string, LiquidType>([['dummy', 'string']]);
     const diagnostics: Diagnostic[] = [];
     collectComputationDiagnostics(doc, diagnostics, schema);
 

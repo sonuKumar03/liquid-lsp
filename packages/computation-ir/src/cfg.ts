@@ -1,15 +1,30 @@
-import type { ComputationIRDocument, ComputationIRNode } from "./index.js";
-import { parseExpressionToAST, type ExpressionNode } from "./expressions.js";
+import type { ComputationIRDocument, ComputationIRNode } from './index.js';
+import { parseExpressionToAST, type ExpressionNode } from './expressions.js';
 
 export type CFGInstruction =
   | { kind: 'assign'; target: string; expression: ExpressionNode }
   | { kind: 'phi'; target: string; incoming: Record<string, ExpressionNode> }
   | { kind: 'output'; expression: ExpressionNode }
-  | { kind: 'computeColumn'; table: string; column: string; instructions: CFGInstruction[] };
+  | {
+      kind: 'computeColumn';
+      table: string;
+      column: string;
+      instructions: CFGInstruction[];
+    };
 
 export type CFGTerminator =
-  | { kind: 'branch_if'; condition: ExpressionNode; trueTarget: string; falseTarget: string }
-  | { kind: 'switch'; discriminant: ExpressionNode; cases: { value: ExpressionNode; target: string }[]; defaultTarget: string }
+  | {
+      kind: 'branch_if';
+      condition: ExpressionNode;
+      trueTarget: string;
+      falseTarget: string;
+    }
+  | {
+      kind: 'switch';
+      discriminant: ExpressionNode;
+      cases: { value: ExpressionNode; target: string }[];
+      defaultTarget: string;
+    }
   | { kind: 'jump'; target: string }
   | { kind: 'return' };
 
@@ -30,7 +45,9 @@ export interface ControlFlowGraph {
 /**
  * Builds a Control Flow Graph (CFG) from a Computation IR Document.
  */
-export function buildControlFlowGraph(doc: ComputationIRDocument): ControlFlowGraph {
+export function buildControlFlowGraph(
+  doc: ComputationIRDocument,
+): ControlFlowGraph {
   let blockCounter = 0;
   function createBlockId(prefix = 'block'): string {
     return `${prefix}_${blockCounter++}`;
@@ -56,7 +73,11 @@ export function buildControlFlowGraph(doc: ComputationIRDocument): ControlFlowGr
           expression: parseExpressionToAST(node.expression, node.filters),
         });
       } else if (node.kind === 'tag') {
-        if (node.name === 'assign' || node.name === 'assignVar' || node.name === 'parseAssign') {
+        if (
+          node.name === 'assign' ||
+          node.name === 'assignVar' ||
+          node.name === 'parseAssign'
+        ) {
           currentBlock.instructions.push({
             kind: 'assign',
             target: node.target || 'result',
@@ -73,7 +94,10 @@ export function buildControlFlowGraph(doc: ComputationIRDocument): ControlFlowGr
                 innerInstructions.push({
                   kind: 'assign',
                   target: child.target,
-                  expression: parseExpressionToAST(child.expression, child.filters),
+                  expression: parseExpressionToAST(
+                    child.expression,
+                    child.filters,
+                  ),
                 });
               }
             }
@@ -85,7 +109,10 @@ export function buildControlFlowGraph(doc: ComputationIRDocument): ControlFlowGr
             instructions: innerInstructions,
           });
         } else if (node.name === 'if' || node.name === 'unless') {
-          const conditionAst = parseExpressionToAST(node.expression, node.filters);
+          const conditionAst = parseExpressionToAST(
+            node.expression,
+            node.filters,
+          );
           const thenBlockId = createBlockId('then');
           const joinBlockId = createBlockId('join');
           const elseBlockId = createBlockId('else');
@@ -123,36 +150,155 @@ export function buildControlFlowGraph(doc: ComputationIRDocument): ControlFlowGr
           currentBlock.terminator = {
             kind: 'branch_if',
             condition: conditionAst,
-            trueTarget: thenBlockId,
-            falseTarget: elseBlockId,
+            trueTarget: node.name === 'unless' ? elseBlockId : thenBlockId,
+            falseTarget: node.name === 'unless' ? thenBlockId : elseBlockId,
           };
           currentBlock.successors = [thenBlockId, elseBlockId];
 
-          // Process children inside then block
+          // Partition children into then-branch and else/elsif branches
+          const children = node.children ?? [];
+          const branchIdx = children.findIndex(
+            (c) =>
+              c.kind === 'tag' && (c.name === 'else' || c.name === 'elsif'),
+          );
+
+          const thenChildren =
+            branchIdx >= 0 ? children.slice(0, branchIdx) : children;
+          const otherwiseChildren =
+            branchIdx >= 0 ? children.slice(branchIdx) : [];
+
+          // Process then block
           currentBlock = thenBlock;
-          if (node.children) {
-            processNodes(node.children);
+          processNodes(thenChildren);
+
+          // Process else / elsif branch
+          currentBlock = elseBlock;
+          if (otherwiseChildren.length > 0) {
+            const firstBranch = otherwiseChildren[0];
+            if (
+              firstBranch &&
+              firstBranch.kind === 'tag' &&
+              firstBranch.name === 'else'
+            ) {
+              processNodes(otherwiseChildren.slice(1));
+            } else if (
+              firstBranch &&
+              firstBranch.kind === 'tag' &&
+              firstBranch.name === 'elsif'
+            ) {
+              const elsifNode: ComputationIRNode = {
+                ...firstBranch,
+                name: 'if',
+                children: otherwiseChildren.slice(1),
+              };
+              processNodes([elsifNode]);
+            }
           }
 
-          // Check if any variable assigned in then/else can produce a Phi node
-          const thenAssignments = thenBlock.instructions.filter(
-            (i): i is { kind: 'assign'; target: string; expression: ExpressionNode } => i.kind === 'assign',
-          );
-          for (const assign of thenAssignments) {
+          // Build accurate Phi nodes for all variables assigned in either thenBlock or elseBlock
+          const thenAssignments = new Map<string, ExpressionNode>();
+          for (const inst of thenBlock.instructions) {
+            if (inst.kind === 'assign') {
+              thenAssignments.set(inst.target, inst.expression);
+            }
+          }
+
+          const elseAssignments = new Map<string, ExpressionNode>();
+          for (const inst of elseBlock.instructions) {
+            if (inst.kind === 'assign') {
+              elseAssignments.set(inst.target, inst.expression);
+            }
+          }
+
+          const allAssignedVars = new Set([
+            ...thenAssignments.keys(),
+            ...elseAssignments.keys(),
+          ]);
+
+          const nullLiteral: ExpressionNode = {
+            kind: 'literal',
+            valueType: 'null',
+            value: null,
+          };
+
+          for (const target of allAssignedVars) {
             joinBlock.instructions.push({
               kind: 'phi',
-              target: assign.target,
+              target,
               incoming: {
-                [thenBlockId]: assign.expression,
-                [elseBlockId]: { kind: 'literal', valueType: 'null', value: null },
+                [thenBlockId]: thenAssignments.get(target) ?? nullLiteral,
+                [elseBlockId]: elseAssignments.get(target) ?? nullLiteral,
               },
             });
           }
 
           // Continue from join block
           currentBlock = joinBlock;
+        } else if (node.name === 'for') {
+          const collectionAst = parseExpressionToAST(
+            node.expression,
+            node.filters,
+          );
+          const loopHeaderId = createBlockId('loop_header');
+          const loopBodyId = createBlockId('loop_body');
+          const loopExitId = createBlockId('loop_exit');
+
+          const headerBlock: CFGBasicBlock = {
+            id: loopHeaderId,
+            label: 'loop_header',
+            instructions: [],
+            terminator: {
+              kind: 'branch_if',
+              condition: {
+                kind: 'binary_op',
+                operator: 'GT',
+                left: {
+                  kind: 'identifier',
+                  name: `${collectionAst.kind === 'identifier' ? collectionAst.name : 'collection'}.length`,
+                },
+                right: { kind: 'literal', valueType: 'number', value: 0 },
+              },
+              trueTarget: loopBodyId,
+              falseTarget: loopExitId,
+            },
+            predecessors: [currentBlock.id],
+            successors: [loopBodyId, loopExitId],
+          };
+          blocks[loopHeaderId] = headerBlock;
+
+          const bodyBlock: CFGBasicBlock = {
+            id: loopBodyId,
+            label: 'loop_body',
+            instructions: [],
+            terminator: { kind: 'jump', target: loopHeaderId },
+            predecessors: [loopHeaderId],
+            successors: [loopHeaderId],
+          };
+          blocks[loopBodyId] = bodyBlock;
+
+          const exitBlock: CFGBasicBlock = {
+            id: loopExitId,
+            label: 'loop_exit',
+            instructions: [],
+            terminator: { kind: 'return' },
+            predecessors: [loopHeaderId],
+            successors: [],
+          };
+          blocks[loopExitId] = exitBlock;
+
+          currentBlock.terminator = { kind: 'jump', target: loopHeaderId };
+          currentBlock.successors = [loopHeaderId];
+
+          currentBlock = bodyBlock;
+          if (node.children) {
+            processNodes(node.children);
+          }
+
+          currentBlock = exitBlock;
         } else if (node.name === 'case') {
-          const discriminantAst = parseExpressionToAST(node.expression || node.args);
+          const discriminantAst = parseExpressionToAST(
+            node.expression || node.args,
+          );
           const joinBlockId = createBlockId('join_case');
           const caseArms: { value: ExpressionNode; target: string }[] = [];
           const armBlockIds: string[] = [];
@@ -175,7 +321,9 @@ export function buildControlFlowGraph(doc: ComputationIRDocument): ControlFlowGr
               };
               blocks[armId] = armBlock;
 
-              const valAst = parseExpressionToAST(child.expression || child.args);
+              const valAst = parseExpressionToAST(
+                child.expression || child.args,
+              );
               caseArms.push({ value: valAst, target: armId });
 
               const prevBlock = currentBlock;

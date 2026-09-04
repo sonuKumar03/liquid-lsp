@@ -59,11 +59,6 @@
                 "output": "./assets/lsp"
               },
               {
-                "glob": "**/*",
-                "input": "node_modules/monaco-editor/min/vs",
-                "output": "./assets/monaco/vs"
-              },
-              {
                 "glob": "**/*.css",
                 "input": "../node_modules/.pnpm/monaco-editor@0.50.0/node_modules/monaco-editor/esm/vs",
                 "output": "./assets/monaco/esm/vs"

@@ -2,9 +2,6 @@ import { Injectable, isDevMode } from '@angular/core';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initServices } from 'monaco-languageclient/vscode/services';
 
-/** Asset path for the Monaco web worker bundle. */
-const MONACO_WORKER_URL = '/assets/monaco/vs/base/worker/workerMain.js';
-
 /** Folder URI used as the virtual workspace root in Monaco. */
 const PLAYGROUND_WORKSPACE_URI = 'file:///playground';
 
@@ -22,7 +19,17 @@ export class MonacoSetupService {
   ensureWorkerEnvironment(): void {
     if (!(window as unknown as Record<string, unknown>)['MonacoEnvironment']) {
       (window as unknown as Record<string, unknown>)['MonacoEnvironment'] = {
-        getWorkerUrl: (): string => MONACO_WORKER_URL,
+        getWorkerUrl: (_moduleId: string, _label: string): string => {
+          return (
+            'data:text/javascript;charset=utf-8,' +
+            encodeURIComponent(`
+            self.MonacoEnvironment = {
+              baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/'
+            };
+            importScripts('https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/base/worker/workerMain.js');
+          `)
+          );
+        },
       };
     }
   }

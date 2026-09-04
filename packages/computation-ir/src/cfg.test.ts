@@ -103,5 +103,98 @@ describe("Control Flow Graph (CFG)", () => {
     const { reachableBlockIds, unreachableBlockIds } = analyzeCFGReachability(cfg);
     expect(reachableBlockIds.length).toBe(4);
     expect(unreachableBlockIds.length).toBe(0);
+
+    // Verify Phi node generation at join block
+    const joinBlock = Object.values(cfg.blocks).find((b) => b.label === "join");
+    expect(joinBlock).toBeDefined();
+    const phiInstruction = joinBlock?.instructions.find((i) => i.kind === "phi");
+    expect(phiInstruction).toBeDefined();
+    if (phiInstruction && phiInstruction.kind === "phi") {
+      expect(phiInstruction.target).toBe("discount");
+    }
+  });
+
+  it("builds multi-way switch CFG for case / when tags", () => {
+    const irDoc: ComputationIRDocument = {
+      format: "computation-interchange",
+      version: "1",
+      language: "liquidjs-computation",
+      source: "",
+      nodes: [
+        {
+          kind: "tag",
+          name: "case",
+          args: "tier",
+          expression: "tier",
+          expressionTokens: [],
+          filters: [],
+          dependencies: ["tier"],
+          children: [
+            {
+              kind: "tag",
+              name: "when",
+              args: "1",
+              expression: "1",
+              expressionTokens: [],
+              filters: [],
+              dependencies: [],
+              children: [
+                {
+                  kind: "tag",
+                  name: "assign",
+                  target: "rate",
+                  args: "rate = 0.1",
+                  expression: "0.1",
+                  expressionTokens: [],
+                  filters: [],
+                  dependencies: [],
+                  source: { start: { offset: 0, line: 0, column: 0 }, end: { offset: 0, line: 0, column: 0 } },
+                  original: { dialect: "liquidjs-computation", kind: "tag", text: "" },
+                },
+              ],
+              source: { start: { offset: 0, line: 0, column: 0 }, end: { offset: 0, line: 0, column: 0 } },
+              original: { dialect: "liquidjs-computation", kind: "tag", text: "" },
+            },
+            {
+              kind: "tag",
+              name: "when",
+              args: "2",
+              expression: "2",
+              expressionTokens: [],
+              filters: [],
+              dependencies: [],
+              children: [
+                {
+                  kind: "tag",
+                  name: "assign",
+                  target: "rate",
+                  args: "rate = 0.2",
+                  expression: "0.2",
+                  expressionTokens: [],
+                  filters: [],
+                  dependencies: [],
+                  source: { start: { offset: 0, line: 0, column: 0 }, end: { offset: 0, line: 0, column: 0 } },
+                  original: { dialect: "liquidjs-computation", kind: "tag", text: "" },
+                },
+              ],
+              source: { start: { offset: 0, line: 0, column: 0 }, end: { offset: 0, line: 0, column: 0 } },
+              original: { dialect: "liquidjs-computation", kind: "tag", text: "" },
+            },
+          ],
+          source: { start: { offset: 0, line: 0, column: 0 }, end: { offset: 0, line: 0, column: 0 } },
+          original: { dialect: "liquidjs-computation", kind: "tag", text: "" },
+        },
+      ],
+      errors: [],
+    };
+
+    const cfg = buildControlFlowGraph(irDoc);
+    const entry = cfg.blocks[cfg.entryBlockId]!;
+    expect(entry.terminator.kind).toBe("switch");
+    if (entry.terminator.kind === "switch") {
+      expect(entry.terminator.cases.length).toBe(2);
+    }
+    const { reachableBlockIds } = analyzeCFGReachability(cfg);
+    expect(reachableBlockIds.length).toBeGreaterThan(3);
   });
 });

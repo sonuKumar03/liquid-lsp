@@ -71,4 +71,43 @@ describe("Typed Binary Expression Trees", () => {
     expect(filterCall.target).toEqual({ kind: "identifier", name: "total_price" });
     expect(filterCall.args).toEqual([{ kind: "literal", valueType: "string", value: "USD" }]);
   });
+
+  describe("Compound Logical Expressions & Comparisons", () => {
+    it("parses compound AND / OR condition: deal_size > 1000 and status == 'active'", () => {
+      const ast = parseExpressionToAST('deal_size > 1000 and status == "active"');
+      expect(ast.kind).toBe("binary_op");
+      const root = ast as BinaryExpressionNode;
+      expect(root.operator).toBe("AND");
+      
+      expect(root.left.kind).toBe("binary_op");
+      const leftComparison = root.left as BinaryExpressionNode;
+      expect(leftComparison.operator).toBe("GT");
+      expect(leftComparison.left).toEqual({ kind: "identifier", name: "deal_size" });
+      expect(leftComparison.right).toEqual({ kind: "literal", valueType: "number", value: 1000 });
+
+      expect(root.right.kind).toBe("binary_op");
+      const rightComparison = root.right as BinaryExpressionNode;
+      expect(rightComparison.operator).toBe("EQ");
+      expect(rightComparison.left).toEqual({ kind: "identifier", name: "status" });
+      expect(rightComparison.right).toEqual({ kind: "literal", valueType: "string", value: "active" });
+    });
+
+    it("parses contains operator: tags contains 'VIP'", () => {
+      const ast = parseExpressionToAST('tags contains "VIP"');
+      expect(ast.kind).toBe("binary_op");
+      const root = ast as BinaryExpressionNode;
+      expect(root.operator).toBe("CONTAINS");
+      expect(root.left).toEqual({ kind: "identifier", name: "tags" });
+      expect(root.right).toEqual({ kind: "literal", valueType: "string", value: "VIP" });
+    });
+
+    it("parses unary not: not is_expired", () => {
+      const ast = parseExpressionToAST("not is_expired");
+      expect(ast.kind).toBe("unary_op");
+      if (ast.kind === "unary_op") {
+        expect(ast.operator).toBe("NOT");
+        expect(ast.operand).toEqual({ kind: "identifier", name: "is_expired" });
+      }
+    });
+  });
 });

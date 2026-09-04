@@ -376,3 +376,166 @@ export function parseExpressionToAST(
 
   return root;
 }
+
+/**
+ * Evaluates constant sub-expressions at compile time (Constant Folding & Algebraic Reduction).
+ * Examples:
+ *   10 + 20 -> 30
+ *   (10 + 20) * 3 -> 90
+ *   "Agreement: " + "Standard" -> "Agreement: Standard"
+ *   x * 1 -> x
+ *   x + 0 -> x
+ *   x * 0 -> 0
+ */
+export function foldConstants(expr: ExpressionNode): ExpressionNode {
+  if (expr.kind === 'binary_op') {
+    const left = foldConstants(expr.left);
+    const right = foldConstants(expr.right);
+
+    // Both are literals -> fold completely
+    if (left.kind === 'literal' && right.kind === 'literal') {
+      const lVal = left.value;
+      const rVal = right.value;
+
+      if (expr.operator === 'ADD') {
+        if (typeof lVal === 'number' && typeof rVal === 'number') {
+          return { kind: 'literal', valueType: 'number', value: lVal + rVal };
+        }
+        if (typeof lVal === 'string' || typeof rVal === 'string') {
+          return { kind: 'literal', valueType: 'string', value: String(lVal) + String(rVal) };
+        }
+      }
+
+      if (expr.operator === 'SUBTRACT') {
+        if (typeof lVal === 'number' && typeof rVal === 'number') {
+          return { kind: 'literal', valueType: 'number', value: lVal - rVal };
+        }
+      }
+
+      if (expr.operator === 'MULTIPLY') {
+        if (typeof lVal === 'number' && typeof rVal === 'number') {
+          return { kind: 'literal', valueType: 'number', value: lVal * rVal };
+        }
+      }
+
+      if (expr.operator === 'DIVIDE') {
+        if (typeof lVal === 'number' && typeof rVal === 'number' && rVal !== 0) {
+          return { kind: 'literal', valueType: 'number', value: lVal / rVal };
+        }
+      }
+
+      if (expr.operator === 'MODULO') {
+        if (typeof lVal === 'number' && typeof rVal === 'number' && rVal !== 0) {
+          return { kind: 'literal', valueType: 'number', value: lVal % rVal };
+        }
+      }
+
+      if (expr.operator === 'CONCAT') {
+        return { kind: 'literal', valueType: 'string', value: String(lVal) + String(rVal) };
+      }
+
+      if (expr.operator === 'EQ') {
+        return { kind: 'literal', valueType: 'boolean', value: lVal === rVal };
+      }
+
+      if (expr.operator === 'NEQ') {
+        return { kind: 'literal', valueType: 'boolean', value: lVal !== rVal };
+      }
+
+      if (expr.operator === 'GT') {
+        return { kind: 'literal', valueType: 'boolean', value: Number(lVal) > Number(rVal) };
+      }
+
+      if (expr.operator === 'GTE') {
+        return { kind: 'literal', valueType: 'boolean', value: Number(lVal) >= Number(rVal) };
+      }
+
+      if (expr.operator === 'LT') {
+        return { kind: 'literal', valueType: 'boolean', value: Number(lVal) < Number(rVal) };
+      }
+
+      if (expr.operator === 'LTE') {
+        return { kind: 'literal', valueType: 'boolean', value: Number(lVal) <= Number(rVal) };
+      }
+
+      if (expr.operator === 'AND') {
+        return { kind: 'literal', valueType: 'boolean', value: Boolean(lVal && rVal) };
+      }
+
+      if (expr.operator === 'OR') {
+        return { kind: 'literal', valueType: 'boolean', value: Boolean(lVal || rVal) };
+      }
+
+      if (expr.operator === 'CONTAINS') {
+        return { kind: 'literal', valueType: 'boolean', value: String(lVal).includes(String(rVal)) };
+      }
+    }
+
+    // Algebraic identities
+    if (expr.operator === 'MULTIPLY') {
+      if (right.kind === 'literal' && right.value === 1) return left;
+      if (left.kind === 'literal' && left.value === 1) return right;
+      if (right.kind === 'literal' && right.value === 0) return { kind: 'literal', valueType: 'number', value: 0 };
+      if (left.kind === 'literal' && left.value === 0) return { kind: 'literal', valueType: 'number', value: 0 };
+    }
+
+    if (expr.operator === 'ADD') {
+      if (right.kind === 'literal' && right.value === 0) return left;
+      if (left.kind === 'literal' && left.value === 0) return right;
+    }
+
+    if (expr.operator === 'SUBTRACT') {
+      if (right.kind === 'literal' && right.value === 0) return left;
+    }
+
+    return {
+      kind: 'binary_op',
+      operator: expr.operator,
+      left,
+      right,
+    };
+  }
+
+  if (expr.kind === 'unary_op') {
+    const operand = foldConstants(expr.operand);
+    if (operand.kind === 'literal') {
+      if (expr.operator === 'NEGATE' && typeof operand.value === 'number') {
+        return { kind: 'literal', valueType: 'number', value: -operand.value };
+      }
+      if (expr.operator === 'NOT') {
+        return { kind: 'literal', valueType: 'boolean', value: !operand.value };
+      }
+    }
+    return { kind: 'unary_op', operator: expr.operator, operand };
+  }
+
+  if (expr.kind === 'filter_call') {
+    const target = foldConstants(expr.target);
+    const args = expr.args.map(foldConstants);
+
+    if (target.kind === 'literal') {
+      if (expr.filterName === 'upcase' && typeof target.value === 'string') {
+        return { kind: 'literal', valueType: 'string', value: target.value.toUpperCase() };
+      }
+      if (expr.filterName === 'downcase' && typeof target.value === 'string') {
+        return { kind: 'literal', valueType: 'string', value: target.value.toLowerCase() };
+      }
+      if (expr.filterName === 'abs' && typeof target.value === 'number') {
+        return { kind: 'literal', valueType: 'number', value: Math.abs(target.value) };
+      }
+      if (expr.filterName === 'round' && typeof target.value === 'number') {
+        return { kind: 'literal', valueType: 'number', value: Math.round(target.value) };
+      }
+      if (expr.filterName === 'ceil' && typeof target.value === 'number') {
+        return { kind: 'literal', valueType: 'number', value: Math.ceil(target.value) };
+      }
+      if (expr.filterName === 'floor' && typeof target.value === 'number') {
+        return { kind: 'literal', valueType: 'number', value: Math.floor(target.value) };
+      }
+    }
+
+    return { kind: 'filter_call', filterName: expr.filterName, target, args };
+  }
+
+  return expr;
+}

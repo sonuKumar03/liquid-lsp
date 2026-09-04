@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   parseExpressionToAST,
+  foldConstants,
   type BinaryExpressionNode,
   type FilterCallExpressionNode,
 } from "./expressions.js";
@@ -108,6 +109,74 @@ describe("Typed Binary Expression Trees", () => {
         expect(ast.operator).toBe("NOT");
         expect(ast.operand).toEqual({ kind: "identifier", name: "is_expired" });
       }
+    });
+  });
+
+  describe("Constant Folding & Reduction", () => {
+    it("folds static addition and multiplication: 10 + 20 * 3 -> 90 in pipeline", () => {
+      const ast = parseExpressionToAST("10", [
+        { name: "plus", raw: "plus: 20", source: { start: { offset: 0, line: 0, column: 0 }, end: { offset: 0, line: 0, column: 0 } } },
+        { name: "times", raw: "times: 3", source: { start: { offset: 0, line: 0, column: 0 }, end: { offset: 0, line: 0, column: 0 } } },
+      ]);
+
+      const folded = foldConstants(ast);
+      expect(folded).toEqual({
+        kind: "literal",
+        valueType: "number",
+        value: 90,
+      });
+    });
+
+    it("folds string concatenation: 'Agreement: ' + 'Standard'", () => {
+      const ast = parseExpressionToAST('"Agreement: "', [
+        { name: "append", raw: 'append: "Standard"', source: { start: { offset: 0, line: 0, column: 0 }, end: { offset: 0, line: 0, column: 0 } } },
+      ]);
+
+      const folded = foldConstants(ast);
+      expect(folded).toEqual({
+        kind: "literal",
+        valueType: "string",
+        value: "Agreement: Standard",
+      });
+    });
+
+    it("folds string filter calls: upcase and downcase", () => {
+      const ast = parseExpressionToAST('"hello world"', [
+        { name: "upcase", raw: "upcase", source: { start: { offset: 0, line: 0, column: 0 }, end: { offset: 0, line: 0, column: 0 } } },
+      ]);
+
+      const folded = foldConstants(ast);
+      expect(folded).toEqual({
+        kind: "literal",
+        valueType: "string",
+        value: "HELLO WORLD",
+      });
+    });
+
+    it("applies algebraic reduction rules: x * 1 -> x, x + 0 -> x, x * 0 -> 0", () => {
+      const multiplyOne = foldConstants({
+        kind: "binary_op",
+        operator: "MULTIPLY",
+        left: { kind: "identifier", name: "price" },
+        right: { kind: "literal", valueType: "number", value: 1 },
+      });
+      expect(multiplyOne).toEqual({ kind: "identifier", name: "price" });
+
+      const multiplyZero = foldConstants({
+        kind: "binary_op",
+        operator: "MULTIPLY",
+        left: { kind: "identifier", name: "price" },
+        right: { kind: "literal", valueType: "number", value: 0 },
+      });
+      expect(multiplyZero).toEqual({ kind: "literal", valueType: "number", value: 0 });
+
+      const addZero = foldConstants({
+        kind: "binary_op",
+        operator: "ADD",
+        left: { kind: "identifier", name: "price" },
+        right: { kind: "literal", valueType: "number", value: 0 },
+      });
+      expect(addZero).toEqual({ kind: "identifier", name: "price" });
     });
   });
 });

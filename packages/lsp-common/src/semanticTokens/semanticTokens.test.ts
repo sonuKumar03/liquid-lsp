@@ -1,5 +1,9 @@
 import { test, expect } from 'vitest';
-import { handleSemanticTokens, handleSemanticTokensDelta, tokenCache } from './semanticTokens.js';
+import {
+  handleSemanticTokens,
+  handleSemanticTokensDelta,
+  tokenCache,
+} from './semanticTokens.js';
 import { DocumentManager } from '../server/document-manager.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { tokenizeTopLevelSafe, createLiquidEngine } from 'liquid-core';
@@ -10,8 +14,11 @@ const documentManagerMock = {
     get: (uri: string) => documentsMock.get(uri),
   },
   getTokens: (uri: string) => {
-    return tokenizeTopLevelSafe(documentsMock.get(uri)!.getText(), createLiquidEngine());
-  }
+    return tokenizeTopLevelSafe(
+      documentsMock.get(uri)!.getText(),
+      createLiquidEngine(),
+    );
+  },
 } as unknown as DocumentManager;
 
 test('handleSemanticTokens delta encodes variable occurrences', () => {
@@ -26,7 +33,11 @@ test('handleSemanticTokens delta encodes variable occurrences', () => {
   );
   documentsMock.set(doc.uri, doc);
 
-  const result = handleSemanticTokens(documentManagerMock, { textDocument: { uri: doc.uri } }, schema);
+  const result = handleSemanticTokens(
+    documentManagerMock,
+    { textDocument: { uri: doc.uri } },
+    schema,
+  );
   expect(result).toBeDefined();
   expect(result?.data).toBeInstanceOf(Array);
   expect(result?.data.length).toBeGreaterThan(0);
@@ -40,7 +51,7 @@ test('handleSemanticTokensDelta calculates incremental edits correctly', () => {
     'file:///t.liquid',
     'liquid',
     1,
-    `{{ contract_value }}`
+    `{{ contract_value }}`,
   );
   documentsMock.set(doc.uri, doc);
 
@@ -48,7 +59,7 @@ test('handleSemanticTokensDelta calculates incremental edits correctly', () => {
   const fullResult = handleSemanticTokens(
     documentManagerMock,
     { textDocument: { uri: doc.uri } },
-    schema
+    schema,
   );
   expect(fullResult).toBeDefined();
   expect(fullResult?.resultId).toBeDefined();
@@ -59,7 +70,7 @@ test('handleSemanticTokensDelta calculates incremental edits correctly', () => {
     'file:///t.liquid',
     'liquid',
     2,
-    `{{ contract_value }}\n{% assign x = 10 %}`
+    `{{ contract_value }}\n{% assign x = 10 %}`,
   );
   documentsMock.set(updatedDoc.uri, updatedDoc);
 
@@ -70,7 +81,7 @@ test('handleSemanticTokensDelta calculates incremental edits correctly', () => {
       textDocument: { uri: doc.uri },
       previousResultId: initialResultId!,
     },
-    schema
+    schema,
   );
 
   // Check that the returned result is indeed a delta response (has edits)
@@ -86,7 +97,7 @@ test('handleSemanticTokensDelta calculates incremental edits correctly', () => {
       textDocument: { uri: doc.uri },
       previousResultId: 'invalid-id-mismatch',
     },
-    schema
+    schema,
   );
 
   expect(fallbackResult).toBeDefined();

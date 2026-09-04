@@ -7,7 +7,13 @@ import {
   parseOutputValue,
   LIQUID_FILTER_METAS,
 } from 'liquid-core';
-import { PropertyAccessToken, Tokenizer, LiteralToken, NumberToken, QuotedToken } from 'liquidjs';
+import {
+  PropertyAccessToken,
+  Tokenizer,
+  LiteralToken,
+  NumberToken,
+  QuotedToken,
+} from 'liquidjs';
 import {
   MATH_FILTERS,
   STRING_FILTERS,
@@ -87,10 +93,7 @@ export function validateDropdownComparisons(
     }
 
     const resolvedType = resolveTypeForPath(path, activeVarTypes);
-    if (
-      typeof resolvedType !== 'object' ||
-      resolvedType.kind !== 'dropdown'
-    ) {
+    if (typeof resolvedType !== 'object' || resolvedType.kind !== 'dropdown') {
       continue;
     }
 
@@ -99,7 +102,8 @@ export function validateDropdownComparisons(
       continue;
     }
 
-    const matchStart = tokenArgsBegin + match.index + match[0].lastIndexOf(rawValue);
+    const matchStart =
+      tokenArgsBegin + match.index + match[0].lastIndexOf(rawValue);
     const start = doc.positionAt(tokenBegin + matchStart);
     const end = doc.positionAt(tokenBegin + matchStart + rawValue.length);
 
@@ -229,9 +233,13 @@ export function processParseAssignExpression(
     }
 
     const fieldName = fieldNameRaw.replace(/\[\s*[a-zA-Z0-9_-]+\s*\]/g, '');
-    const offsetInToken = token.getText().indexOf(fieldNameRaw, searchIndex - token.begin);
+    const offsetInToken = token
+      .getText()
+      .indexOf(fieldNameRaw, searchIndex - token.begin);
     const offset =
-      offsetInToken !== -1 ? offsetInToken : token.getText().indexOf(fieldNameRaw);
+      offsetInToken !== -1
+        ? offsetInToken
+        : token.getText().indexOf(fieldNameRaw);
     if (offsetInToken !== -1) {
       searchIndex = token.begin + offsetInToken + fieldNameRaw.length;
     }
@@ -256,7 +264,10 @@ export function processParseAssignExpression(
       });
     }
 
-    if (typeof currentType === 'object' && currentType.kind !== 'branch_mismatch') {
+    if (
+      typeof currentType === 'object' &&
+      currentType.kind !== 'branch_mismatch'
+    ) {
       if (currentType.kind === 'composite') {
         const nextType = currentType.fields.get(fieldName);
         if (nextType) {
@@ -266,7 +277,11 @@ export function processParseAssignExpression(
               if (nextType === 'unknown') {
                 currentType = 'unknown';
               } else {
-                currentType = { kind: 'primitive', type: nextType, optional: true };
+                currentType = {
+                  kind: 'primitive',
+                  type: nextType,
+                  optional: true,
+                };
               }
             } else if (typeof nextType === 'object') {
               currentType = { ...nextType, optional: true };
@@ -281,7 +296,9 @@ export function processParseAssignExpression(
           const available = Array.from(currentType.fields.keys())
             .map((f) => `"${f}"`)
             .join(', ');
-          const availStr = available ? ` Available fields are: ${available}.` : '';
+          const availStr = available
+            ? ` Available fields are: ${available}.`
+            : '';
           diagnostics.push({
             severity: DiagnosticSeverity.Error,
             range: { start, end },
@@ -371,7 +388,9 @@ export function validateFilterNameSyntax(
     const leadingWhitespaceLen = afterPipe.length - trimmedAfterPipe.length;
     const filterNameStart = pipeIdx + 1 + leadingWhitespaceLen;
 
-    const filterNameMatch = trimmedAfterPipe.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)/);
+    const filterNameMatch = trimmedAfterPipe.match(
+      /^([a-zA-Z_][a-zA-Z0-9_-]*)/,
+    );
     if (!filterNameMatch) {
       const tokenText = token.getText();
       const exprOffsetInToken = tokenText.indexOf(expr);
@@ -380,7 +399,9 @@ export function validateFilterNameSyntax(
         (exprOffsetInToken !== -1 ? exprOffsetInToken : 0) +
         filterNameStart;
       const quotedMatch = trimmedAfterPipe.match(/^("[^"]*"|'[^']*')/);
-      const matchWord = quotedMatch ? quotedMatch : trimmedAfterPipe.match(/^[^\s|]*/);
+      const matchWord = quotedMatch
+        ? quotedMatch
+        : trimmedAfterPipe.match(/^[^\s|]*/);
       const highlightLen = Math.max(1, matchWord ? matchWord[0].length : 1);
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
@@ -449,7 +470,10 @@ export function inferArgumentType(
   return 'unknown';
 }
 
-function isArgumentOptional(argToken: unknown, activeVars: Map<string, ActiveVar>): boolean {
+function isArgumentOptional(
+  argToken: unknown,
+  activeVars: Map<string, ActiveVar>,
+): boolean {
   if (argToken && typeof argToken === 'object') {
     if (argToken instanceof PropertyAccessToken) {
       const path = argToken.getText();
@@ -498,7 +522,10 @@ export function applyFilterTypeWarnings(
 
   for (const filter of parsed.filters) {
     const filterName = filter.name;
-    const filterOffsetInToken = tokenText.indexOf(filterName, exprOffsetInToken);
+    const filterOffsetInToken = tokenText.indexOf(
+      filterName,
+      exprOffsetInToken,
+    );
 
     const start = doc.positionAt(
       token.begin + (filterOffsetInToken !== -1 ? filterOffsetInToken : 0),
@@ -510,7 +537,11 @@ export function applyFilterTypeWarnings(
           : tokenText.length),
     );
 
-    if (tempType && typeof tempType === 'object' && tempType.kind === 'branch_mismatch') {
+    if (
+      tempType &&
+      typeof tempType === 'object' &&
+      tempType.kind === 'branch_mismatch'
+    ) {
       const bm = tempType;
       for (let j = 0; j < bm.types.length; j++) {
         const t = bm.types[j]!;
@@ -545,7 +576,11 @@ export function applyFilterTypeWarnings(
             },
             source: 'liquid-lsp-linter',
           });
-        } else if (STRING_FILTERS.has(filterName) && tStr !== 'string' && tStr !== 'unknown') {
+        } else if (
+          STRING_FILTERS.has(filterName) &&
+          tStr !== 'string' &&
+          tStr !== 'unknown'
+        ) {
           const branchDesc = j === 0 ? 'if-branch' : 'else-branch';
           diagnostics.push({
             severity: DiagnosticSeverity.Error,
@@ -597,7 +632,9 @@ export function applyFilterTypeWarnings(
           });
         } else if (isOpt || isUnk) {
           const offset = exprOffsetInToken !== -1 ? exprOffsetInToken : 0;
-          const insertPos = doc.positionAt(token.begin + offset + basePart.length);
+          const insertPos = doc.positionAt(
+            token.begin + offset + basePart.length,
+          );
           diagnostics.push({
             severity: DiagnosticSeverity.Warning,
             range: { start, end },
@@ -643,11 +680,18 @@ export function applyFilterTypeWarnings(
           if (expectedType && expectedType !== 'any') {
             const actualType = inferArgumentType(valToken, activeVars);
             if (actualType !== 'unknown' && actualType !== expectedType) {
-              const argOffset = tokenText.indexOf(valToken.getText(), filterOffsetInToken);
-              const argStart = doc.positionAt(token.begin + (argOffset !== -1 ? argOffset : 0));
+              const argOffset = tokenText.indexOf(
+                valToken.getText(),
+                filterOffsetInToken,
+              );
+              const argStart = doc.positionAt(
+                token.begin + (argOffset !== -1 ? argOffset : 0),
+              );
               const argEnd = doc.positionAt(
                 token.begin +
-                  (argOffset !== -1 ? argOffset + valToken.getText().length : tokenText.length),
+                  (argOffset !== -1
+                    ? argOffset + valToken.getText().length
+                    : tokenText.length),
               );
 
               diagnostics.push({
@@ -670,11 +714,18 @@ export function applyFilterTypeWarnings(
         if (valToken) {
           const rawVal = valToken.getText().trim();
           if (rawVal === '0' || Number(rawVal) === 0) {
-            const argOffset = tokenText.indexOf(valToken.getText(), filterOffsetInToken);
-            const argStart = doc.positionAt(token.begin + (argOffset !== -1 ? argOffset : 0));
+            const argOffset = tokenText.indexOf(
+              valToken.getText(),
+              filterOffsetInToken,
+            );
+            const argStart = doc.positionAt(
+              token.begin + (argOffset !== -1 ? argOffset : 0),
+            );
             const argEnd = doc.positionAt(
               token.begin +
-                (argOffset !== -1 ? argOffset + valToken.getText().length : tokenText.length),
+                (argOffset !== -1
+                  ? argOffset + valToken.getText().length
+                  : tokenText.length),
             );
 
             diagnostics.push({
@@ -697,9 +748,14 @@ export function applyFilterTypeWarnings(
           const val = rawVal.slice(1, -1);
           if (val && !val.includes('%')) {
             const argOffset = tokenText.indexOf(rawVal, filterOffsetInToken);
-            const argStart = doc.positionAt(token.begin + (argOffset !== -1 ? argOffset : 0));
+            const argStart = doc.positionAt(
+              token.begin + (argOffset !== -1 ? argOffset : 0),
+            );
             const argEnd = doc.positionAt(
-              token.begin + (argOffset !== -1 ? argOffset + rawVal.length : tokenText.length),
+              token.begin +
+                (argOffset !== -1
+                  ? argOffset + rawVal.length
+                  : tokenText.length),
             );
 
             diagnostics.push({
@@ -737,7 +793,10 @@ export function applyFilterTypeWarnings(
           } else {
             tempType = { kind: 'primitive', type: tempType, optional: true };
           }
-        } else if (typeof tempType === 'object' && tempType.kind !== 'branch_mismatch') {
+        } else if (
+          typeof tempType === 'object' &&
+          tempType.kind !== 'branch_mismatch'
+        ) {
           tempType = { ...tempType, optional: true };
         }
       }

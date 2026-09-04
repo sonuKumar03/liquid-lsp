@@ -57,7 +57,10 @@ export class LiquidLspService implements OnDestroy {
   }
 
   /** Returns the JSON-RPC transports for MonacoLanguageClient. */
-  public getTransports(): { reader: BrowserMessageReader; writer: BrowserMessageWriter } {
+  public getTransports(): {
+    reader: BrowserMessageReader;
+    writer: BrowserMessageWriter;
+  } {
     if (!this.reader || !this.writer) {
       throw new Error('LSP transports are not initialised yet.');
     }
@@ -87,7 +90,9 @@ export class LiquidLspService implements OnDestroy {
         if (settled) return;
         settled = true;
         this.teardown();
-        reject(new Error('LSP worker did not become ready (handshake timeout)'));
+        reject(
+          new Error('LSP worker did not become ready (handshake timeout)'),
+        );
       }, WORKER_READY_TIMEOUT_MS);
 
       this.worker!.onerror = () => {

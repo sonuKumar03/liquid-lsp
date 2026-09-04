@@ -26,12 +26,23 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
+import { RouterLink } from '@angular/router';
 
-import { LiquidLspService, type LSPDiagnostic } from '../../services/liquid-lsp.service';
+import {
+  LiquidLspService,
+  type LSPDiagnostic,
+} from '../../services/liquid-lsp.service';
 import { MonacoSetupService } from '../../services/monaco-setup.service';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { MonacoLanguageClient } from 'monaco-languageclient';
 import { createModelReference } from 'vscode/monaco';
+import { extractComputationIR } from 'liquid-core';
+import {
+  optimizeComputationIR,
+  buildControlFlowGraph,
+  optimizeCFG,
+  generateLiquidFromIR,
+} from 'computation-ir';
 
 /** URI of the virtual document in the Monaco / LSP workspace. */
 const MODEL_URI = 'file:///playground/playground.liquid';
@@ -44,7 +55,10 @@ const MARKER_SEVERITY_MAP: Record<number, number> = {
   1: 4, // Hint
 };
 
-type ModelRef = { dispose(): void; object: { textEditorModel: monaco.editor.ITextModel | null } };
+type ModelRef = {
+  dispose(): void;
+  object: { textEditorModel: monaco.editor.ITextModel | null };
+};
 
 @Component({
   selector: 'app-playground',
@@ -65,6 +79,7 @@ type ModelRef = { dispose(): void; object: { textEditorModel: monaco.editor.ITex
     MatDividerModule,
     MatProgressBarModule,
     MatChipsModule,
+    RouterLink,
   ],
   templateUrl: './playground.component.html',
   styleUrls: ['./playground.component.scss'],
@@ -86,11 +101,51 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
   public readonly editorValue = signal<string>('');
   public readonly mockContext = signal<string>('');
   public readonly variableSchema = signal<string>('');
+  public readonly irViewMode = signal<
+    'ir' | 'optimized_ir' | 'cfg' | 'optimized_cfg'
+  >('optimized_cfg');
 
   public readonly lspReady = computed(() => this.lspService.isReady());
 
   public readonly currentDiagnostics = computed<LSPDiagnostic[]>(() => {
     return this.lspService.diagnostics()[MODEL_URI] ?? [];
+  });
+
+  public readonly computationIR = computed(() => {
+    try {
+      return extractComputationIR(this.editorValue());
+    } catch {
+      return null;
+    }
+  });
+
+  public readonly optimizedComputationIR = computed(() => {
+    const ir = this.computationIR();
+    return ir ? optimizeComputationIR(ir) : null;
+  });
+
+  public readonly controlFlowGraph = computed(() => {
+    const ir = this.computationIR();
+    return ir ? buildControlFlowGraph(ir) : null;
+  });
+
+  public readonly optimizedControlFlowGraph = computed(() => {
+    const cfg = this.controlFlowGraph();
+    return cfg ? optimizeCFG(cfg) : null;
+  });
+
+  public readonly irDisplayText = computed(() => {
+    const mode = this.irViewMode();
+    if (mode === 'ir') {
+      return JSON.stringify(this.computationIR(), null, 2);
+    }
+    if (mode === 'optimized_ir') {
+      return JSON.stringify(this.optimizedComputationIR(), null, 2);
+    }
+    if (mode === 'cfg') {
+      return JSON.stringify(this.controlFlowGraph(), null, 2);
+    }
+    return JSON.stringify(this.optimizedControlFlowGraph(), null, 2);
   });
 
   constructor() {
@@ -110,8 +165,12 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
 
     fetch('/playground-variables.json')
       .then((res) => res.json())
-      .then((vars: unknown) => this.variableSchema.set(JSON.stringify(vars, null, 2)))
-      .catch(() => this.variableSchema.set(JSON.stringify({ variables: [] }, null, 2)));
+      .then((vars: unknown) =>
+        this.variableSchema.set(JSON.stringify(vars, null, 2)),
+      )
+      .catch(() =>
+        this.variableSchema.set(JSON.stringify({ variables: [] }, null, 2)),
+      );
   }
 
   ngAfterViewInit(): void {
@@ -143,9 +202,12 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   public formatCode(): void {
-    this.editor?.getAction('editor.action.formatDocument')?.run().then(() => {
-      this.editor?.focus();
-    });
+    this.editor
+      ?.getAction('editor.action.formatDocument')
+      ?.run()
+      .then(() => {
+        this.editor?.focus();
+      });
   }
 
   // ─── Private: Monaco bootstrap ──────────────────────────────────────────────
@@ -186,7 +248,10 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private async createEditorModel(): Promise<void> {
     const initialCode = this.editorValue();
-    this.modelRef = await createModelReference(monaco.Uri.parse(MODEL_URI), initialCode);
+    this.modelRef = await createModelReference(
+      monaco.Uri.parse(MODEL_URI),
+      initialCode,
+    );
     this.editorModel = this.modelRef.object.textEditorModel!;
     monaco.editor.setModelLanguage(this.editorModel, 'liquid');
 
@@ -209,10 +274,15 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private syncInitialMarkers(): void {
     if (!this.editorModel) return;
-    const markers = monaco.editor.getModelMarkers({ resource: this.editorModel.uri });
+    const markers = monaco.editor.getModelMarkers({
+      resource: this.editorModel.uri,
+    });
     if (markers.length === 0) return;
     const diags = markers.map((m) => this.mapMarkerToDiagnostic(m));
-    this.lspService.diagnostics.update((current) => ({ ...current, [MODEL_URI]: diags }));
+    this.lspService.diagnostics.update((current) => ({
+      ...current,
+      [MODEL_URI]: diags,
+    }));
   }
 
   private createEditor(): void {
@@ -248,9 +318,12 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
   private syncLspSchemaAndContext(): void {
     if (!this.languageClient?.isRunning()) return;
     try {
-      const schemaRaw = this.safeParseJson<{ variables?: unknown[] }>(this.variableSchema());
+      const schemaRaw = this.safeParseJson<{ variables?: unknown[] }>(
+        this.variableSchema(),
+      );
       const varsList = schemaRaw?.variables ?? [];
-      const contextObj = this.safeParseJson<Record<string, unknown>>(this.mockContext()) ?? {};
+      const contextObj =
+        this.safeParseJson<Record<string, unknown>>(this.mockContext()) ?? {};
       this.languageClient.sendNotification('workspace/updateSchema', {
         schema: { variables: varsList },
         contextData: contextObj,

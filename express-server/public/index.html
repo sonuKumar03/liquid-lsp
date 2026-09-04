@@ -561,7 +561,8 @@
           <i class="fa-solid fa-text-width"></i> Toggle Wrap
         </button>
         <button class="btn" id="btn-split-toggle">
-          <i class="fa-solid fa-scissors"></i> <span id="split-text">Split Tags</span>
+          <i class="fa-solid fa-scissors"></i>
+          <span id="split-text">Split Tags</span>
         </button>
         <button class="btn btn-primary" id="btn-format">
           <i class="fa-solid fa-wand-magic-sparkles"></i> Format Template
@@ -618,7 +619,11 @@
         </header>
         <div class="preview-content">
           <div id="preview-rendered" class="preview-pane active"></div>
-          <pre id="preview-raw" class="preview-pane" style="display: none;"></pre>
+          <pre
+            id="preview-raw"
+            class="preview-pane"
+            style="display: none"
+          ></pre>
           <div
             id="preview-context-pane"
             class="preview-pane"
@@ -809,7 +814,8 @@
         let requestId = 0;
         const pendingRequests = new Map();
         let docVersion = 1;
-        let splitConsecutiveTags = localStorage.getItem('liquid-split-tags') !== 'false';
+        let splitConsecutiveTags =
+          localStorage.getItem('liquid-split-tags') !== 'false';
         let latestDiagnostics = [];
         let sendLspJson = null;
         let lspDispose = null;
@@ -1265,12 +1271,16 @@
         });
 
         // Handle Word Wrap toggle click
-        document.getElementById('btn-wrap-toggle').addEventListener('click', () => {
-          const currentWrap = editor.getOption(monaco.editor.EditorOption.wordWrap);
-          editor.updateOptions({
-            wordWrap: currentWrap === 'on' ? 'off' : 'on'
+        document
+          .getElementById('btn-wrap-toggle')
+          .addEventListener('click', () => {
+            const currentWrap = editor.getOption(
+              monaco.editor.EditorOption.wordWrap,
+            );
+            editor.updateOptions({
+              wordWrap: currentWrap === 'on' ? 'off' : 'on',
+            });
           });
-        });
 
         // Handle Split Tags toggle click
         const btnSplitToggle = document.getElementById('btn-split-toggle');

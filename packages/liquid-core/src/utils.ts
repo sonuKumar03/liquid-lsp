@@ -1,6 +1,10 @@
 import { Tokenizer } from 'liquidjs';
 import { closest, distance } from 'fastest-levenshtein';
-import { LIQUID_FILTER_NAMES, isKnownLiquidFilter, LIQUID_TAG_NAMES } from './metadata.js';
+import {
+  LIQUID_FILTER_NAMES,
+  isKnownLiquidFilter,
+  LIQUID_TAG_NAMES,
+} from './metadata.js';
 import {
   CONDITIONAL_ASSIGNMENT_MESSAGE,
   EXPECTED_FILTER_NAME_MESSAGE,
@@ -102,7 +106,7 @@ function tokenize(str: string): CustomToken[] {
   const tokens: CustomToken[] = [];
   while (tokenizer.p < tokenizer.N) {
     const start = tokenizer.p;
-    
+
     // 1. Whitespace
     if (/\s/.test(str[tokenizer.p] || '')) {
       while (tokenizer.p < tokenizer.N && /\s/.test(str[tokenizer.p] || '')) {
@@ -158,7 +162,7 @@ function tokenize(str: string): CustomToken[] {
  */
 export function convertToLiquidMath(lineText: string): string | null {
   const tokens = tokenize(lineText);
-  
+
   // Normalize: split decrement variable (e.g. a--)
   // Also split positive/negative value prefixes if preceded by value or pipe
   const normalized: CustomToken[] = [];
@@ -246,7 +250,13 @@ export function convertToLiquidMath(lineText: string): string | null {
         nextToken = normalized[j];
       }
       const op = nextToken;
-      if (op && (op.text === '+' || op.text === '-' || op.text === '*' || op.text === '/')) {
+      if (
+        op &&
+        (op.text === '+' ||
+          op.text === '-' ||
+          op.text === '*' ||
+          op.text === '/')
+      ) {
         let k = j + 1;
         let nextNextToken = normalized[k];
         if (nextNextToken && nextNextToken.type === 'space') {
@@ -299,7 +309,7 @@ export function convertToLiquidMath(lineText: string): string | null {
             type: 'raw',
             text: newText,
           });
-          
+
           modified = true;
           i = j + 1;
           continue;
@@ -340,7 +350,13 @@ export function convertToLiquidMath(lineText: string): string | null {
         }
       }
       const op = nextToken;
-      if (op && (op.text === '+' || op.text === '-' || op.text === '*' || op.text === '/')) {
+      if (
+        op &&
+        (op.text === '+' ||
+          op.text === '-' ||
+          op.text === '*' ||
+          op.text === '/')
+      ) {
         let k = j + 1;
         let nextNextToken = normalized[k];
         if (nextNextToken && nextNextToken.type === 'space') {

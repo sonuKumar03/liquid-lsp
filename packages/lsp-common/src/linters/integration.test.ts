@@ -175,7 +175,9 @@ test('Liquid custom parseAssign tag validation and coercion', () =>
         );
         // Wait, there could be unused variable warning, check that it's only warning for unused, not property error
         if (filteredNameError) {
-          expect(filteredNameError.message).not.toContain('doesn\'t have a field called');
+          expect(filteredNameError.message).not.toContain(
+            "doesn't have a field called",
+          );
         }
 
         // 4. Verify invalid_filtered (invalid property with filter chain) triggers error
@@ -198,7 +200,8 @@ test('Liquid custom parseAssign tag validation and coercion', () =>
         // 6. Verify item_title bracket access (user.items[0].title) does not trigger property/bracket error
         const bracketAccessError = diagnostics.find(
           (d: any) =>
-            d.range.start.line === 7 && d.message.includes('doesn\'t have a field called'),
+            d.range.start.line === 7 &&
+            d.message.includes("doesn't have a field called"),
         );
         expect(bracketAccessError).toBeUndefined();
 

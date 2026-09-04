@@ -56,7 +56,10 @@ export function resolveTypeForPath(
       } else {
         return 'unknown';
       }
-    } else if (typeof currentType === 'object' && currentType.kind === 'array') {
+    } else if (
+      typeof currentType === 'object' &&
+      currentType.kind === 'array'
+    ) {
       // Direct property access on array (e.g. items.price), delegate to elementType
       const elemType = currentType.elementType;
       if (typeof elemType === 'object' && elemType.kind === 'composite') {

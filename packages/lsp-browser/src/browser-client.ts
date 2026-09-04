@@ -12,7 +12,9 @@ import {
 export type BrowserLspWorkerClient = {
   sendRequest(method: string, params?: object): Promise<unknown>;
   sendNotification(method: string, params?: object): void;
-  onNotification(handler: (method: string, params: unknown) => void): () => void;
+  onNotification(
+    handler: (method: string, params: unknown) => void,
+  ): () => void;
   dispose(): void;
 };
 
@@ -75,8 +77,12 @@ export function connectBrowserLspWorker(
       clearTimeout(readyTimeout);
       dispose();
       const err = e as unknown as Record<string, unknown>;
-      const message = typeof err?.message === 'string' ? err.message : 'LSP worker failed to load';
-      const filename = typeof err?.filename === 'string' ? err.filename : 'unknown';
+      const message =
+        typeof err?.message === 'string'
+          ? err.message
+          : 'LSP worker failed to load';
+      const filename =
+        typeof err?.filename === 'string' ? err.filename : 'unknown';
       const lineno = typeof err?.lineno === 'number' ? err.lineno : 0;
       reject(new Error(`${message} @ ${filename}:${lineno}`));
     };
@@ -90,8 +96,7 @@ export function connectBrowserLspWorker(
       clearTimeout(readyTimeout);
 
       resolve({
-        sendRequest: (method, params) =>
-          connection.sendRequest(method, params),
+        sendRequest: (method, params) => connection.sendRequest(method, params),
         sendNotification: (method, params) => {
           connection.sendNotification(method, params);
         },

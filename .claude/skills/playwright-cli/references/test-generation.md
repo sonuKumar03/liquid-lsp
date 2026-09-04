@@ -115,8 +115,12 @@ await page.getByRole('button', { name: 'Submit' }).click();
 // Manual assertions using the outputs above:
 await expect(page.getByRole('alert', { name: 'Success' })).toBeVisible();
 await expect(page.getByTestId('main-header')).toHaveText('Welcome, user');
-await expect(page.getByRole('textbox', { name: 'Email' })).toHaveValue('user@example.com');
-await expect(page.getByRole('checkbox', { name: 'Enable notifications' })).toBeChecked();
+await expect(page.getByRole('textbox', { name: 'Email' })).toHaveValue(
+  'user@example.com',
+);
+await expect(
+  page.getByRole('checkbox', { name: 'Enable notifications' }),
+).toBeChecked();
 
 // toMatchAriaSnapshot on the whole page, finds a matching region
 await expect(page).toMatchAriaSnapshot(`

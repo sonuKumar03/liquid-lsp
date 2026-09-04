@@ -51,19 +51,22 @@ export function collectSyntaxDiagnostics(
       textWithoutQuotes.search(/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//) !== -1;
     const isUnclosedQuote =
       textWithoutQuotes.includes('"') || textWithoutQuotes.includes("'");
-    const manualError = isConditionalAssignment || isInlineMath || isUnclosedQuote;
+    const manualError =
+      isConditionalAssignment || isInlineMath || isUnclosedQuote;
 
     if (manualError) {
       const start = textDocument.positionAt(token.begin);
       const end = textDocument.positionAt(token.end);
-      
+
       let message: string;
       let code: string;
       if (isConditionalAssignment) {
-        message = 'Assignments are not allowed inside conditional statements. Did you mean "=="?';
+        message =
+          'Assignments are not allowed inside conditional statements. Did you mean "=="?';
         code = DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT;
       } else if (isInlineMath) {
-        message = 'Liquid does not support inline mathematical operators. Use filters instead, e.g. "| plus: 2".';
+        message =
+          'Liquid does not support inline mathematical operators. Use filters instead, e.g. "| plus: 2".';
         code = DIAGNOSTIC_CODES.INLINE_MATH;
       } else {
         message = 'Unclosed string literal. Matching quote is missing.';
@@ -85,7 +88,9 @@ export function collectSyntaxDiagnostics(
 
   // 2. Run standard parsing error checks
   try {
-    const { errors } = liquidEngine.parser.parseResilient(textDocument.getText());
+    const { errors } = liquidEngine.parser.parseResilient(
+      textDocument.getText(),
+    );
     for (const error of errors) {
       const token = error.token;
       let start = token
@@ -101,15 +106,19 @@ export function collectSyntaxDiagnostics(
         continue;
       }
 
-      if (errMessage.includes('invalid value expression') && errMessage.includes('=')) {
-        errMessage = 'Invalid assignment expression. Did you mean "=" instead of "=="?';
+      if (
+        errMessage.includes('invalid value expression') &&
+        errMessage.includes('=')
+      ) {
+        errMessage =
+          'Invalid assignment expression. Did you mean "=" instead of "=="?';
       }
 
       // Extract exact error position from error message if available (e.g. ", line:11, col:32")
       const lineColMatch = errMessage.match(/,\s*line:(\d+),\s*col:(\d+)/);
       if (lineColMatch) {
         const exactLine = parseInt(lineColMatch[1]!, 10) - 1; // 0-indexed
-        const exactCol = parseInt(lineColMatch[2]!, 10) - 1;  // 0-indexed
+        const exactCol = parseInt(lineColMatch[2]!, 10) - 1; // 0-indexed
 
         // Find matching token at exactLine to get proper token boundaries
         const matchingToken = tokens.find((t) => {
@@ -123,7 +132,10 @@ export function collectSyntaxDiagnostics(
         } else {
           start = { line: exactLine, character: exactCol };
           const lineText = getLineText(textDocument, exactLine);
-          end = { line: exactLine, character: Math.max(exactCol + 1, lineText.length) };
+          end = {
+            line: exactLine,
+            character: Math.max(exactCol + 1, lineText.length),
+          };
         }
 
         // Clean up the redundant line/col information from message
@@ -139,7 +151,8 @@ export function collectSyntaxDiagnostics(
           isConditionalTagText(token.name) &&
           textWithoutQuotes.search(/(?<![=!<>])=(?![=<>])/) !== -1;
         const isInlineMath =
-          textWithoutQuotes.search(/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//) !== -1;
+          textWithoutQuotes.search(/\+|(?<=\s)-(?=\s)|(?<=\d)-(?=\d)|\*|\//) !==
+          -1;
         const isUnclosedQuote =
           textWithoutQuotes.includes('"') || textWithoutQuotes.includes("'");
         if (isConditionalAssignment || isInlineMath || isUnclosedQuote) {
@@ -240,7 +253,8 @@ function emitMainCompilerDiagnostic(
 
   let message = typeof err.message === 'string' ? err.message : '';
   if (message.includes('invalid value expression') && message.includes('=')) {
-    message = 'Invalid assignment expression. Did you mean "=" instead of "=="?';
+    message =
+      'Invalid assignment expression. Did you mean "=" instead of "=="?';
   }
   const notClosedMatch = message.match(
     /^(tag|output)\s+(.+?)\s+not closed(?:,|$)/,

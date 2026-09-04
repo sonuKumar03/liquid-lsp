@@ -140,7 +140,7 @@ test('Liquid document symbols for and capture blocks and precise selectionRange'
         expect(symbolFor.name).toBe('for item in items');
         expect(symbolFor.kind).toBe(3); // Namespace
         expect(symbolFor.children.length).toBe(1);
-        
+
         const symbolForItem = symbolFor.children[0];
         expect(symbolForItem.name).toBe('item');
         expect(symbolForItem.kind).toBe(13);

@@ -1,10 +1,7 @@
 import type { Hover, TextDocumentPositionParams } from 'vscode-languageserver';
 import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import {
-  LIQUID_TAGS,
-  getTagDocumentation,
-} from '../shared/constants.js';
+import { LIQUID_TAGS, getTagDocumentation } from '../shared/constants.js';
 import {
   getWordAtPosition,
   isKnownLiquidFilter,
@@ -80,7 +77,9 @@ export function handleHover(
   if (isKnownFilter) {
     const engine = createLiquidEngine();
     const tokens = tokenizeTopLevelSafe(doc.getText(), engine);
-    const mergedSchema = schema ? extractLocalVariableTypes(schema, tokens, engine) : undefined;
+    const mergedSchema = schema
+      ? extractLocalVariableTypes(schema, tokens, engine)
+      : undefined;
     const filterDoc = resolveSchemaAwareDoc(word, mergedSchema);
     return {
       contents: {

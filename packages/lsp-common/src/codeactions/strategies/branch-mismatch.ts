@@ -10,17 +10,22 @@ export const BranchMismatchStrategy: CodeActionStrategy = {
   execute(doc, diagnostic, params, documentManager, liquidEngine) {
     if (!documentManager || !liquidEngine) return [];
 
-    const diagData = diagnostic.data as {
-      varName: string;
-      mismatchLine: number;
-      mismatchRange: Range;
-      expected: 'number' | 'string';
-      actual: string;
-      ranges: Range[];
-    } | undefined;
+    const diagData = diagnostic.data as
+      | {
+          varName: string;
+          mismatchLine: number;
+          mismatchRange: Range;
+          expected: 'number' | 'string';
+          actual: string;
+          ranges: Range[];
+        }
+      | undefined;
 
     if (diagData && diagData.ranges) {
-      const tokens = documentManager.getTokens(params.textDocument.uri, liquidEngine);
+      const tokens = documentManager.getTokens(
+        params.textDocument.uri,
+        liquidEngine,
+      );
 
       const mismatchedToken = tokens.find(
         (t) =>
@@ -37,10 +42,21 @@ export const BranchMismatchStrategy: CodeActionStrategy = {
 
         if (equalsIndex !== -1) {
           const startOffset =
-            tagToken.begin + (argsOffset >= 0 ? argsOffset : 0) + equalsIndex + 1;
-          const endOffset = tagToken.begin + (argsOffset >= 0 ? argsOffset : 0) + tagToken.args.length;
+            tagToken.begin +
+            (argsOffset >= 0 ? argsOffset : 0) +
+            equalsIndex +
+            1;
+          const endOffset =
+            tagToken.begin +
+            (argsOffset >= 0 ? argsOffset : 0) +
+            tagToken.args.length;
 
-          const rawVal = doc.getText(Range.create(doc.positionAt(startOffset), doc.positionAt(endOffset)));
+          const rawVal = doc.getText(
+            Range.create(
+              doc.positionAt(startOffset),
+              doc.positionAt(endOffset),
+            ),
+          );
           const leadingSpaces = rawVal.length - rawVal.trimStart().length;
           const trimmed = rawVal.trim();
 

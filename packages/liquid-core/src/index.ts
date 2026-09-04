@@ -83,3 +83,19 @@ export {
   getClosestTag,
   convertToLiquidMath,
 } from './utils.js';
+
+export {
+  extractComputationIR,
+  type ComputationIRClosingTag,
+  type ComputationIRDocument,
+  type ComputationIRError,
+  type ComputationIRExpressionToken,
+  type ComputationIRFilter,
+  type ComputationIRNode,
+  type ComputationIROriginal,
+  type ComputationIROutputNode,
+  type ComputationIRPosition,
+  type ComputationIRSource,
+  type ComputationIRTagNode,
+  type ComputationIRTextNode,
+} from './computation-ir.js';

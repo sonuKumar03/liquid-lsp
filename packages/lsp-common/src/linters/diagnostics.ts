@@ -1,10 +1,6 @@
 import type { Diagnostic, Connection } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import {
-  type Liquid,
-  type TopLevelToken,
-  tokenizeTopLevel,
-} from 'liquid-core';
+import { type Liquid, type TopLevelToken, tokenizeTopLevel } from 'liquid-core';
 import type { LiquidType } from '../shared/schema.js';
 import type { SchemaLoadError, VariableDeclaration } from 'key-pointer-schema';
 import { schemaLoadErrorsToDiagnostics } from '../shared/schema-load-errors.js';
@@ -12,6 +8,7 @@ import { collectEngineValidationDiagnostics } from '../shared/engine-validations
 import { collectLifecycleDiagnostics } from './lifecycle.js';
 import { checkUnclosedDelimiters } from './diagnostics/unclosed-delimiters.js';
 import { collectSyntaxDiagnostics } from './diagnostics/syntax.js';
+import { collectComputationDiagnostics } from './diagnostics/computation.js';
 
 export async function validateTextDocument(
   connection: Connection,
@@ -35,6 +32,7 @@ export async function validateTextDocument(
     liquidEngine,
     precomputedTokens,
   );
+  collectComputationDiagnostics(textDocument, diagnostics, globalSchema);
   collectLifecycleDiagnostics(
     textDocument,
     diagnostics,
@@ -71,4 +69,3 @@ export async function validateTextDocument(
 
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
-

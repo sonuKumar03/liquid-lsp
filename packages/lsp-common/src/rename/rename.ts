@@ -1,9 +1,22 @@
-import { Range, WorkspaceEdit, ResponseError, ErrorCodes } from 'vscode-languageserver';
+import {
+  Range,
+  WorkspaceEdit,
+  ResponseError,
+  ErrorCodes,
+} from 'vscode-languageserver';
 import type { TextEdit } from 'vscode-languageserver';
 import type { RenameParams } from 'vscode-languageserver';
-import { getWordAtPosition, tokenizeTopLevelSafe, createLiquidEngine, TagTokenClass } from 'liquid-core';
+import {
+  getWordAtPosition,
+  tokenizeTopLevelSafe,
+  createLiquidEngine,
+  TagTokenClass,
+} from 'liquid-core';
 import type { Token } from 'liquid-core';
-import { findVariableDeclarationsFromTokens, type VarDeclaration } from '../shared/variable-declarations.js';
+import {
+  findVariableDeclarationsFromTokens,
+  type VarDeclaration,
+} from '../shared/variable-declarations.js';
 import type { DocumentManager } from '../server/document-manager.js';
 import type { LiquidType } from '../shared/schema.js';
 
@@ -54,7 +67,11 @@ function sameScope(a: ScopeRange, b: ScopeRange): boolean {
   return a.start === b.start && a.end === b.end && a.tagName === b.tagName;
 }
 
-function getInnermostScope(scopes: ScopeRange[], offset: number, docLength: number): ScopeRange {
+function getInnermostScope(
+  scopes: ScopeRange[],
+  offset: number,
+  docLength: number,
+): ScopeRange {
   let innermost: ScopeRange = { start: 0, end: docLength, tagName: 'root' };
   let minLength = docLength;
 
@@ -71,13 +88,18 @@ function getInnermostScope(scopes: ScopeRange[], offset: number, docLength: numb
   return innermost;
 }
 
-function rangeContainsPosition(range: Range, position: RenameParams['position']): boolean {
+function rangeContainsPosition(
+  range: Range,
+  position: RenameParams['position'],
+): boolean {
   const startsBefore =
     range.start.line < position.line ||
-    (range.start.line === position.line && range.start.character <= position.character);
+    (range.start.line === position.line &&
+      range.start.character <= position.character);
   const endsAfter =
     range.end.line > position.line ||
-    (range.end.line === position.line && position.character <= range.end.character);
+    (range.end.line === position.line &&
+      position.character <= range.end.character);
   return startsBefore && endsAfter;
 }
 
@@ -91,7 +113,8 @@ function getBindingScope(
   offsetAt: (position: RenameParams['position']) => number,
 ): ScopeRange {
   const declarationAtCursor = declarations.find(
-    (decl) => decl.name === word && rangeContainsPosition(decl.range, cursorPosition),
+    (decl) =>
+      decl.name === word && rangeContainsPosition(decl.range, cursorPosition),
   );
 
   if (declarationAtCursor) {
@@ -99,9 +122,7 @@ function getBindingScope(
     return getInnermostScope(scopes, declOffset, docLength);
   }
 
-  let bestDeclaration:
-    | { scope: ScopeRange; offset: number }
-    | undefined;
+  let bestDeclaration: { scope: ScopeRange; offset: number } | undefined;
 
   for (const declaration of declarations) {
     if (declaration.name !== word) {
@@ -117,15 +138,19 @@ function getBindingScope(
     ) {
       if (
         !bestDeclaration ||
-        scope.end - scope.start < bestDeclaration.scope.end - bestDeclaration.scope.start ||
-        (sameScope(scope, bestDeclaration.scope) && declarationOffset > bestDeclaration.offset)
+        scope.end - scope.start <
+          bestDeclaration.scope.end - bestDeclaration.scope.start ||
+        (sameScope(scope, bestDeclaration.scope) &&
+          declarationOffset > bestDeclaration.offset)
       ) {
         bestDeclaration = { scope, offset: declarationOffset };
       }
     }
   }
 
-  return bestDeclaration?.scope ?? getInnermostScope(scopes, cursorOffset, docLength);
+  return (
+    bestDeclaration?.scope ?? getInnermostScope(scopes, cursorOffset, docLength)
+  );
 }
 
 function isNestedInsideScope(child: ScopeRange, parent: ScopeRange): boolean {
@@ -159,14 +184,17 @@ export function handleRename(
 
   const newName = params.newName.trim();
   if (!newName) {
-    throw new ResponseError(ErrorCodes.InvalidParams, 'New name cannot be empty.');
+    throw new ResponseError(
+      ErrorCodes.InvalidParams,
+      'New name cannot be empty.',
+    );
   }
 
   // 1. External Schema Guard for old variable name
   if (globalSchema?.has(word)) {
     throw new ResponseError(
       ErrorCodes.InternalError,
-      `Cannot rename "${word}" — it is defined in the external schema and controlled by the backend. Renaming it here will break runtime data injection.`
+      `Cannot rename "${word}" — it is defined in the external schema and controlled by the backend. Renaming it here will break runtime data injection.`,
     );
   }
 
@@ -174,7 +202,7 @@ export function handleRename(
   if (globalSchema?.has(newName)) {
     throw new ResponseError(
       ErrorCodes.InternalError,
-      `Cannot rename to "${newName}" — it is defined in the external schema and controlled by the backend.`
+      `Cannot rename to "${newName}" — it is defined in the external schema and controlled by the backend.`,
     );
   }
 
@@ -197,7 +225,11 @@ export function handleRename(
   const shadowScopes = declarations
     .filter((declaration) => declaration.name === word)
     .map((declaration) =>
-      getInnermostScope(scopes, doc.offsetAt(declaration.range.start), docText.length),
+      getInnermostScope(
+        scopes,
+        doc.offsetAt(declaration.range.start),
+        docText.length,
+      ),
     )
     .filter((scope) => isNestedInsideScope(scope, targetScope));
 
@@ -219,7 +251,7 @@ export function handleRename(
         const declLine = collision.range.start.line;
         throw new ResponseError(
           ErrorCodes.InternalError,
-          `Naming collision: renaming "${word}" to "${newName}" will shadow an existing variable defined on line ${declLine + 1}.`
+          `Naming collision: renaming "${word}" to "${newName}" will shadow an existing variable defined on line ${declLine + 1}.`,
         );
       }
     }
@@ -228,9 +260,12 @@ export function handleRename(
   let cleanText = docText;
 
   // Clean {% comment %} ... {% endcomment %}
-  cleanText = cleanText.replace(/\{%\s*comment\s*%\}([\s\S]*?)\{%\s*endcomment\s*%\}/g, (match) => {
-    return ' '.repeat(match.length);
-  });
+  cleanText = cleanText.replace(
+    /\{%\s*comment\s*%\}([\s\S]*?)\{%\s*endcomment\s*%\}/g,
+    (match) => {
+      return ' '.repeat(match.length);
+    },
+  );
 
   // Clean {# ... #}
   cleanText = cleanText.replace(/\{#([\s\S]*?)#\}/g, (match) => {

@@ -2,9 +2,6 @@ import { Injectable, isDevMode } from '@angular/core';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { initServices } from 'monaco-languageclient/vscode/services';
 
-/** Asset path for the Monaco web worker bundle. */
-const MONACO_WORKER_URL = '/assets/monaco/vs/base/worker/workerMain.js';
-
 /** Folder URI used as the virtual workspace root in Monaco. */
 const PLAYGROUND_WORKSPACE_URI = 'file:///playground';
 
@@ -15,7 +12,6 @@ const PLAYGROUND_WORKSPACE_URI = 'file:///playground';
  */
 @Injectable({ providedIn: 'root' })
 export class MonacoSetupService {
-
   /**
    * Sets `window.MonacoEnvironment` if not already set.
    * Must be called before `initVscodeServices`.
@@ -23,7 +19,17 @@ export class MonacoSetupService {
   ensureWorkerEnvironment(): void {
     if (!(window as unknown as Record<string, unknown>)['MonacoEnvironment']) {
       (window as unknown as Record<string, unknown>)['MonacoEnvironment'] = {
-        getWorkerUrl: (): string => MONACO_WORKER_URL,
+        getWorkerUrl: (_moduleId: string, _label: string): string => {
+          return (
+            'data:text/javascript;charset=utf-8,' +
+            encodeURIComponent(`
+            self.MonacoEnvironment = {
+              baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/'
+            };
+            importScripts('https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs/base/worker/workerMain.js');
+          `)
+          );
+        },
       };
     }
   }
@@ -33,9 +39,9 @@ export class MonacoSetupService {
    * Skips silently if already initialised.
    */
   async initVscodeServices(): Promise<void> {
-    const env = (window as unknown as Record<string, unknown>)['MonacoEnvironment'] as
-      | Record<string, unknown>
-      | undefined;
+    const env = (window as unknown as Record<string, unknown>)[
+      'MonacoEnvironment'
+    ] as Record<string, unknown> | undefined;
 
     if (env?.['vscodeApiInitialised']) {
       return;
@@ -46,7 +52,9 @@ export class MonacoSetupService {
         userServices: {},
         workspaceConfig: {
           workspaceProvider: {
-            workspace: { folderUri: monaco.Uri.parse(PLAYGROUND_WORKSPACE_URI) },
+            workspace: {
+              folderUri: monaco.Uri.parse(PLAYGROUND_WORKSPACE_URI),
+            },
             trusted: true,
             open: async () => true,
           },
@@ -63,8 +71,14 @@ export class MonacoSetupService {
    */
   registerLiquidLanguage(): void {
     monaco.languages.register({ id: 'liquid', extensions: ['.liquid'] });
-    monaco.languages.setLanguageConfiguration('liquid', this.buildLanguageConfig());
-    monaco.languages.setMonarchTokensProvider('liquid', this.buildTokensProvider());
+    monaco.languages.setLanguageConfiguration(
+      'liquid',
+      this.buildLanguageConfig(),
+    );
+    monaco.languages.setMonarchTokensProvider(
+      'liquid',
+      this.buildTokensProvider(),
+    );
   }
 
   // ─── Private builders ───────────────────────────────────────────────────────
@@ -72,7 +86,11 @@ export class MonacoSetupService {
   private buildLanguageConfig(): monaco.languages.LanguageConfiguration {
     return {
       comments: { blockComment: ['{% comment %}', '{% endcomment %}'] },
-      brackets: [['{', '}'], ['[', ']'], ['(', ')']],
+      brackets: [
+        ['{', '}'],
+        ['[', ']'],
+        ['(', ')'],
+      ],
       autoClosingPairs: [
         { open: '{', close: '}' },
         { open: '[', close: ']' },
@@ -99,11 +117,33 @@ export class MonacoSetupService {
       defaultToken: '',
       tokenPostfix: '.liquid',
       keywords: [
-        'if', 'else', 'elsif', 'endif', 'unless', 'endunless',
-        'case', 'when', 'endcase', 'for', 'endfor', 'in', 'reversed',
-        'tablerow', 'endtablerow', 'assign', 'assignVar', 'parseAssign',
-        'capture', 'endcapture', 'increment', 'decrement', 'comment', 'endcomment',
-        'raw', 'endraw', 'computeColumn',
+        'if',
+        'else',
+        'elsif',
+        'endif',
+        'unless',
+        'endunless',
+        'case',
+        'when',
+        'endcase',
+        'for',
+        'endfor',
+        'in',
+        'reversed',
+        'tablerow',
+        'endtablerow',
+        'assign',
+        'assignVar',
+        'parseAssign',
+        'capture',
+        'endcapture',
+        'increment',
+        'decrement',
+        'comment',
+        'endcomment',
+        'raw',
+        'endraw',
+        'computeColumn',
       ],
       operators: ['==', '!=', '<', '>', '<=', '>=', 'contains'],
       tokenizer: {
@@ -126,7 +166,16 @@ export class MonacoSetupService {
           [/%}/, { token: 'delimiter.tag', next: '@pop' }],
           [/"([^"\\]|\\.)*"/, 'string'],
           [/'([^'\\]|\\.)*'/, 'string'],
-          [/[\w-]+/, { cases: { '@keywords': 'keyword', '@operators': 'operator', '@default': 'identifier' } }],
+          [
+            /[\w-]+/,
+            {
+              cases: {
+                '@keywords': 'keyword',
+                '@operators': 'operator',
+                '@default': 'identifier',
+              },
+            },
+          ],
           [/[{}()[\]]/, 'delimiter'],
           [/[:|]/, 'operator'],
           [/[ \t\r\n]+/, ''],
@@ -135,7 +184,10 @@ export class MonacoSetupService {
           [/}}/, { token: 'delimiter.output', next: '@pop' }],
           [/"([^"\\]|\\.)*"/, 'string'],
           [/'([^'\\]|\\.)*'/, 'string'],
-          [/[\w-]+/, { cases: { '@operators': 'operator', '@default': 'identifier' } }],
+          [
+            /[\w-]+/,
+            { cases: { '@operators': 'operator', '@default': 'identifier' } },
+          ],
           [/[:|]/, 'operator'],
           [/[ \t\r\n]+/, ''],
         ],

@@ -20,7 +20,10 @@ import { handleDocumentSymbol } from '../symbols/symbols.js';
 import { handleRename } from '../rename/rename.js';
 import { handleReferences } from '../references/references.js';
 import { handleFoldingRanges } from '../foldingRanges/foldingRanges.js';
-import { handleSemanticTokens, handleSemanticTokensDelta } from '../semanticTokens/semanticTokens.js';
+import {
+  handleSemanticTokens,
+  handleSemanticTokensDelta,
+} from '../semanticTokens/semanticTokens.js';
 import { SERVER_CAPABILITIES } from './capabilities.js';
 import { DocumentManager } from './document-manager.js';
 import { DiagnosticsScheduler } from './diagnostics-scheduler.js';
@@ -160,7 +163,12 @@ export function startServer(
   });
 
   connection.onCodeAction((params) => {
-    return handleCodeAction(documentManager.documents, params, documentManager, liquidEngine);
+    return handleCodeAction(
+      documentManager.documents,
+      params,
+      documentManager,
+      liquidEngine,
+    );
   });
 
   connection.onDocumentSymbol((params) => {
@@ -168,11 +176,7 @@ export function startServer(
   });
 
   connection.onRenameRequest((params) => {
-    return handleRename(
-      documentManager,
-      params,
-      typeSystem.getLiquidSchema(),
-    );
+    return handleRename(documentManager, params, typeSystem.getLiquidSchema());
   });
 
   connection.onReferences((params) => {

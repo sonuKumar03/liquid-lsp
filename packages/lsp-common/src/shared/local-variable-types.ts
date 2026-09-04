@@ -31,6 +31,7 @@ export const STRING_FILTERS = new Set([
   'replace',
   'slice',
   'strip',
+  'strip_html',
   'truncate',
 ]);
 
@@ -92,6 +93,12 @@ export function applyFilterTypeRules(
   }
   if (MATH_FILTERS.has(filterName)) {
     return 'number';
+  }
+  if (filterName === 'toCurrency') {
+    return 'currency';
+  }
+  if (filterName === 'concat' || filterName === 'uniq') {
+    return { kind: 'array', elementType: 'unknown' };
   }
   return currentType;
 }
@@ -213,7 +220,11 @@ export function jsonValueToLiquidType(val: unknown): LiquidType {
     }
     if (typesSeen.size === 1) {
       const singleType = Array.from(typesSeen)[0]!;
-      if (singleType === 'string' || singleType === 'number' || singleType === 'boolean') {
+      if (
+        singleType === 'string' ||
+        singleType === 'number' ||
+        singleType === 'boolean'
+      ) {
         return {
           kind: 'array',
           elementType: singleType,

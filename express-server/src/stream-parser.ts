@@ -27,15 +27,15 @@ export class LSPStreamParser {
       const delimiterIndex = buffer.indexOf('\r\n\r\n');
       if (delimiterIndex === -1) break;
 
-      const headerPart = buffer
-        .subarray(0, delimiterIndex)
-        .toString('utf8');
+      const headerPart = buffer.subarray(0, delimiterIndex).toString('utf8');
       const contentLengthMatch = headerPart.match(/Content-Length:\s*(\d+)/i);
 
       if (!contentLengthMatch || !contentLengthMatch[1]) {
         // Stream is corrupted. Discard up to next Content-Length header to resynchronize.
         const str = buffer.toString('utf8');
-        const nextHeaderMatch = str.slice(delimiterIndex + 4).match(/Content-Length:/i);
+        const nextHeaderMatch = str
+          .slice(delimiterIndex + 4)
+          .match(/Content-Length:/i);
         if (nextHeaderMatch && nextHeaderMatch.index !== undefined) {
           buffer = buffer.subarray(delimiterIndex + 4 + nextHeaderMatch.index);
         } else {
@@ -53,10 +53,7 @@ export class LSPStreamParser {
       }
 
       // Extract the body buffer and convert to string
-      const bodyBuffer = buffer.subarray(
-        bodyStart,
-        bodyStart + contentLength,
-      );
+      const bodyBuffer = buffer.subarray(bodyStart, bodyStart + contentLength);
       const bodyPart = bodyBuffer.toString('utf8');
 
       // Update the remaining buffer

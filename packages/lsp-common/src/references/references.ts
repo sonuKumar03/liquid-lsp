@@ -1,6 +1,10 @@
 import { Location, Range } from 'vscode-languageserver';
 import type { ReferenceParams } from 'vscode-languageserver';
-import { getWordAtPosition, tokenizeTopLevelSafe, createLiquidEngine } from 'liquid-core';
+import {
+  getWordAtPosition,
+  tokenizeTopLevelSafe,
+  createLiquidEngine,
+} from 'liquid-core';
 import type { DocumentManager } from '../server/document-manager.js';
 import { findVariableDeclarationsFromTokens } from '../shared/variable-declarations.js';
 
@@ -44,9 +48,12 @@ export function handleReferences(
     let cleanText = docText;
 
     // Clean {% comment %} ... {% endcomment %}
-    cleanText = cleanText.replace(/\{%\s*comment\s*%\}([\s\S]*?)\{%\s*endcomment\s*%\}/g, (match: string) => {
-      return ' '.repeat(match.length);
-    });
+    cleanText = cleanText.replace(
+      /\{%\s*comment\s*%\}([\s\S]*?)\{%\s*endcomment\s*%\}/g,
+      (match: string) => {
+        return ' '.repeat(match.length);
+      },
+    );
 
     // Clean {# ... #}
     cleanText = cleanText.replace(/\{#([\s\S]*?)#\}/g, (match: string) => {

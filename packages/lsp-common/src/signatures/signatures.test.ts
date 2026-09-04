@@ -118,12 +118,10 @@ test('Liquid signature help for divided_by', () =>
 
         step = 1;
       } else if (step === 1 && res.id === 2) {
-        const sigHelp = res.result as
-          | {
-              signatures?: Array<{ label?: string }>;
-              activeParameter?: number;
-            }
-          | null;
+        const sigHelp = res.result as {
+          signatures?: Array<{ label?: string }>;
+          activeParameter?: number;
+        } | null;
 
         expect(sigHelp).toBeDefined();
         expect(sigHelp?.signatures?.length).toBe(1);
@@ -192,15 +190,13 @@ test('Liquid signature help uses filter metadata for custom filters', () =>
 
         step = 1;
       } else if (step === 1 && res.id === 2) {
-        const sigHelp = res.result as
-          | {
-              signatures?: Array<{
-                label?: string;
-                parameters?: Array<{ label?: string }>;
-              }>;
-              activeParameter?: number;
-            }
-          | null;
+        const sigHelp = res.result as {
+          signatures?: Array<{
+            label?: string;
+            parameters?: Array<{ label?: string }>;
+          }>;
+          activeParameter?: number;
+        } | null;
 
         expect(sigHelp).toBeDefined();
         expect(sigHelp?.signatures?.length).toBe(1);
@@ -273,12 +269,10 @@ test('Liquid signature help provides metadata signatures for filters missing han
 
         step = 1;
       } else if (step === 1 && res.id === 2) {
-        const sigHelp = res.result as
-          | {
-              signatures?: Array<{ label?: string }>;
-              activeParameter?: number;
-            }
-          | null;
+        const sigHelp = res.result as {
+          signatures?: Array<{ label?: string }>;
+          activeParameter?: number;
+        } | null;
 
         expect(sigHelp).toBeDefined();
         expect(sigHelp?.signatures?.[0]?.label).toBe('concat(array: any)');

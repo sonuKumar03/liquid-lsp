@@ -17,4 +17,4 @@ allowBuilds:
   nice-napi: true
 
 overrides:
-  monaco-editor: "npm:@codingame/monaco-vscode-editor-api@~8.0.4"
+  monaco-editor: 'npm:@codingame/monaco-vscode-editor-api@~8.0.4'

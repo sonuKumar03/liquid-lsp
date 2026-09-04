@@ -50,10 +50,16 @@ export const DelimiterStrategy: CodeActionStrategy = {
     // 2. Offer to fix/close the delimiter itself (e.g. change tag end to %} or output end to }})
     const rangeText = doc.getText(diagnostic.range);
     const trimmedText = rangeText.trim();
-    if (trimmedText.startsWith('{%') && trimmedText.endsWith('}') && !trimmedText.endsWith('%}')) {
+    if (
+      trimmedText.startsWith('{%') &&
+      trimmedText.endsWith('}') &&
+      !trimmedText.endsWith('%}')
+    ) {
       const lastBraceIndex = rangeText.lastIndexOf('}');
       if (lastBraceIndex !== -1) {
-        const bracePosition = doc.positionAt(doc.offsetAt(diagnostic.range.start) + lastBraceIndex);
+        const bracePosition = doc.positionAt(
+          doc.offsetAt(diagnostic.range.start) + lastBraceIndex,
+        );
         const replaceRange = Range.create(bracePosition, {
           line: bracePosition.line,
           character: bracePosition.character + 1,
@@ -68,10 +74,16 @@ export const DelimiterStrategy: CodeActionStrategy = {
           ),
         );
       }
-    } else if (trimmedText.startsWith('{{') && trimmedText.endsWith('}') && !trimmedText.endsWith('}}')) {
+    } else if (
+      trimmedText.startsWith('{{') &&
+      trimmedText.endsWith('}') &&
+      !trimmedText.endsWith('}}')
+    ) {
       const lastBraceIndex = rangeText.lastIndexOf('}');
       if (lastBraceIndex !== -1) {
-        const bracePosition = doc.positionAt(doc.offsetAt(diagnostic.range.start) + lastBraceIndex);
+        const bracePosition = doc.positionAt(
+          doc.offsetAt(diagnostic.range.start) + lastBraceIndex,
+        );
         const replaceRange = Range.create(bracePosition, {
           line: bracePosition.line,
           character: bracePosition.character + 1,

@@ -10,7 +10,9 @@ export const FallbackStrategy: CodeActionStrategy = {
     );
   },
   execute(doc, diagnostic, params) {
-    const diagData = diagnostic.data as { insertRange?: Range; newText?: string } | undefined;
+    const diagData = diagnostic.data as
+      | { insertRange?: Range; newText?: string }
+      | undefined;
     if (diagData?.insertRange && diagData?.newText) {
       return [
         createQuickFix(

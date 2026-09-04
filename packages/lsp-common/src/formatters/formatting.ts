@@ -118,7 +118,10 @@ function extractBlockTagsFromLine(line: string): string[] {
   return tags;
 }
 
-export function formatLiquid(text: string, splitConsecutiveTags = true): string {
+export function formatLiquid(
+  text: string,
+  splitConsecutiveTags = true,
+): string {
   const preProcessedText = splitConsecutiveTags
     ? text.replace(/%}\s*{%/g, '%}\n{%')
     : text;

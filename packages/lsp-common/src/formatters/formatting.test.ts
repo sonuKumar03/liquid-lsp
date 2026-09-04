@@ -359,7 +359,7 @@ test('Liquid document formatting regression for complex conditionals', () =>
                   '{% assign sd_expiration_date = temp_expiration | minus: one_day %}',
                   '{% else %}',
                   '{% assign sd_expiration_date = nil %}',
-                  '{% endif %}'
+                  '{% endif %}',
                 ].join('\n'),
               },
             },

@@ -1,4 +1,8 @@
-import { Command, type CodeAction, type CodeActionParams } from 'vscode-languageserver';
+import {
+  Command,
+  type CodeAction,
+  type CodeActionParams,
+} from 'vscode-languageserver';
 import { TextDocuments } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { Liquid } from 'liquid-core';
@@ -48,7 +52,10 @@ registerStrategy(DelimiterStrategy, DIAGNOSTIC_CODES.UNCLOSED_DELIMITER);
 registerStrategy(UnknownFilterStrategy, DIAGNOSTIC_CODES.UNKNOWN_FILTER);
 registerStrategy(QuotedFilterStrategy, DIAGNOSTIC_CODES.EXPECTED_FILTER_NAME);
 registerStrategy(InlineMathStrategy, DIAGNOSTIC_CODES.INLINE_MATH);
-registerStrategy(ConditionalAssignmentStrategy, DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT);
+registerStrategy(
+  ConditionalAssignmentStrategy,
+  DIAGNOSTIC_CODES.CONDITIONAL_ASSIGNMENT,
+);
 registerStrategy(UnknownTagStrategy, DIAGNOSTIC_CODES.UNKNOWN_TAG);
 registerStrategy(
   InvalidDropdownValueStrategy,
@@ -83,7 +90,13 @@ export function handleCodeAction(
     }
 
     if (strategy) {
-      const actions = strategy.execute(doc, diagnostic, params, documentManager, liquidEngine);
+      const actions = strategy.execute(
+        doc,
+        diagnostic,
+        params,
+        documentManager,
+        liquidEngine,
+      );
       codeActions.push(...actions);
     }
   }

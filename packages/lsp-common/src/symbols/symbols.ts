@@ -97,16 +97,34 @@ export function handleDocumentSymbol(
         if (parsed && argsOffset >= 0) {
           const absStart = token.begin + argsOffset + parsed.keyStart;
           const absEnd = token.begin + argsOffset + parsed.keyEnd;
-          const selectionRange = Range.create(doc.positionAt(absStart), doc.positionAt(absEnd));
-          pushVariableSymbol(rootSymbols, stack, parsed.key, range, selectionRange);
+          const selectionRange = Range.create(
+            doc.positionAt(absStart),
+            doc.positionAt(absEnd),
+          );
+          pushVariableSymbol(
+            rootSymbols,
+            stack,
+            parsed.key,
+            range,
+            selectionRange,
+          );
         }
       } else if (name === 'for') {
         const parsed = parseForLoopVariableWithOffsets(token.args);
         if (parsed && argsOffset >= 0) {
           const absStart = token.begin + argsOffset + parsed.keyStart;
           const absEnd = token.begin + argsOffset + parsed.keyEnd;
-          const selectionRange = Range.create(doc.positionAt(absStart), doc.positionAt(absEnd));
-          pushVariableSymbol(rootSymbols, stack, parsed.key, range, selectionRange);
+          const selectionRange = Range.create(
+            doc.positionAt(absStart),
+            doc.positionAt(absEnd),
+          );
+          pushVariableSymbol(
+            rootSymbols,
+            stack,
+            parsed.key,
+            range,
+            selectionRange,
+          );
         }
       }
       continue;
@@ -126,9 +144,18 @@ export function handleDocumentSymbol(
         if (argsOffset >= 0) {
           const absStart = token.begin + argsOffset + parsed.keyStart;
           const absEnd = token.begin + argsOffset + parsed.keyEnd;
-          selectionRange = Range.create(doc.positionAt(absStart), doc.positionAt(absEnd));
+          selectionRange = Range.create(
+            doc.positionAt(absStart),
+            doc.positionAt(absEnd),
+          );
         }
-        pushVariableSymbol(rootSymbols, stack, parsed.key, range, selectionRange);
+        pushVariableSymbol(
+          rootSymbols,
+          stack,
+          parsed.key,
+          range,
+          selectionRange,
+        );
       }
     }
   }

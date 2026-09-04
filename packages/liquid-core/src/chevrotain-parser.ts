@@ -78,7 +78,7 @@ class LiquidTagParser extends EmbeddedActionsParser {
   public assignRule = this.RULE('assignRule', (inputStr: string) => {
     const keyToken = this.CONSUME(Identifier);
     this.CONSUME(Equals);
-    
+
     // Grab the rest of the input string using the startOffset of the next token
     const nextTok = this.LA(1);
     let value = '';
@@ -89,7 +89,9 @@ class LiquidTagParser extends EmbeddedActionsParser {
     return {
       key: keyToken.image,
       keyStart: keyToken.startOffset,
-      keyEnd: (keyToken.endOffset ?? keyToken.startOffset + keyToken.image.length - 1) + 1,
+      keyEnd:
+        (keyToken.endOffset ??
+          keyToken.startOffset + keyToken.image.length - 1) + 1,
       value: value.trim(),
     };
   });
@@ -99,7 +101,9 @@ class LiquidTagParser extends EmbeddedActionsParser {
     return {
       key: keyToken.image,
       keyStart: keyToken.startOffset,
-      keyEnd: (keyToken.endOffset ?? keyToken.startOffset + keyToken.image.length - 1) + 1,
+      keyEnd:
+        (keyToken.endOffset ??
+          keyToken.startOffset + keyToken.image.length - 1) + 1,
     };
   });
 
@@ -116,7 +120,9 @@ class LiquidTagParser extends EmbeddedActionsParser {
     return {
       key: keyToken.image,
       keyStart: keyToken.startOffset,
-      keyEnd: (keyToken.endOffset ?? keyToken.startOffset + keyToken.image.length - 1) + 1,
+      keyEnd:
+        (keyToken.endOffset ??
+          keyToken.startOffset + keyToken.image.length - 1) + 1,
       collection: collection.trim(),
     };
   });
@@ -133,7 +139,9 @@ export interface ParsedAssignWithOffsets {
   value: string;
 }
 
-export function parseAssignKeyValueWithOffsets(args: string): ParsedAssignWithOffsets | null {
+export function parseAssignKeyValueWithOffsets(
+  args: string,
+): ParsedAssignWithOffsets | null {
   const lexResult = TagLexer.tokenize(args);
   if (lexResult.errors.length > 0 && lexResult.tokens.length === 0) {
     return null;
@@ -144,7 +152,9 @@ export function parseAssignKeyValueWithOffsets(args: string): ParsedAssignWithOf
     if (parserInstance.errors.length > 0) {
       // If we failed to parse the identifier or equals, return null
       const isCriticalError = parserInstance.errors.some(
-        err => err.name === 'MismatchedTokenException' && err.context.ruleStack.includes('assignRule')
+        (err) =>
+          err.name === 'MismatchedTokenException' &&
+          err.context.ruleStack.includes('assignRule'),
       );
       if (isCriticalError) {
         return null;
@@ -162,7 +172,9 @@ export interface ParsedCaptureWithOffsets {
   keyEnd: number;
 }
 
-export function parseCaptureVariableWithOffsets(args: string): ParsedCaptureWithOffsets | null {
+export function parseCaptureVariableWithOffsets(
+  args: string,
+): ParsedCaptureWithOffsets | null {
   const lexResult = TagLexer.tokenize(args);
   if (lexResult.errors.length > 0 && lexResult.tokens.length === 0) {
     return null;
@@ -186,7 +198,9 @@ export interface ParsedForWithOffsets {
   collection: string;
 }
 
-export function parseForLoopVariableWithOffsets(args: string): ParsedForWithOffsets | null {
+export function parseForLoopVariableWithOffsets(
+  args: string,
+): ParsedForWithOffsets | null {
   const lexResult = TagLexer.tokenize(args);
   if (lexResult.errors.length > 0 && lexResult.tokens.length === 0) {
     return null;
@@ -196,7 +210,9 @@ export function parseForLoopVariableWithOffsets(args: string): ParsedForWithOffs
     const result = parserInstance.forRule(args);
     if (parserInstance.errors.length > 0) {
       const isCriticalError = parserInstance.errors.some(
-        err => err.name === 'MismatchedTokenException' && err.context.ruleStack.includes('forRule')
+        (err) =>
+          err.name === 'MismatchedTokenException' &&
+          err.context.ruleStack.includes('forRule'),
       );
       if (isCriticalError) {
         return null;

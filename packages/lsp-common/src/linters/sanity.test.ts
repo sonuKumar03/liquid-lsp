@@ -27,36 +27,48 @@ test('Sanity Check: Multi-Branch Type Consistency (String vs Boolean)', () => {
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
   // Assert branch mismatch warnings are reported on the assignments
-  const branchMismatches = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.BRANCH_TYPE_MISMATCH);
+  const branchMismatches = diagnostics.filter(
+    (d) => d.code === DIAGNOSTIC_CODES.BRANCH_TYPE_MISMATCH,
+  );
   expect(branchMismatches.length).toBe(2);
-  
+
   // Verify plain language message content
-  expect(branchMismatches[0]!.message).toContain("'is_fixed_term' is assigned as string in this branch");
-  expect(branchMismatches[0]!.message).toContain("as boolean in another");
-  
-  expect(branchMismatches[1]!.message).toContain("'is_fixed_term' is assigned as boolean in this branch");
-  expect(branchMismatches[1]!.message).toContain("as string in another");
+  expect(branchMismatches[0]!.message).toContain(
+    "'is_fixed_term' is assigned as string in this branch",
+  );
+  expect(branchMismatches[0]!.message).toContain('as boolean in another');
+
+  expect(branchMismatches[1]!.message).toContain(
+    "'is_fixed_term' is assigned as boolean in this branch",
+  );
+  expect(branchMismatches[1]!.message).toContain('as string in another');
 });
 
 test('Sanity Check: Nil Propagation & Output Default Warnings', () => {
   const engine = createLiquidEngine();
   const schema = new Map<string, any>();
-  schema.set('sd_payment', { kind: 'primitive', type: 'currency', optional: true });
+  schema.set('sd_payment', {
+    kind: 'primitive',
+    type: 'currency',
+    optional: true,
+  });
 
   const doc = TextDocument.create(
     'file:///t.liquid',
     'liquid',
     1,
-    `{{ sd_payment }}`
+    `{{ sd_payment }}`,
   );
 
   const diagnostics: Diagnostic[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine, schema);
 
   // Assert warning on output block with optional/nil variable
-  const nilPropDiags = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.NIL_PROPAGATION);
+  const nilPropDiags = diagnostics.filter(
+    (d) => d.code === DIAGNOSTIC_CODES.NIL_PROPAGATION,
+  );
   expect(nilPropDiags.length).toBe(1);
-  expect(nilPropDiags[0]!.message).toContain("is optional and might be blank");
+  expect(nilPropDiags[0]!.message).toContain('is optional and might be blank');
 });
 
 test('Sanity Check: Implicit Coercion Warnings', () => {
@@ -66,15 +78,19 @@ test('Sanity Check: Implicit Coercion Warnings', () => {
     'liquid',
     1,
     `{% assign name = "Alice" %}
-     {{ name | plus: 10 }}`
+     {{ name | plus: 10 }}`,
   );
 
   const diagnostics: Diagnostic[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  const coercionDiags = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.NON_NUMERIC_COERCION);
+  const coercionDiags = diagnostics.filter(
+    (d) => d.code === DIAGNOSTIC_CODES.NON_NUMERIC_COERCION,
+  );
   expect(coercionDiags.length).toBe(1);
-  expect(coercionDiags[0]!.message).toContain("only works on numbers. The value is text, not a number");
+  expect(coercionDiags[0]!.message).toContain(
+    'only works on numbers. The value is text, not a number',
+  );
 });
 
 test('Sanity Check: Filter Argument Validation', () => {
@@ -83,15 +99,17 @@ test('Sanity Check: Filter Argument Validation', () => {
     'file:///t.liquid',
     'liquid',
     1,
-    `{{ 100 | divided_by: "two" }}`
+    `{{ 100 | divided_by: "two" }}`,
   );
 
   const diagnostics: Diagnostic[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  const argDiags = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.FILTER_ARGUMENT_TYPE_MISMATCH);
+  const argDiags = diagnostics.filter(
+    (d) => d.code === DIAGNOSTIC_CODES.FILTER_ARGUMENT_TYPE_MISMATCH,
+  );
   expect(argDiags.length).toBe(1);
-  expect(argDiags[0]!.message).toContain("expects a number argument");
+  expect(argDiags[0]!.message).toContain('expects a number argument');
   expect(argDiags[0]!.severity).toBe(1); // Error
 });
 
@@ -101,15 +119,17 @@ test('Sanity Check: Division by Zero Validation', () => {
     'file:///t.liquid',
     'liquid',
     1,
-    `{{ 100 | divided_by: 0 }}`
+    `{{ 100 | divided_by: 0 }}`,
   );
 
   const diagnostics: Diagnostic[] = [];
   collectLifecycleDiagnostics(doc, diagnostics, engine);
 
-  const divZeroDiags = diagnostics.filter((d) => d.code === DIAGNOSTIC_CODES.DIVISION_BY_ZERO);
+  const divZeroDiags = diagnostics.filter(
+    (d) => d.code === DIAGNOSTIC_CODES.DIVISION_BY_ZERO,
+  );
   expect(divZeroDiags.length).toBe(1);
-  expect(divZeroDiags[0]!.message).toContain("Division by zero is not allowed");
+  expect(divZeroDiags[0]!.message).toContain('Division by zero is not allowed');
   expect(divZeroDiags[0]!.severity).toBe(1); // Error
 });
 
@@ -119,7 +139,7 @@ test('Sanity Check: Rename Guards (Schema Collision)', () => {
     'file:///t.liquid',
     'liquid',
     1,
-    `{{ sd_company_name }}`
+    `{{ sd_company_name }}`,
   );
 
   const documentsMock = new Map<string, TextDocument>();
@@ -140,8 +160,8 @@ test('Sanity Check: Rename Guards (Schema Collision)', () => {
         position: { line: 0, character: 5 },
         newName: 'new_company_name',
       },
-      schema
-    )
+      schema,
+    ),
   ).toThrowError(/external schema/);
 });
 
@@ -151,7 +171,7 @@ test('Sanity Check: Semantic Tokens Classification', () => {
     'liquid',
     1,
     `{% assignVar total = 100 %}
-     {{ total }}`
+     {{ total }}`,
   );
 
   const documentsMock = new Map<string, TextDocument>();
@@ -162,7 +182,9 @@ test('Sanity Check: Semantic Tokens Classification', () => {
     },
   } as unknown as DocumentManager;
 
-  const tokens = handleSemanticTokens(documentManagerMock, { textDocument: { uri: doc.uri } });
+  const tokens = handleSemanticTokens(documentManagerMock, {
+    textDocument: { uri: doc.uri },
+  });
   expect(tokens).toBeDefined();
   expect(tokens!.data.length).toBeGreaterThan(0);
 });

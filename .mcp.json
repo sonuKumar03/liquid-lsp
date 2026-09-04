@@ -2,7 +2,11 @@
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/sonukumar/project/liquid-lsp"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/sonukumar/project/liquid-lsp"
+      ]
     },
     "fetch": {
       "command": "uvx",
@@ -10,7 +14,11 @@
     },
     "git": {
       "command": "uvx",
-      "args": ["mcp-server-git", "--repository", "/Users/sonukumar/project/liquid-lsp"]
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "/Users/sonukumar/project/liquid-lsp"
+      ]
     }
   }
 }

@@ -11,7 +11,10 @@ export function handleFoldingRanges(
   const doc = documentManager.documents.get(params.textDocument.uri);
   if (!doc) return null;
 
-  const tokens = documentManager.getTokens(params.textDocument.uri, liquidEngine);
+  const tokens = documentManager.getTokens(
+    params.textDocument.uri,
+    liquidEngine,
+  );
   const foldingRanges: FoldingRange[] = [];
 
   // Track open tags on a stack

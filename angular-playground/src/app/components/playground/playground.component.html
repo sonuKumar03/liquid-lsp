@@ -209,6 +209,29 @@
               }}</pre>
             </div>
           </mat-tab>
+
+          <!-- Tab 4: Transpiler (JavaScript, SQL, Canonical Liquid) -->
+          <mat-tab>
+            <ng-template matTabLabel>
+              <mat-icon class="tab-icon">transform</mat-icon>
+              <span>Transpile</span>
+            </ng-template>
+            <div class="tab-content fill-content ir-tab-container">
+              <div class="ir-mode-selector">
+                <mat-chip-listbox
+                  [ngModel]="transpileViewMode()"
+                  (ngModelChange)="transpileViewMode.set($event)"
+                >
+                  <mat-chip-option value="js">JavaScript Function</mat-chip-option>
+                  <mat-chip-option value="sql">ANSI SQL</mat-chip-option>
+                  <mat-chip-option value="liquid">Canonical LiquidJS</mat-chip-option>
+                </mat-chip-listbox>
+              </div>
+              <pre class="code-textarea fill-height ir-json-preview">{{
+                transpiledDisplayText()
+              }}</pre>
+            </div>
+          </mat-tab>
         </mat-tab-group>
       </div>
     </div>

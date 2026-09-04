@@ -41,6 +41,9 @@ import {
   optimizeComputationIR,
   buildControlFlowGraph,
   optimizeCFG,
+  generateLiquidFromIR,
+  transpileIRToJS,
+  transpileIRToSQL,
 } from 'computation-ir';
 
 /** URI of the virtual document in the Monaco / LSP workspace. */
@@ -103,6 +106,7 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
   public readonly irViewMode = signal<
     'ir' | 'optimized_ir' | 'cfg' | 'optimized_cfg'
   >('optimized_cfg');
+  public readonly transpileViewMode = signal<'js' | 'sql' | 'liquid'>('js');
 
   public readonly lspReady = computed(() => this.lspService.isReady());
 
@@ -145,6 +149,23 @@ export class PlaygroundComponent implements OnInit, AfterViewInit, OnDestroy {
       return JSON.stringify(this.controlFlowGraph(), null, 2);
     }
     return JSON.stringify(this.optimizedControlFlowGraph(), null, 2);
+  });
+
+  public readonly transpiledDisplayText = computed(() => {
+    const ir = this.optimizedComputationIR() || this.computationIR();
+    if (!ir) return '// No computation found or syntax error in template';
+    try {
+      const mode = this.transpileViewMode();
+      if (mode === 'js') {
+        return transpileIRToJS(ir, { functionName: 'evaluateComputation' });
+      }
+      if (mode === 'sql') {
+        return transpileIRToSQL(ir);
+      }
+      return generateLiquidFromIR(ir);
+    } catch (err: unknown) {
+      return `// Transpilation error: ${err instanceof Error ? err.message : String(err)}`;
+    }
   });
 
   constructor() {

@@ -108,6 +108,15 @@
               @case ('optimized_cfg') {
                 Optimized CFG (Dead Blocks Pruned)
               }
+              @case ('js') {
+                JavaScript Target (Compiled Function)
+              }
+              @case ('sql') {
+                ANSI SQL Target (Computed Columns)
+              }
+              @case ('liquid') {
+                Canonical LiquidJS (Normalized AST)
+              }
             }
           </h2>
         </div>
@@ -144,6 +153,30 @@
           >
             Optimized CFG
           </button>
+          <button
+            type="button"
+            class="toggle-btn"
+            [class.active]="modelView() === 'js'"
+            (click)="modelView.set('js')"
+          >
+            JavaScript
+          </button>
+          <button
+            type="button"
+            class="toggle-btn"
+            [class.active]="modelView() === 'sql'"
+            (click)="modelView.set('sql')"
+          >
+            ANSI SQL
+          </button>
+          <button
+            type="button"
+            class="toggle-btn"
+            [class.active]="modelView() === 'liquid'"
+            (click)="modelView.set('liquid')"
+          >
+            Canonical Liquid
+          </button>
         </div>
       </div>
       <pre class="code-output">
@@ -152,6 +185,9 @@
           @case ('optimized_ir') { {{ optimizedIrText() }} }
           @case ('cfg') { {{ cfgText() }} }
           @case ('optimized_cfg') { {{ optimizedCfgText() }} }
+          @case ('js') { {{ jsText() }} }
+          @case ('sql') { {{ sqlText() }} }
+          @case ('liquid') { {{ liquidCanonicalText() }} }
         }
       </pre>
     </article>

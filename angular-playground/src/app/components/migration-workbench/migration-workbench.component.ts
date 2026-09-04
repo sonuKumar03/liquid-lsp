@@ -7,6 +7,9 @@ import {
   optimizeComputationIR,
   buildControlFlowGraph,
   optimizeCFG,
+  generateLiquidFromIR,
+  transpileIRToJS,
+  transpileIRToSQL,
 } from 'computation-ir';
 import {
   evaluateReferenceProgramWithOutputs,
@@ -77,9 +80,12 @@ export class MigrationWorkbenchComponent {
   readonly optimizedIrText = signal('{}');
   readonly cfgText = signal('{}');
   readonly optimizedCfgText = signal('{}');
-  readonly modelView = signal<'ir' | 'optimized_ir' | 'cfg' | 'optimized_cfg'>(
-    'ir',
-  );
+  readonly jsText = signal('');
+  readonly sqlText = signal('');
+  readonly liquidCanonicalText = signal('');
+  readonly modelView = signal<
+    'ir' | 'optimized_ir' | 'cfg' | 'optimized_cfg' | 'js' | 'sql' | 'liquid'
+  >('ir');
   readonly referenceSource = signal('');
   readonly liquidOutput = signal('');
   readonly referenceOutput = signal('');
@@ -143,6 +149,14 @@ export class MigrationWorkbenchComponent {
 
       const optimizedCfg = optimizeCFG(rawCfg);
       this.optimizedCfgText.set(JSON.stringify(optimizedCfg, null, 2));
+
+      this.jsText.set(
+        transpileIRToJS(optimizedIr, {
+          functionName: 'evaluateComputation',
+        }),
+      );
+      this.sqlText.set(transpileIRToSQL(optimizedIr));
+      this.liquidCanonicalText.set(generateLiquidFromIR(optimizedIr));
 
       const compileStarted = performance.now();
       const program = referenceProgramFromIR(ir);

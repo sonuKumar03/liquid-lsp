@@ -490,3 +490,33 @@ export function transpileExpressionToSQL(ast: ExpressionNode): string {
     }
   }
 }
+
+/**
+ * Transpiles a full Computation IR Document into an ANSI SQL query with calculated columns.
+ *
+ * @param doc - Computation IR Document.
+ * @returns ANSI SQL query string.
+ */
+export function transpileIRToSQL(doc: ComputationIRDocument): string {
+  const selectItems: string[] = [];
+
+  for (const node of doc.nodes) {
+    if (
+      node.kind === 'tag' &&
+      (node.name === 'assign' ||
+        node.name === 'assignVar' ||
+        node.name === 'parseAssign')
+    ) {
+      const ast = parseExpressionToAST(node.expression, node.filters);
+      const sqlExpr = transpileExpressionToSQL(ast);
+      selectItems.push(`  ${sqlExpr} AS "${node.target || 'result'}"`);
+    } else if (node.kind === 'output') {
+      const ast = parseExpressionToAST(node.expression, node.filters);
+      const sqlExpr = transpileExpressionToSQL(ast);
+      selectItems.push(`  ${sqlExpr} AS "output_${selectItems.length + 1}"`);
+    }
+  }
+
+  if (selectItems.length === 0) return 'SELECT 1;';
+  return `SELECT\n${selectItems.join(',\n')};`;
+}

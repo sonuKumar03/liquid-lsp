@@ -18,3 +18,6 @@ export {
   referenceProgramFromIR,
   referenceSourceFromIR,
 } from './reference-from-ir.js';
+
+export * from './specter/specter-types.js';
+export * from './specter/specter-pipeline.js';
